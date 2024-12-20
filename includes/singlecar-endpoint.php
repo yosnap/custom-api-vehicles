@@ -35,6 +35,9 @@ add_action('rest_api_init', function () {
     ]);
 });
 
+require_once plugin_dir_path(__FILE__) . 'class-vehicle-fields.php';
+require_once plugin_dir_path(__FILE__) . 'class-vehicle-field-handler.php';
+
 function get_singlecar($request)
 {
     $params = $request->get_params();
@@ -281,7 +284,6 @@ function get_singlecar($request)
     return new WP_REST_Response($response, 200);
 }
 
-// Función para crear un nuevo singlecar
 function create_singlecar($request) {
     $params = $request->get_params();
     
@@ -393,18 +395,88 @@ function create_singlecar($request) {
 
     // Lista de campos que son meta
     $meta_fields = [
-        'preu',
-        'quilometratge',
-        'any',
-        'color_vehicle',
-        'places_cotxe',
-        'portes_cotxe'
+        // Campos booleanos
+        'is-vip' => 'boolean',
+        'venut' => 'boolean',
+        'llibre-manteniment' => 'boolean',
+        'revisions-oficials' => 'boolean',
+        'impostos-deduibles' => 'boolean',
+        'vehicle-a-canvi' => 'boolean',
+        
+        // Campos numéricos
+        'dies-caducitat' => 'number',
+        'preu' => 'number',
+        'preu-mensual' => 'number',
+        'preu-diari' => 'number',
+        'preu-antic' => 'number',
+        'quilometratge' => 'number',
+        'cilindrada' => 'number',
+        'potencia-cv' => 'number',
+        'potencia-kw' => 'number',
+        
+        // Campos de texto/selección
+        'venedor' => 'text',
+        'any' => 'text',
+        'versio' => 'text',
+        'nombre-propietaris' => 'text',
+        'garantia' => 'text',
+        'vehicle-accidentat' => 'text',
+        'emissions-vehicle' => 'glossary',
+        'data-vip' => 'text'
     ];
 
     // Guardar metadatos
-    foreach ($meta_fields as $field) {
+    foreach ($meta_fields as $field => $type) {
         if (isset($params[$field])) {
-            update_post_meta($post_id, $field, sanitize_text_field($params[$field]));
+            $value = $params[$field];
+            
+            // Convertir valores según el tipo
+            switch ($type) {
+                case 'boolean':
+                    $value = filter_var($value, FILTER_VALIDATE_BOOLEAN) ? 'true' : 'false';
+                    break;
+                case 'number':
+                    $value = filter_var($value, FILTER_VALIDATE_FLOAT);
+                    break;
+                case 'glossary':
+                    if ($field === 'emissions-vehicle') {
+                        // Obtener el valor del campo JetEngine directamente
+                        $meta_key = 'emissions-vehicle';
+                        
+                        // Validar que el valor existe en las opciones del campo
+                        $field_options = array(
+                            'euro1' => 'Euro1',
+                            'euro2' => 'Euro2',
+                            'euro3' => 'Euro3',
+                            'euro4' => 'Euro4',
+                            'euro5' => 'Euro5',
+                            'euro6' => 'Euro6'
+                        );
+                        
+                        $normalized_value = strtolower($value);
+                        
+                        if (array_key_exists($normalized_value, $field_options)) {
+                            $value = $normalized_value;
+                        } else {
+                            return new WP_Error(
+                                'invalid_emission',
+                                sprintf(
+                                    'El valor %s no es válido para emissions-vehicle. Valores válidos: %s', 
+                                    $value,
+                                    implode(', ', array_keys($field_options))
+                                ),
+                                ['status' => 400]
+                            );
+                        }
+                    }
+                    break;
+                case 'text':
+                    $value = sanitize_text_field($value);
+                    break;
+            }
+            
+            delete_post_meta($post_id, $field);
+            add_post_meta($post_id, $field, $value, true);
         }
     }
 
@@ -434,9 +506,22 @@ function create_singlecar($request) {
     }
 
     // Agregar campos meta a la respuesta
-    foreach ($meta_fields as $field) {
+    foreach ($meta_fields as $field => $type) {
         $value = get_post_meta($post_id, $field, true);
-        if (!empty($value)) {
+        if ($type === 'boolean') {
+            $response[$field] = $value === 'true';
+        } else if ($type === 'glossary' && $field === 'emissions-vehicle' && !empty($value)) {
+            // Usar el array de opciones para obtener el nombre visible
+            $field_options = array(
+                'euro1' => 'Euro1',
+                'euro2' => 'Euro2',
+                'euro3' => 'Euro3',
+                'euro4' => 'Euro4',
+                'euro5' => 'Euro5',
+                'euro6' => 'Euro6'
+            );
+            $response[$field] = isset($field_options[$value]) ? $field_options[$value] : $value;
+        } else if (!empty($value)) {
             $response[$field] = $value;
         }
     }
@@ -444,43 +529,109 @@ function create_singlecar($request) {
     return new WP_REST_Response($response, 201);
 }
 
-// Función para actualizar un singlecar
 function update_singlecar($request) {
     $params = $request->get_params();
-    $post_id = $params['post_id'];
+    $post_id = isset($params['id']) ? $params['id'] : 0;
 
-    if (!$post_id) {
-        return new WP_Error('missing_id', 'Se requiere el ID del vehículo', ['status' => 400]);
+    // Verificar si el post existe y es del tipo correcto
+    $post = get_post($post_id);
+    if (!$post || $post->post_type !== 'singlecar') {
+        return new WP_Error(
+            'invalid_vehicle',
+            'No se encontró el vehículo especificado',
+            ['status' => 404]
+        );
     }
 
-    $post_data = [
-        'ID' => $post_id
-    ];
-
+    // Actualizar título y contenido si se proporcionan
+    $post_data = [];
     if (isset($params['title'])) {
         $post_data['post_title'] = sanitize_text_field($params['title']);
     }
     if (isset($params['content'])) {
         $post_data['post_content'] = wp_kses_post($params['content']);
     }
-
-    $updated = wp_update_post($post_data);
-
-    if (is_wp_error($updated)) {
-        return new WP_Error('failed_update', 'Error al actualizar el vehículo', ['status' => 500]);
+    if (!empty($post_data)) {
+        $post_data['ID'] = $post_id;
+        wp_update_post($post_data);
     }
 
-    // Actualizar metadatos
-    if (isset($params['meta']) && is_array($params['meta'])) {
-        foreach ($params['meta'] as $key => $value) {
-            update_post_meta($post_id, sanitize_text_field($key), sanitize_text_field($value));
+    // Actualizar taxonomías
+    $taxonomy_fields = Vehicle_Fields::get_taxonomy_fields();
+    foreach ($taxonomy_fields as $taxonomy => $field) {
+        if (isset($params[$field])) {
+            $term_slug = sanitize_text_field($params[$field]);
+            
+            // Para tipus-combustible, agregar el prefijo si no está presente
+            if ($taxonomy === 'tipus-combustible' && strpos($term_slug, 'combustible-') !== 0) {
+                $term_slug = 'combustible-' . $term_slug;
+            }
+            
+            $term = get_term_by('slug', $term_slug, $taxonomy);
+            if ($term) {
+                wp_set_object_terms($post_id, $term->term_id, $taxonomy);
+            }
         }
     }
 
-    return new WP_REST_Response([
+    // Actualizar metadatos
+    $meta_fields = Vehicle_Fields::get_meta_fields();
+    foreach ($meta_fields as $field => $type) {
+        if (isset($params[$field])) {
+            try {
+                $value = Vehicle_Field_Handler::process_field($field, $params[$field], $type);
+                delete_post_meta($post_id, $field);
+                add_post_meta($post_id, $field, $value, true);
+            } catch (Exception $e) {
+                return new WP_Error(
+                    'invalid_field_value',
+                    $e->getMessage(),
+                    ['status' => 400]
+                );
+            }
+        }
+    }
+
+    // Preparar respuesta
+    $response = [
         'message' => 'Vehículo actualizado exitosamente',
-        'post_id' => $post_id
-    ], 200);
+        'post_id' => $post_id,
+        'title' => $post->post_title,
+        'content' => $post->post_content,
+        'status' => $post->post_status
+    ];
+
+    // Agregar marca y modelo a la respuesta
+    $terms = wp_get_object_terms($post_id, 'marques-coches');
+    if (!is_wp_error($terms)) {
+        foreach ($terms as $term) {
+            if ($term->parent === 0) {
+                $response['marca'] = $term->slug;
+            } else {
+                $response['modelo'] = $term->slug;
+            }
+        }
+    }
+
+    // Agregar campos de taxonomía a la respuesta
+    foreach ($taxonomy_fields as $taxonomy => $field) {
+        $terms = wp_get_object_terms($post_id, $taxonomy);
+        if (!is_wp_error($terms) && !empty($terms)) {
+            $term_slug = $terms[0]->slug;
+            if ($taxonomy === 'tipus-combustible' && strpos($term_slug, 'combustible-') === 0) {
+                $term_slug = str_replace('combustible-', '', $term_slug);
+            }
+            $response[$field] = $term_slug;
+        }
+    }
+
+    // Agregar campos meta a la respuesta
+    foreach ($meta_fields as $field => $type) {
+        $value = get_post_meta($post_id, $field, true);
+        $response[$field] = Vehicle_Field_Handler::format_response_value($field, $value, $type);
+    }
+
+    return new WP_REST_Response($response, 200);
 }
 
 // Función para eliminar un singlecar
