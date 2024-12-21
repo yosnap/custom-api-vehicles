@@ -263,6 +263,17 @@ function get_singlecar($request)
                 $singlecar[$term->taxonomy][] = $term->name;
             }
 
+            // Obtener metadatos
+            $meta_fields = Vehicle_Fields::get_meta_fields();
+            foreach ($meta_fields as $field => $type) {
+                $value = get_post_meta($singlecar_id, $field, true);
+                if ($field === 'segment') {
+                    $singlecar['carrosseria'] = Vehicle_Field_Handler::format_response_value($field, $value, $type);
+                } else {
+                    $singlecar[$field] = Vehicle_Field_Handler::format_response_value($field, $value, $type);
+                }
+            }
+
             array_push($singlecars, $singlecar);
         }
     }
@@ -299,6 +310,48 @@ function create_singlecar($request) {
         }
     }
 
+    // Transformar el campo carrosseria a segment
+    if (isset($params['carrosseria'])) {
+        $params['segment'] = $params['carrosseria'];
+        unset($params['carrosseria']);
+    }
+
+    // Validar taxonomías antes de crear el post
+    $taxonomy_fields = Vehicle_Fields::get_taxonomy_fields();
+    $allowed_values = Vehicle_Fields::get_allowed_taxonomy_values();
+    
+    foreach ($taxonomy_fields as $field => $taxonomy) {
+        if (isset($params[$field])) {
+            // Validar que el valor esté permitido
+            if (isset($allowed_values[$field]) && !in_array($params[$field], $allowed_values[$field])) {
+                return new WP_Error(
+                    'invalid_taxonomy_value',
+                    sprintf(
+                        'El valor "%s" no es válido para %s. Valores válidos: %s',
+                        $params[$field],
+                        $field,
+                        implode(', ', $allowed_values[$field])
+                    ),
+                    ['status' => 400]
+                );
+            }
+
+            // Verificar que el término existe
+            $term = get_term_by('slug', $params[$field], $taxonomy);
+            if (!$term) {
+                return new WP_Error(
+                    'invalid_taxonomy_term',
+                    sprintf(
+                        'El término "%s" no existe en la taxonomía %s. Por favor, primero crea el término en WordPress.',
+                        $params[$field],
+                        $taxonomy
+                    ),
+                    ['status' => 400]
+                );
+            }
+        }
+    }
+
     // Verificar marca y modelo antes de crear el post
     $marca = get_term_by('slug', $params['marca'], 'marques-coches');
     if (!$marca) {
@@ -331,6 +384,14 @@ function create_singlecar($request) {
 
     if (is_wp_error($post_id)) {
         return new WP_Error('failed_insert', 'Error al crear el vehículo', ['status' => 500]);
+    }
+
+    // Asignar las taxonomías al post creado
+    foreach ($taxonomy_fields as $field => $taxonomy) {
+        if (isset($params[$field])) {
+            $term = get_term_by('slug', $params[$field], $taxonomy);
+            wp_set_object_terms($post_id, $term->term_id, $taxonomy);
+        }
     }
 
     // Asignar marca y modelo
@@ -393,92 +454,78 @@ function create_singlecar($request) {
         }
     }
 
-    // Lista de campos que son meta
-    $meta_fields = [
-        // Campos booleanos
-        'is-vip' => 'boolean',
-        'venut' => 'boolean',
-        'llibre-manteniment' => 'boolean',
-        'revisions-oficials' => 'boolean',
-        'impostos-deduibles' => 'boolean',
-        'vehicle-a-canvi' => 'boolean',
-        
-        // Campos numéricos
-        'dies-caducitat' => 'number',
-        'preu' => 'number',
-        'preu-mensual' => 'number',
-        'preu-diari' => 'number',
-        'preu-antic' => 'number',
-        'quilometratge' => 'number',
-        'cilindrada' => 'number',
-        'potencia-cv' => 'number',
-        'potencia-kw' => 'number',
-        
-        // Campos de texto/selección
-        'venedor' => 'text',
-        'any' => 'text',
-        'versio' => 'text',
-        'nombre-propietaris' => 'text',
-        'garantia' => 'text',
-        'vehicle-accidentat' => 'text',
-        'emissions-vehicle' => 'glossary',
-        'data-vip' => 'text'
-    ];
-
-    // Guardar metadatos
-    foreach ($meta_fields as $field => $type) {
+    // Procesar taxonomías
+    $taxonomy_fields = Vehicle_Fields::get_taxonomy_fields();
+    $allowed_values = Vehicle_Fields::get_allowed_taxonomy_values();
+    
+    foreach ($taxonomy_fields as $field => $taxonomy) {
         if (isset($params[$field])) {
-            $value = $params[$field];
-            
-            // Convertir valores según el tipo
-            switch ($type) {
-                case 'boolean':
-                    $value = filter_var($value, FILTER_VALIDATE_BOOLEAN) ? 'true' : 'false';
-                    break;
-                case 'number':
-                    $value = filter_var($value, FILTER_VALIDATE_FLOAT);
-                    break;
-                case 'glossary':
-                    if ($field === 'emissions-vehicle') {
-                        // Obtener el valor del campo JetEngine directamente
-                        $meta_key = 'emissions-vehicle';
-                        
-                        // Validar que el valor existe en las opciones del campo
-                        $field_options = array(
-                            'euro1' => 'Euro1',
-                            'euro2' => 'Euro2',
-                            'euro3' => 'Euro3',
-                            'euro4' => 'Euro4',
-                            'euro5' => 'Euro5',
-                            'euro6' => 'Euro6'
-                        );
-                        
-                        $normalized_value = strtolower($value);
-                        
-                        if (array_key_exists($normalized_value, $field_options)) {
-                            $value = $normalized_value;
-                        } else {
-                            return new WP_Error(
-                                'invalid_emission',
-                                sprintf(
-                                    'El valor %s no es válido para emissions-vehicle. Valores válidos: %s', 
-                                    $value,
-                                    implode(', ', array_keys($field_options))
-                                ),
-                                ['status' => 400]
-                            );
-                        }
-                    }
-                    break;
-                case 'text':
-                    $value = sanitize_text_field($value);
-                    break;
+            // Debug: Imprimir información de la taxonomía
+            error_log(sprintf(
+                'Procesando taxonomía - Campo: %s, Taxonomía: %s, Valor: %s',
+                $field,
+                $taxonomy,
+                $params[$field]
+            ));
+
+            // Validar que el valor esté permitido
+            if (isset($allowed_values[$field]) && !in_array($params[$field], $allowed_values[$field])) {
+                return new WP_Error(
+                    'invalid_taxonomy_value',
+                    sprintf(
+                        'El valor "%s" no es válido para %s. Valores válidos: %s',
+                        $params[$field],
+                        $field,
+                        implode(', ', $allowed_values[$field])
+                    ),
+                    ['status' => 400]
+                );
             }
-            
-            delete_post_meta($post_id, $field);
-            add_post_meta($post_id, $field, $value, true);
+
+            // Verificar que el término existe
+            $term = get_term_by('slug', $params[$field], $taxonomy);
+            if (!$term) {
+                // Debug: Listar todos los términos disponibles
+                $all_terms = get_terms([
+                    'taxonomy' => $taxonomy,
+                    'hide_empty' => false,
+                ]);
+                if (!is_wp_error($all_terms)) {
+                    $terms_info = array_map(function($t) {
+                        return sprintf('%s (slug: %s)', $t->name, $t->slug);
+                    }, $all_terms);
+                    error_log(sprintf(
+                        'Términos disponibles en %s: %s',
+                        $taxonomy,
+                        implode(', ', $terms_info)
+                    ));
+                }
+
+                return new WP_Error(
+                    'invalid_taxonomy_term',
+                    sprintf(
+                        'El término "%s" no existe en la taxonomía %s. Por favor, primero crea el término en WordPress.',
+                        $params[$field],
+                        $taxonomy
+                    ),
+                    ['status' => 400]
+                );
+            }
+
+            // Asignar el término al post
+            $result = wp_set_object_terms($post_id, $term->term_id, $taxonomy);
+            if (is_wp_error($result)) {
+                return new WP_Error(
+                    'failed_set_term',
+                    sprintf('Error al asignar el término %s al vehículo', $params[$field]),
+                    ['status' => 500]
+                );
+            }
         }
     }
+
+    // Procesar y guardar campos meta
+    process_and_save_meta_fields($post_id, $params);
 
     // Obtener los datos actualizados del post
     $post = get_post($post_id);
@@ -506,23 +553,25 @@ function create_singlecar($request) {
     }
 
     // Agregar campos meta a la respuesta
+    $meta_fields = Vehicle_Fields::get_meta_fields();
+    $flag_fields = Vehicle_Fields::get_flag_fields();
+    
     foreach ($meta_fields as $field => $type) {
-        $value = get_post_meta($post_id, $field, true);
-        if ($type === 'boolean') {
-            $response[$field] = $value === 'true';
-        } else if ($type === 'glossary' && $field === 'emissions-vehicle' && !empty($value)) {
-            // Usar el array de opciones para obtener el nombre visible
-            $field_options = array(
-                'euro1' => 'Euro1',
-                'euro2' => 'Euro2',
-                'euro3' => 'Euro3',
-                'euro4' => 'Euro4',
-                'euro5' => 'Euro5',
-                'euro6' => 'Euro6'
-            );
-            $response[$field] = isset($field_options[$value]) ? $field_options[$value] : $value;
-        } else if (!empty($value)) {
-            $response[$field] = $value;
+        if (isset($flag_fields[$field])) {
+            // Campo con flag
+            $field_config = $flag_fields[$field];
+            $value = get_post_meta($post_id, $field_config['meta_key'], true);
+            if (!empty($value)) {
+                $response[$field] = $value;
+            }
+        } else {
+            // Campo normal
+            $value = get_post_meta($post_id, $field, true);
+            if ($type === 'boolean') {
+                $response[$field] = $value === 'true';
+            } else if (!empty($value)) {
+                $response[$field] = $value;
+            }
         }
     }
 
@@ -556,41 +605,91 @@ function update_singlecar($request) {
         wp_update_post($post_data);
     }
 
-    // Actualizar taxonomías
-    $taxonomy_fields = Vehicle_Fields::get_taxonomy_fields();
-    foreach ($taxonomy_fields as $taxonomy => $field) {
-        if (isset($params[$field])) {
-            $term_slug = sanitize_text_field($params[$field]);
-            
-            // Para tipus-combustible, agregar el prefijo si no está presente
-            if ($taxonomy === 'tipus-combustible' && strpos($term_slug, 'combustible-') !== 0) {
-                $term_slug = 'combustible-' . $term_slug;
-            }
-            
-            $term = get_term_by('slug', $term_slug, $taxonomy);
-            if ($term) {
-                wp_set_object_terms($post_id, $term->term_id, $taxonomy);
-            }
-        }
+    // Transformar el campo carrosseria a segment
+    if (isset($params['carrosseria'])) {
+        $params['segment'] = $params['carrosseria'];
+        unset($params['carrosseria']);
     }
 
-    // Actualizar metadatos
-    $meta_fields = Vehicle_Fields::get_meta_fields();
-    foreach ($meta_fields as $field => $type) {
+    // Verificar y actualizar taxonomías
+    $taxonomy_fields = Vehicle_Fields::get_taxonomy_fields();
+    $allowed_values = Vehicle_Fields::get_allowed_taxonomy_values();
+    
+    foreach ($taxonomy_fields as $field => $taxonomy) {
         if (isset($params[$field])) {
-            try {
-                $value = Vehicle_Field_Handler::process_field($field, $params[$field], $type);
-                delete_post_meta($post_id, $field);
-                add_post_meta($post_id, $field, $value, true);
-            } catch (Exception $e) {
+            // Debug: Imprimir información sobre la búsqueda del término
+            error_log(sprintf(
+                'Buscando término: slug="%s", taxonomía="%s"',
+                $params[$field],
+                $taxonomy
+            ));
+
+            // Validar que el valor esté permitido
+            if (isset($allowed_values[$field]) && !in_array($params[$field], $allowed_values[$field])) {
                 return new WP_Error(
-                    'invalid_field_value',
-                    $e->getMessage(),
+                    'invalid_taxonomy_value',
+                    sprintf(
+                        'El valor "%s" no es válido para %s. Valores válidos: %s',
+                        $params[$field],
+                        $field,
+                        implode(', ', $allowed_values[$field])
+                    ),
                     ['status' => 400]
+                );
+            }
+
+            // Obtener el término
+            $term = get_term_by('slug', $params[$field], $taxonomy);
+            
+            // Debug: Imprimir resultado de la búsqueda
+            error_log(sprintf(
+                'Resultado búsqueda: term=%s, error=%s',
+                $term ? 'encontrado' : 'no encontrado',
+                is_wp_error($term) ? $term->get_error_message() : 'sin error'
+            ));
+
+            if (!$term) {
+                // Debug: Listar todos los términos de la taxonomía
+                $all_terms = get_terms([
+                    'taxonomy' => $taxonomy,
+                    'hide_empty' => false,
+                ]);
+                if (!is_wp_error($all_terms)) {
+                    $terms_info = array_map(function($t) {
+                        return sprintf('%s (slug: %s)', $t->name, $t->slug);
+                    }, $all_terms);
+                    error_log(sprintf(
+                        'Términos disponibles en %s: %s',
+                        $taxonomy,
+                        implode(', ', $terms_info)
+                    ));
+                }
+
+                return new WP_Error(
+                    'invalid_taxonomy_term',
+                    sprintf(
+                        'El término "%s" no existe en la taxonomía %s. Por favor, primero crea el término en WordPress.',
+                        $params[$field],
+                        $taxonomy
+                    ),
+                    ['status' => 400]
+                );
+            }
+
+            // Asignar el término al post
+            $result = wp_set_object_terms($post_id, $term->term_id, $taxonomy);
+            if (is_wp_error($result)) {
+                return new WP_Error(
+                    'failed_set_term',
+                    sprintf('Error al asignar el término %s al vehículo', $params[$field]),
+                    ['status' => 500]
                 );
             }
         }
     }
+
+    // Procesar y guardar campos meta
+    process_and_save_meta_fields($post_id, $params);
 
     // Preparar respuesta
     $response = [
@@ -626,12 +725,94 @@ function update_singlecar($request) {
     }
 
     // Agregar campos meta a la respuesta
+    $meta_fields = Vehicle_Fields::get_meta_fields();
+    $flag_fields = Vehicle_Fields::get_flag_fields();
+    
     foreach ($meta_fields as $field => $type) {
-        $value = get_post_meta($post_id, $field, true);
-        $response[$field] = Vehicle_Field_Handler::format_response_value($field, $value, $type);
+        if (isset($flag_fields[$field])) {
+            // Campo con flag
+            $field_config = $flag_fields[$field];
+            $value = get_post_meta($post_id, $field_config['meta_key'], true);
+            if (!empty($value)) {
+                $response[$field] = $value;
+            }
+        } else {
+            // Campo normal
+            $value = get_post_meta($post_id, $field, true);
+            if ($field === 'segment') {
+                $response['carrosseria'] = Vehicle_Field_Handler::format_response_value($field, $value, $type);
+            } else {
+                $response[$field] = Vehicle_Field_Handler::format_response_value($field, $value, $type);
+            }
+        }
     }
 
     return new WP_REST_Response($response, 200);
+}
+
+function process_and_save_meta_fields($post_id, $params) {
+    $meta_fields = Vehicle_Fields::get_meta_fields();
+    $flag_fields = Vehicle_Fields::get_flag_fields();
+    
+    foreach ($meta_fields as $field => $type) {
+        if (isset($params[$field])) {
+            try {
+                $value = Vehicle_Field_Handler::process_field($field, $params[$field], $type);
+                
+                // Debug: Imprimir información del campo procesado
+                error_log(sprintf(
+                    'Campo procesado - Campo: %s, Tipo: %s, Valor procesado: %s',
+                    $field,
+                    $type,
+                    $value
+                ));
+                
+                // Verificar si es un campo con flags
+                if (isset($flag_fields[$field])) {
+                    $field_config = $flag_fields[$field];
+                    
+                    // Debug: Imprimir información del campo con flag
+                    error_log(sprintf(
+                        'Guardando campo con flag - Campo: %s, Meta Key: %s, Flag Key: %s, Valor: %s',
+                        $field,
+                        $field_config['meta_key'],
+                        $field_config['flag_key'],
+                        $value
+                    ));
+                    
+                    // Para campos JetEngine, guardar como array
+                    if (isset($field_config['is_jet_engine']) && $field_config['is_jet_engine']) {
+                        $value = array($value);
+                    }
+                    
+                    // Guardar el valor principal
+                    update_post_meta($post_id, $field_config['meta_key'], $value);
+                    
+                    // Guardar el flag
+                    update_post_meta($post_id, $field_config['flag_key'], 'true');
+                    
+                    // Debug: Verificar que se guardó correctamente
+                    $saved_value = get_post_meta($post_id, $field_config['meta_key'], true);
+                    $saved_flag = get_post_meta($post_id, $field_config['flag_key'], true);
+                    error_log(sprintf(
+                        'Valores guardados - Meta: %s, Flag: %s',
+                        is_array($saved_value) ? json_encode($saved_value) : $saved_value,
+                        $saved_flag
+                    ));
+                } else {
+                    // Campo normal
+                    update_post_meta($post_id, $field, $value);
+                }
+            } catch (Exception $e) {
+                error_log(sprintf(
+                    'Error procesando campo - Campo: %s, Error: %s',
+                    $field,
+                    $e->getMessage()
+                ));
+                throw $e;
+            }
+        }
+    }
 }
 
 // Función para eliminar un singlecar
