@@ -750,6 +750,9 @@ function update_singlecar($request) {
     return new WP_REST_Response($response, 200);
 }
 
+/**
+ * Procesa y guarda los campos meta
+ */
 function process_and_save_meta_fields($post_id, $params) {
     $meta_fields = Vehicle_Fields::get_meta_fields();
     $flag_fields = Vehicle_Fields::get_flag_fields();
@@ -780,11 +783,6 @@ function process_and_save_meta_fields($post_id, $params) {
                         $value
                     ));
                     
-                    // Para campos JetEngine, guardar como array
-                    if (isset($field_config['is_jet_engine']) && $field_config['is_jet_engine']) {
-                        $value = array($value);
-                    }
-                    
                     // Guardar el valor principal
                     update_post_meta($post_id, $field_config['meta_key'], $value);
                     
@@ -796,7 +794,7 @@ function process_and_save_meta_fields($post_id, $params) {
                     $saved_flag = get_post_meta($post_id, $field_config['flag_key'], true);
                     error_log(sprintf(
                         'Valores guardados - Meta: %s, Flag: %s',
-                        is_array($saved_value) ? json_encode($saved_value) : $saved_value,
+                        $saved_value,
                         $saved_flag
                     ));
                 } else {

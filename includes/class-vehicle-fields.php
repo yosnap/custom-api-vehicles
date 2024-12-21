@@ -134,23 +134,17 @@ class Vehicle_Fields {
      */
     public static function get_glossary_options($field) {
         switch ($field) {
-            case 'venedor':
-                return self::get_venedor_options();
+            case 'emissions-vehicle':
+                return self::get_emissions_vehicle_options();
             case 'segment':
+            case 'carrosseria':
                 return self::get_carrosseria_options();
-            case 'traccio':
-                return self::get_traccio_options();
             case 'roda-recanvi':
                 return self::get_roda_recanvi_options();
-            case 'emissions-vehicle':
-                return [
-                    'euro1' => 'Euro1',
-                    'euro2' => 'Euro2',
-                    'euro3' => 'Euro3',
-                    'euro4' => 'Euro4',
-                    'euro5' => 'Euro5',
-                    'euro6' => 'Euro6'
-                ];
+            case 'traccio':
+                return self::get_traccio_options();
+            case 'venedor':
+                return self::get_venedor_options();
             default:
                 return [];
         }
@@ -167,13 +161,27 @@ class Vehicle_Fields {
     }
 
     /**
+     * Obtiene las opciones para el campo emissions-vehicle
+     */
+    public static function get_emissions_vehicle_options() {
+        return [
+            'euro1' => 'euro1',
+            'euro2' => 'euro2',
+            'euro3' => 'euro3',
+            'euro4' => 'euro4',
+            'euro5' => 'euro5',
+            'euro6' => 'euro6'
+        ];
+    }
+
+    /**
      * Obtiene las opciones para el campo de tracción
      */
     public static function get_traccio_options() {
         return [
             'darrere' => 't_darrere',
             'davant' => 't_davant',
-            'integral-connectable' => 'i_integral_connectable',
+            'integral-connectable' => 't_integral_connectable',
             'integral' => 't_integral'
         ];
     }
@@ -184,7 +192,7 @@ class Vehicle_Fields {
     public static function get_roda_recanvi_options() {
         return [
             'roda-substitucio' => 'roda_substitucio',
-            'kit-reparacio' => 'kit_reparacio'
+            'kit-reparacio' => 'r_kit_reparacio'
         ];
     }
 
@@ -193,18 +201,18 @@ class Vehicle_Fields {
      */
     public static function get_carrosseria_options() {
         return [
-            'utilitari-petit' => 'utilitari-petit',
-            'turisme-mig' => 'turisme-mig',
-            'sedan-berlina' => 'sedan-berlina',
+            'utilitari-petit' => 'utilitari',
+            'turisme-mig' => 'turisme',
+            'sedan-berlina' => 'sedan',
             'coupe' => 'coupe',
             'gran-turisme' => 'gran-turisme',
             'familiar' => 'familiar',
             'suv' => 'suv',
-            '4x4-tot-terreny' => '4x4-tot-terreny',
+            '4x4-tot-terreny' => '4x4',
             'monovolum' => 'monovolum',
-            'furgoneta-passatgers' => 'furgoneta-passatgers',
+            'furgoneta-passatgers' => 'furgoneta',
             'cabrio' => 'cabrio',
-            'pick-up' => 'pick-up'
+            'pick-up' => 'pickup'
         ];
     }
 
@@ -215,18 +223,23 @@ class Vehicle_Fields {
         return [
             'traccio' => [
                 'is_jet_engine' => true,
-                'meta_key' => '_traccio',
+                'meta_key' => 'traccio',
                 'flag_key' => 'traccio_flag'
             ],
             'segment' => [
                 'is_jet_engine' => true,
-                'meta_key' => '_segment',
+                'meta_key' => 'segment',
                 'flag_key' => 'segment_flag'
             ],
             'roda-recanvi' => [
                 'is_jet_engine' => true,
-                'meta_key' => '_roda-recanvi',
+                'meta_key' => 'roda-recanvi',
                 'flag_key' => 'roda_recanvi_flag'
+            ],
+            'emissions-vehicle' => [
+                'is_jet_engine' => true,
+                'meta_key' => 'emissions-vehicle',
+                'flag_key' => 'emissions_vehicle_flag'
             ]
         ];
     }

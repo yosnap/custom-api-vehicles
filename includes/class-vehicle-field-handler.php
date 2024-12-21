@@ -55,6 +55,12 @@ class Vehicle_Field_Handler {
     private static function process_glossary_field($field, $value) {
         // Obtener las opciones del glosario según el campo
         $glossary_options = Vehicle_Fields::get_glossary_options($field);
+        $inverse_options = array_flip($glossary_options);
+        
+        // Si el valor está en los valores mapeados, lo convertimos de vuelta
+        if (isset($inverse_options[$value])) {
+            $value = $inverse_options[$value];
+        }
         
         // Debug: Imprimir información del procesamiento
         error_log(sprintf(
@@ -83,6 +89,7 @@ class Vehicle_Field_Handler {
             ));
         }
 
+        // Retornar el valor mapeado del glosario
         $mapped_value = $glossary_options[$value];
         error_log(sprintf(
             'Valor mapeado para glosario - Campo: %s, Original: %s, Mapeado: %s',
@@ -91,7 +98,6 @@ class Vehicle_Field_Handler {
             $mapped_value
         ));
 
-        // Retornar el valor mapeado del glosario
         return $mapped_value;
     }
 
@@ -132,45 +138,30 @@ class Vehicle_Field_Handler {
     }
 
     /**
-     * Formatea un valor para la respuesta según su tipo
+     * Formatea un valor para la respuesta
      */
     public static function format_response_value($field, $value, $type) {
-        if (empty($value)) {
-            return null;
-        }
-
-        switch ($type) {
-            case 'boolean':
-                return $value === 'true';
-            case 'glossary':
-                if ($field === 'emissions-vehicle') {
-                    $field_options = [
-                        'euro1' => 'Euro1',
-                        'euro2' => 'Euro2',
-                        'euro3' => 'Euro3',
-                        'euro4' => 'Euro4',
-                        'euro5' => 'Euro5',
-                        'euro6' => 'Euro6'
-                    ];
-                    return isset($field_options[$value]) ? $field_options[$value] : $value;
-                } elseif ($field === 'segment' || $field === 'carrosseria') {
-                    $field_options = Vehicle_Fields::get_carrosseria_options();
-                    return isset($field_options[$value]) ? $field_options[$value] : $value;
-                } elseif ($field === 'roda-recanvi') {
-                    $field_options = Vehicle_Fields::get_roda_recanvi_options();
-                    return isset($field_options[$value]) ? $field_options[$value] : $value;
+        if ($type === 'glossary') {
+            $glossary_options = Vehicle_Fields::get_glossary_options($field);
+            $inverse_options = array_flip($glossary_options);
+            
+            // Si el valor es un array (caso JetEngine)
+            if (is_array($value)) {
+                $formatted_value = array();
+                foreach ($value as $single_value) {
+                    if (isset($inverse_options[$single_value])) {
+                        $formatted_value[] = $inverse_options[$single_value];
+                    } else {
+                        $formatted_value[] = $single_value;
+                    }
                 }
-                return $value;
-            case 'select':
-                $options = [];
-                switch ($field) {
-                    case 'traccio':
-                        $options = Vehicle_Fields::get_traccio_options();
-                        break;
-                }
-                return isset($options[$value]) ? $options[$value] : $value;
-            default:
-                return $value;
+                return $formatted_value;
+            }
+            
+            // Si es un valor simple
+            return isset($inverse_options[$value]) ? $inverse_options[$value] : $value;
         }
+        
+        return $value;
     }
 }
