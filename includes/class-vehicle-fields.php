@@ -66,6 +66,11 @@ class Vehicle_Fields {
             'revisions-oficials' => 'boolean',
             'impostos-deduibles' => 'boolean',
             'vehicle-a-canvi' => 'boolean',
+            'garantia' => 'boolean',
+            'vehicle-accidentat' => 'boolean',
+            'aire-acondicionat' => 'boolean',
+            'climatitzacio' => 'boolean',
+            'vehicle-fumador' => 'boolean',
             
             // Campos numéricos
             'dies-caducitat' => 'number',
@@ -89,20 +94,20 @@ class Vehicle_Fields {
             'any' => 'text',
             'versio' => 'text',
             'nombre-propietaris' => 'text',
-            'garantia' => 'text',
-            'vehicle-accidentat' => 'text',
-            'emissions-vehicle' => 'glossary',
-            'data-vip' => 'text',
+            'data-vip' => 'date',
             'traccio' => 'glossary',
             'roda-recanvi' => 'glossary',
             'color-exterior' => 'color',
             'segment' => 'glossary',
             'color-vehicle' => 'glossary',
-            'aire-acondicionat' => 'switch',
-            'climatitzacio' => 'switch',
-            'vehicle-fumador' => 'switch',
+            'tipus-vehicle' => 'glossary',
+            'tipus-combustible' => 'glossary',
+            'tipus-canvi' => 'glossary',
+            'tipus-propulsor' => 'glossary',
+            'estat-vehicle' => 'glossary',
             'tipus-tapisseria' => 'glossary',
             'color-tapisseria' => 'glossary',
+            'emissions-vehicle' => 'glossary',
             'extres-cotxe' => 'glossary'
         ];
     }
@@ -258,6 +263,97 @@ class Vehicle_Fields {
     }
 
     /**
+     * Obtiene el tipo de un campo específico
+     */
+    public static function get_field_type($field_name) {
+        // Campos booleanos
+        $boolean_fields = [
+            'is-vip',
+            'venut',
+            'llibre-manteniment',
+            'revisions-oficials',
+            'impostos-deduibles',
+            'vehicle-a-canvi',
+            'garantia',
+            'vehicle-accidentat',
+            'aire-acondicionat',
+            'climatitzacio',
+            'vehicle-fumador'
+        ];
+
+        // Campos numéricos
+        $number_fields = [
+            'dies-caducitat',
+            'preu',
+            'preu-mensual',
+            'preu-diari',
+            'preu-antic',
+            'quilometratge',
+            'cilindrada',
+            'potencia-cv',
+            'potencia-kw',
+            'portes-cotxe',
+            'places-cotxe',
+            'velocitat-maxima',
+            'acceleracio-0-100',
+            'capacitat-total',
+            'maleters'
+        ];
+
+        // Campos de fecha
+        $date_fields = [
+            'data-vip'
+        ];
+
+        // Campos de glosario
+        $glossary_fields = [
+            'venedor',
+            'traccio',
+            'roda-recanvi',
+            'segment',
+            'color-vehicle',
+            'tipus-vehicle',
+            'tipus-combustible',
+            'tipus-canvi',
+            'tipus-propulsor',
+            'estat-vehicle',
+            'tipus-tapisseria',
+            'color-tapisseria',
+            'emissions-vehicle',
+            'extres-cotxe'
+        ];
+
+        if (in_array($field_name, $boolean_fields)) {
+            return 'boolean';
+        }
+        if (in_array($field_name, $number_fields)) {
+            return 'number';
+        }
+        if (in_array($field_name, $date_fields)) {
+            return 'date';
+        }
+        if (in_array($field_name, $glossary_fields)) {
+            return 'glossary';
+        }
+
+        // Por defecto, tratar como texto
+        return 'text';
+    }
+
+    /**
+     * Obtiene los campos con flag
+     */
+    public static function get_flag_fields() {
+        return [
+            'is-vip' => [
+                'meta_key' => 'data-vip',
+                'flag_key' => 'is-vip',
+                'type' => 'date'
+            ]
+        ];
+    }
+
+    /**
      * Obtiene los tipos de campos
      */
     public static function get_field_types() {
@@ -284,69 +380,6 @@ class Vehicle_Fields {
             'aire-acondicionat',
             'climatitzacio',
             'vehicle-fumador'
-        ];
-    }
-
-    /**
-     * Obtiene los campos que necesitan flags especiales
-     */
-    public static function get_flag_fields() {
-        return [
-            'traccio' => [
-                'is_jet_engine' => true,
-                'meta_key' => 'traccio',
-                'flag_key' => 'traccio_flag'
-            ],
-            'segment' => [
-                'is_jet_engine' => true,
-                'meta_key' => 'segment',
-                'flag_key' => 'segment_flag'
-            ],
-            'roda-recanvi' => [
-                'is_jet_engine' => true,
-                'meta_key' => 'roda-recanvi',
-                'flag_key' => 'roda_recanvi_flag'
-            ],
-            'emissions-vehicle' => [
-                'is_jet_engine' => true,
-                'meta_key' => 'emissions-vehicle',
-                'flag_key' => 'emissions_vehicle_flag'
-            ],
-            'color-vehicle' => [
-                'is_jet_engine' => true,
-                'meta_key' => 'color-vehicle',
-                'flag_key' => 'color_vehicle_flag'
-            ],
-            'aire-acondicionat' => [
-                'is_jet_engine' => true,
-                'meta_key' => 'aire-acondicionat',
-                'flag_key' => 'aire_acondicionat_flag'
-            ],
-            'climatitzacio' => [
-                'is_jet_engine' => true,
-                'meta_key' => 'climatitzacio',
-                'flag_key' => 'climatitzacio_flag'
-            ],
-            'vehicle-fumador' => [
-                'is_jet_engine' => true,
-                'meta_key' => 'vehicle-fumador',
-                'flag_key' => 'vehicle_fumador_flag'
-            ],
-            'tipus-tapisseria' => [
-                'is_jet_engine' => true,
-                'meta_key' => 'tipus-tapisseria',
-                'flag_key' => 'tipus_tapisseria_flag'
-            ],
-            'color-tapisseria' => [
-                'is_jet_engine' => true,
-                'meta_key' => 'color-tapisseria',
-                'flag_key' => 'color_tapisseria_flag'
-            ],
-            'extres-cotxe' => [
-                'is_jet_engine' => true,
-                'meta_key' => 'extres-cotxe',
-                'flag_key' => 'extres_cotxe_flag'
-            ]
         ];
     }
 

@@ -69,6 +69,13 @@ class Vehicle_Field_Handler {
      * Procesa un campo de glosario
      */
     public static function process_glossary_field($field_name, $value) {
+        // Si el campo es extres-cotxe, siempre tratar como array
+        if ($field_name === 'extres-cotxe') {
+            if (!is_array($value)) {
+                $value = [$value];
+            }
+        }
+
         // Obtener el ID del glosario según el campo
         $glossary_id = self::get_glossary_id($field_name);
         if (!$glossary_id) {
@@ -76,7 +83,7 @@ class Vehicle_Field_Handler {
         }
 
         // Obtener las opciones del glosario
-        if (!function_exists('jet_engine') || !isset(jet_engine()->glossaries) || !isset(jet_engine()->glossaries->filters)) {
+        if (!function_exists('jet_engine') || !isset(jet_engine()->glossaries)) {
             throw new Exception("JetEngine Glossaries no está disponible");
         }
 
@@ -85,17 +92,44 @@ class Vehicle_Field_Handler {
             throw new Exception("No se encontraron opciones para el glosario: " . $field_name);
         }
 
-        // Buscar el valor en las opciones del glosario (por valor o por etiqueta)
+        // Si es un array, procesar cada valor
+        if (is_array($value)) {
+            $processed_values = [];
+            foreach ($value as $single_value) {
+                // Buscar el valor en las opciones del glosario
+                $found_value = array_search($single_value, $options);
+                if ($found_value !== false) {
+                    $processed_values[] = $found_value;
+                } else if (isset($options[$single_value])) {
+                    $processed_values[] = $single_value;
+                } else {
+                    throw new Exception(sprintf(
+                        'Valor inválido "%s" para el campo %s. Valores válidos: %s',
+                        $single_value,
+                        $field_name,
+                        implode(', ', array_keys($options))
+                    ));
+                }
+            }
+            return $processed_values;
+        }
+
+        // Para valores simples
         $found_value = array_search($value, $options);
         if ($found_value !== false) {
-            return $found_value; // Si encontramos la etiqueta, devolvemos su valor
+            return $found_value;
         }
 
         if (isset($options[$value])) {
-            return $value; // Si el valor ya es válido, lo devolvemos
+            return $value;
         }
 
-        throw new Exception("Valor inválido \"$value\" para el campo $field_name. Valores válidos: " . implode(", ", array_keys($options)));
+        throw new Exception(sprintf(
+            'Valor inválido "%s" para el campo %s. Valores válidos: %s',
+            $value,
+            $field_name,
+            implode(', ', array_keys($options))
+        ));
     }
 
     private static function get_glossary_id($field_name) {
@@ -103,8 +137,8 @@ class Vehicle_Field_Handler {
             'segment' => '57',
             'traccio' => '59',
             'emissions-vehicle' => '58',
-            'roda-recanvi' => '60'
-            // Otros campos se añadirán cuando tengamos sus IDs correctos
+            'roda-recanvi' => '60',
+            'extres-cotxe' => '54'  
         ];
 
         return isset($glossary_map[$field_name]) ? $glossary_map[$field_name] : null;
@@ -123,7 +157,8 @@ class Vehicle_Field_Handler {
             'tipus-propulsor',
             'estat-vehicle',
             'tipus-tapisseria',
-            'color-tapisseria'
+            'color-tapisseria',
+            'extres-cotxe'  
         ]);
     }
 
@@ -214,6 +249,45 @@ class Vehicle_Field_Handler {
                 }
                 return $roda_map[$value];
 
+            case 'extres-cotxe':
+                // Si el valor es un string, convertirlo a array
+                if (is_string($value)) {
+                    $value = [$value];
+                }
+                
+                // Validar que sea un array
+                if (!is_array($value)) {
+                    throw new Exception('El campo extres-cotxe debe ser un array de valores');
+                }
+
+                // Obtener las opciones válidas del glosario
+                if (!function_exists('jet_engine') || !isset(jet_engine()->glossaries)) {
+                    throw new Exception("JetEngine Glossaries no está disponible");
+                }
+
+                $options = jet_engine()->glossaries->filters->get_glossary_options('54');
+                if (empty($options)) {
+                    throw new Exception("No se encontraron opciones para el glosario extres-cotxe");
+                }
+
+                // Validar cada valor del array
+                $processed_values = [];
+                foreach ($value as $extra) {
+                    if (!isset($options[$extra]) && !in_array($extra, $options)) {
+                        throw new Exception(sprintf(
+                            'Valor inválido "%s" para el campo %s. Valores válidos: %s',
+                            $extra,
+                            $field_name,
+                            implode(', ', array_keys($options))
+                        ));
+                    }
+                    // Si el valor es una etiqueta, obtener su clave
+                    $found_value = array_search($extra, $options);
+                    $processed_values[] = $found_value !== false ? $found_value : $extra;
+                }
+
+                return $processed_values;
+
             // Campos que no necesitan transformación
             case 'color-vehicle':
             case 'tipus-vehicle':
@@ -282,51 +356,42 @@ class Vehicle_Field_Handler {
     /**
      * Procesa un campo de fecha
      */
-    public static function process_date_field($field_name, $value) {
+    private static function process_date_field($field_name, $value) {
         if (empty($value)) {
-            return '';
+            return null;
         }
-        
+
         // Validar formato de fecha
         $date = DateTime::createFromFormat('Y-m-d', $value);
-        if (!$date) {
-            throw new Exception("El campo $field_name debe tener formato YYYY-MM-DD");
-        }
-        
-        // Validar que la fecha es válida
         if (!$date || $date->format('Y-m-d') !== $value) {
-            throw new Exception("La fecha proporcionada para $field_name no es válida");
+            throw new Exception(sprintf(
+                'El campo %s debe tener formato YYYY-MM-DD',
+                $field_name
+            ));
         }
-        
-        return $value;
+
+        // Convertir a timestamp
+        return $date->getTimestamp();
     }
 
     /**
      * Formatea un valor para la respuesta
      */
-    public static function format_response_value($field, $value, $type) {
-        if ($type === 'glossary') {
-            $glossary_options = Vehicle_Fields::get_glossary_options($field);
-            $glossary_values = array_column($glossary_options, 'value');
-            $inverse_options = array_flip($glossary_values);
-            
-            // Si el valor es un array (caso JetEngine)
-            if (is_array($value)) {
-                $formatted_value = array();
-                foreach ($value as $single_value) {
-                    if (isset($inverse_options[$single_value])) {
-                        $formatted_value[] = $inverse_options[$single_value];
-                    } else {
-                        $formatted_value[] = $single_value;
-                    }
-                }
-                return $formatted_value;
-            }
-            
-            // Si es un valor simple
-            return isset($inverse_options[$value]) ? $inverse_options[$value] : $value;
+    public static function format_response_value($field_name, $value, $type) {
+        if ($value === null || $value === '') {
+            return null;
         }
-        
-        return $value;
+
+        switch ($type) {
+            case 'date':
+                // Convertir timestamp a formato Y-m-d
+                return date('Y-m-d', intval($value));
+            case 'boolean':
+                return filter_var($value, FILTER_VALIDATE_BOOLEAN);
+            case 'number':
+                return floatval($value);
+            default:
+                return $value;
+        }
     }
 }

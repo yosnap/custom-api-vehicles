@@ -378,102 +378,103 @@ function validate_all_fields($params) {
 }
 
 function process_and_save_meta_fields($post_id, $params) {
-    $processed_fields = [];
+    $meta_fields = Vehicle_Fields::get_meta_fields();
+    $flag_fields = Vehicle_Fields::get_flag_fields();
+    $errors = [];
 
-    // Procesar todos los campos antes de guardarlos
-    foreach ($params as $key => $value) {
-        // Ignorar campos especiales que no son meta
-        if (in_array($key, ['title', 'content'])) {
-            continue;
+    // Procesar campos normales
+    foreach ($meta_fields as $field => $type) {
+        if (isset($params[$field])) {
+            try {
+                // Procesar el campo
+                $processed_value = Vehicle_Field_Handler::process_field($field, $params[$field], $type);
+                
+                // Manejo especial para extres-cotxe
+                if ($field === 'extres-cotxe') {
+                    $processed_value = (array)$processed_value;
+                    
+                    // Eliminar valores antiguos
+                    delete_post_meta($post_id, $field);
+                    
+                    // Crear la estructura que espera JetEngine con tres índices
+                    $jet_engine_format = [
+                        0 => array_combine(range(0, count($processed_value) - 1), $processed_value),
+                        1 => array_combine(range(0, count($processed_value) - 1), $processed_value),
+                        2 => array_combine(range(0, count($processed_value) - 1), $processed_value)
+                    ];
+                    
+                    // Guardar cada array como una entrada separada
+                    foreach ($jet_engine_format as $value_array) {
+                        add_post_meta($post_id, $field, $value_array);
+                    }
+                }
+                // Para otros arrays
+                else if (is_array($processed_value)) {
+                    // Eliminar valores vacíos o nulos
+                    $processed_value = array_filter($processed_value, function($value) {
+                        return $value !== null && $value !== '';
+                    });
+                    
+                    if (!empty($processed_value)) {
+                        delete_post_meta($post_id, $field);
+                        foreach ($processed_value as $value) {
+                            add_post_meta($post_id, $field, $value);
+                        }
+                    } else {
+                        delete_post_meta($post_id, $field);
+                    }
+                } else {
+                    // Para valores simples
+                    if ($processed_value !== null) {
+                        update_post_meta($post_id, $field, $processed_value);
+                    } else {
+                        delete_post_meta($post_id, $field);
+                    }
+                }
+            } catch (Exception $e) {
+                $errors[] = $e->getMessage();
+            }
         }
+    }
 
+    // Manejar el campo data-vip y is-vip
+    if (isset($params['data-vip'])) {
         try {
-            $type = determine_field_type($key);
-            $processed_value = Vehicle_Field_Handler::process_field($key, $value, $type);
-            $processed_fields[$key] = $processed_value;
+            $date_value = Vehicle_Field_Handler::process_field('data-vip', $params['data-vip'], 'date');
+            if ($date_value !== null) {
+                update_post_meta($post_id, 'data-vip', $date_value);
+                update_post_meta($post_id, 'is-vip', 'true');
+            }
         } catch (Exception $e) {
-            throw new Exception("Error procesando el campo $key: " . $e->getMessage());
+            $errors[] = $e->getMessage();
         }
     }
 
-    // Guardar los campos procesados
-    foreach ($processed_fields as $key => $value) {
-        update_post_meta($post_id, $key, $value);
-    }
-}
-
-function determine_field_type($field_name) {
-    // Campos booleanos
-    $boolean_fields = [
-        'is-vip',
-        'venut',
-        'llibre-manteniment',
-        'revisions-oficials',
-        'impostos-deduibles',
-        'vehicle-a-canvi',
-        'garantia',
-        'vehicle-accidentat',
-        'aire-acondicionat',
-        'climatitzacio',
-        'vehicle-fumador'
-    ];
-
-    // Campos numéricos
-    $number_fields = [
-        'dies-caducitat',
-        'preu',
-        'preu-mensual',
-        'preu-diari',
-        'preu-antic',
-        'quilometratge',
-        'cilindrada',
-        'potencia-cv',
-        'potencia-kw',
-        'portes-cotxe',
-        'places-cotxe',
-        'velocitat-maxima',
-        'acceleracio-0-100',
-        'capacitat-total',
-        'maleters'
-    ];
-
-    // Campos de fecha
-    $date_fields = [
-        'data-vip'
-    ];
-
-    // Campos de glosario
-    $glossary_fields = [
-        'venedor',
-        'traccio',
-        'roda-recanvi',
-        'segment',
-        'color-vehicle',
-        'tipus-vehicle',
-        'tipus-combustible',
-        'tipus-canvi',
-        'tipus-propulsor',
-        'estat-vehicle',
-        'tipus-tapisseria',
-        'color-tapisseria',
-        'emissions-vehicle'
-    ];
-
-    if (in_array($field_name, $boolean_fields)) {
-        return 'boolean';
-    }
-    if (in_array($field_name, $number_fields)) {
-        return 'number';
-    }
-    if (in_array($field_name, $date_fields)) {
-        return 'date';
-    }
-    if (in_array($field_name, $glossary_fields)) {
-        return 'glossary';
+    // Procesar otros campos con flag
+    foreach ($flag_fields as $field => $config) {
+        if ($field !== 'is-vip' && isset($params[$field])) {
+            try {
+                $processed_value = Vehicle_Field_Handler::process_field($field, $params[$field], $config['type']);
+                if ($processed_value !== null) {
+                    update_post_meta($post_id, $config['meta_key'], $processed_value);
+                    if (isset($config['flag_key'])) {
+                        update_post_meta($post_id, $config['flag_key'], 'true');
+                    }
+                } else {
+                    delete_post_meta($post_id, $config['meta_key']);
+                    if (isset($config['flag_key'])) {
+                        delete_post_meta($post_id, $config['flag_key']);
+                    }
+                }
+            } catch (Exception $e) {
+                $errors[] = $e->getMessage();
+            }
+        }
     }
 
-    // Por defecto, tratar como texto
-    return 'text';
+    if (!empty($errors)) {
+        throw new Exception("Errores de validación:\n" . implode("\n", $errors));
+    }
 }
 
 function update_singlecar($request) {
@@ -630,33 +631,40 @@ function update_singlecar($request) {
 }
 
 function delete_singlecar($request) {
-    $post_id = $request['id'];
+    try {
+        global $wpdb;
+        $wpdb->query('START TRANSACTION');
 
-    // Verificar que el post existe y es del tipo correcto
-    $post = get_post($post_id);
-    if (!$post || $post->post_type !== 'singlecar') {
-        return new WP_Error(
-            'invalid_vehicle',
-            'El vehículo especificado no existe',
-            ['status' => 404]
-        );
+        $post_id = $request['id'];
+
+        // Verificar que el post existe y es del tipo correcto
+        $post = get_post($post_id);
+        if (!$post || $post->post_type !== 'singlecar') {
+            throw new Exception('Vehículo no encontrado');
+        }
+
+        // Mover a la papelera en lugar de eliminar permanentemente
+        $result = wp_trash_post($post_id);
+        
+        if (!$result) {
+            throw new Exception('Error al mover el vehículo a la papelera');
+        }
+
+        $wpdb->query('COMMIT');
+
+        return new WP_REST_Response([
+            'status' => 'success',
+            'message' => 'Vehículo movido a la papelera exitosamente',
+            'post_id' => $post_id
+        ], 200);
+
+    } catch (Exception $e) {
+        $wpdb->query('ROLLBACK');
+        return new WP_REST_Response([
+            'status' => 'error',
+            'message' => $e->getMessage()
+        ], 400);
     }
-
-    // Eliminar el post y sus metadatos
-    $result = wp_delete_post($post_id, true);
-    if (!$result) {
-        return new WP_Error(
-            'delete_failed',
-            'Error al eliminar el vehículo',
-            ['status' => 500]
-        );
-    }
-
-    return new WP_REST_Response([
-        'message' => 'Vehículo eliminado exitosamente',
-        'deleted' => true,
-        'post_id' => $post_id
-    ], 200);
 }
 
 function get_vehicle_details($request) {
