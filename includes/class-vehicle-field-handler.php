@@ -3,12 +3,16 @@ class Vehicle_Field_Handler {
     /**
      * Procesa y valida un campo según su tipo
      */
-    public static function process_field($field, $value, $type) {
+    public static function process_field($field, $value, $type = null) {
+        if ($type === null) {
+            $type = Vehicle_Fields::get_field_type($field);
+        }
+
         error_log(sprintf(
-            'Procesando campo - Campo: %s, Tipo: %s, Valor: %s',
+            'Procesando campo - Campo: %s, Valor: %s, Tipo: %s',
             $field,
-            $type,
-            is_array($value) ? json_encode($value) : $value
+            is_array($value) ? json_encode($value) : (is_bool($value) ? ($value ? 'true' : 'false') : $value),
+            $type
         ));
 
         try {
@@ -21,6 +25,8 @@ class Vehicle_Field_Handler {
                     return self::process_glossary_field($field, $value);
                 case 'select':
                     return self::process_select_field($field, $value);
+                case 'switch':
+                    return self::process_switch_field($field, $value);
                 case 'text':
                 default:
                     return self::process_text_field($value);
@@ -61,12 +67,33 @@ class Vehicle_Field_Handler {
         if (isset($inverse_options[$value])) {
             $value = $inverse_options[$value];
         }
+
+        // Si es el campo extres-cotxe, procesamos el array
+        if ($field === 'extres-cotxe' && is_array($value)) {
+            $processed_values = [];
+            foreach ($value as $extra) {
+                if (!isset($glossary_options[$extra])) {
+                    error_log(sprintf(
+                        'Valor inválido en extres-cotxe - Extra: %s, Opciones válidas: %s',
+                        $extra,
+                        implode(', ', array_keys($glossary_options))
+                    ));
+                    throw new Exception(sprintf(
+                        'Valor inválido "%s" en extres-cotxe. Valores válidos: %s',
+                        $extra,
+                        implode(', ', array_keys($glossary_options))
+                    ));
+                }
+                $processed_values[] = $glossary_options[$extra];
+            }
+            return $processed_values;
+        }
         
         // Debug: Imprimir información del procesamiento
         error_log(sprintf(
             'Procesando campo de glosario - Campo: %s, Valor recibido: %s',
             $field,
-            $value
+            is_array($value) ? json_encode($value) : $value
         ));
         error_log(sprintf(
             'Opciones disponibles: %s',
@@ -99,6 +126,19 @@ class Vehicle_Field_Handler {
         ));
 
         return $mapped_value;
+    }
+
+    /**
+     * Procesa un campo de tipo switch (booleano)
+     */
+    private static function process_switch_field($field, $value) {
+        // Asegurarse de que el valor sea booleano
+        if (is_string($value)) {
+            $value = strtolower($value);
+            $value = in_array($value, ['true', '1', 'yes', 'on']);
+        }
+        
+        return (bool) $value;
     }
 
     /**

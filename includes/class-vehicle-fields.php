@@ -1,5 +1,59 @@
 <?php
 class Vehicle_Fields {
+    private static $instance = null;
+    
+    /**
+     * Obtiene la instancia única de la clase
+     */
+    public static function get_instance() {
+        if (self::$instance === null) {
+            self::$instance = new self();
+        }
+        return self::$instance;
+    }
+    
+    /**
+     * Constructor
+     */
+    private function __construct() {
+        add_action('rest_api_init', [$this, 'register_routes']);
+    }
+    
+    /**
+     * Registra los endpoints de la API
+     */
+    public function register_routes() {
+        register_rest_route(
+            'api-motor/v1',
+            '/carrosseria',
+            array(
+                'methods'  => 'GET',
+                'callback' => array($this, 'get_carrosseria_endpoint'),
+                'permission_callback' => '__return_true'
+            )
+        );
+
+        register_rest_route(
+            'api-motor/v1',
+            '/estat-vehicle',
+            array(
+                'methods'  => 'GET',
+                'callback' => array($this, 'get_estat_vehicle_endpoint'),
+                'permission_callback' => '__return_true'
+            )
+        );
+
+        register_rest_route(
+            'api-motor/v1',
+            '/tipus-vehicle',
+            array(
+                'methods'  => 'GET',
+                'callback' => array($this, 'get_tipus_vehicle_endpoint'),
+                'permission_callback' => '__return_true'
+            )
+        );
+    }
+    
     /**
      * Obtiene la configuración de los campos meta
      */
@@ -42,7 +96,14 @@ class Vehicle_Fields {
             'traccio' => 'glossary',
             'roda-recanvi' => 'glossary',
             'color-exterior' => 'color',
-            'segment' => 'glossary'
+            'segment' => 'glossary',
+            'color-vehicle' => 'glossary',
+            'aire-acondicionat' => 'switch',
+            'climatitzacio' => 'switch',
+            'vehicle-fumador' => 'switch',
+            'tipus-tapisseria' => 'glossary',
+            'color-tapisseria' => 'glossary',
+            'extres-cotxe' => 'glossary'
         ];
     }
 
@@ -130,6 +191,166 @@ class Vehicle_Fields {
     }
 
     /**
+     * Obtiene las opciones para el campo carrosseria
+     */
+    public static function get_carrosseria_options() {
+        try {
+            if (!function_exists('jet_engine')) {
+                return new WP_Error(
+                    'jet_engine_missing',
+                    'JetEngine no está activo',
+                    array('status' => 500)
+                );
+            }
+
+            $jet_engine = jet_engine();
+            
+            if (!isset($jet_engine->glossaries) || !isset($jet_engine->glossaries->filters)) {
+                return new WP_Error(
+                    'jet_engine_glossaries_missing',
+                    'El módulo de glosarios de JetEngine no está disponible',
+                    array('status' => 500)
+                );
+            }
+
+            // Obtener las opciones del glosario de carrosseria (ID: 53)
+            $options = $jet_engine->glossaries->filters->get_glossary_options(53);
+            
+            if (empty($options)) {
+                return new WP_Error(
+                    'no_options',
+                    'No se encontraron opciones en el glosario',
+                    array('status' => 404)
+                );
+            }
+
+            // Convertir el array de opciones al formato esperado
+            $formatted_options = array();
+            foreach ($options as $value => $label) {
+                $formatted_options[] = array(
+                    'value' => $value,
+                    'label' => $label
+                );
+            }
+
+            return $formatted_options;
+
+        } catch (Exception $e) {
+            return new WP_Error(
+                'error',
+                $e->getMessage(),
+                array('status' => 500)
+            );
+        }
+    }
+
+    /**
+     * Endpoint para obtener los tipos de carrosseria
+     */
+    public function get_carrosseria_endpoint() {
+        $options = self::get_carrosseria_options();
+        
+        if (is_wp_error($options)) {
+            return new WP_REST_Response($options, $options->get_error_data()['status']);
+        }
+        
+        return new WP_REST_Response($options, 200);
+    }
+
+    /**
+     * Obtiene los tipos de campos
+     */
+    public static function get_field_types() {
+        return [
+            'traccio' => 'glossary',
+            'roda-recanvi' => 'glossary',
+            'color-exterior' => 'color',
+            'segment' => 'glossary',
+            'color-vehicle' => 'glossary',
+            'aire-acondicionat' => 'switch',
+            'climatitzacio' => 'switch',
+            'vehicle-fumador' => 'switch',
+            'tipus-tapisseria' => 'glossary',
+            'color-tapisseria' => 'glossary',
+            'extres-cotxe' => 'glossary'
+        ];
+    }
+
+    /**
+     * Obtiene los campos que son booleanos (switches)
+     */
+    public static function get_switch_fields() {
+        return [
+            'aire-acondicionat',
+            'climatitzacio',
+            'vehicle-fumador'
+        ];
+    }
+
+    /**
+     * Obtiene los campos que necesitan flags especiales
+     */
+    public static function get_flag_fields() {
+        return [
+            'traccio' => [
+                'is_jet_engine' => true,
+                'meta_key' => 'traccio',
+                'flag_key' => 'traccio_flag'
+            ],
+            'segment' => [
+                'is_jet_engine' => true,
+                'meta_key' => 'segment',
+                'flag_key' => 'segment_flag'
+            ],
+            'roda-recanvi' => [
+                'is_jet_engine' => true,
+                'meta_key' => 'roda-recanvi',
+                'flag_key' => 'roda_recanvi_flag'
+            ],
+            'emissions-vehicle' => [
+                'is_jet_engine' => true,
+                'meta_key' => 'emissions-vehicle',
+                'flag_key' => 'emissions_vehicle_flag'
+            ],
+            'color-vehicle' => [
+                'is_jet_engine' => true,
+                'meta_key' => 'color-vehicle',
+                'flag_key' => 'color_vehicle_flag'
+            ],
+            'aire-acondicionat' => [
+                'is_jet_engine' => true,
+                'meta_key' => 'aire-acondicionat',
+                'flag_key' => 'aire_acondicionat_flag'
+            ],
+            'climatitzacio' => [
+                'is_jet_engine' => true,
+                'meta_key' => 'climatitzacio',
+                'flag_key' => 'climatitzacio_flag'
+            ],
+            'vehicle-fumador' => [
+                'is_jet_engine' => true,
+                'meta_key' => 'vehicle-fumador',
+                'flag_key' => 'vehicle_fumador_flag'
+            ],
+            'tipus-tapisseria' => [
+                'is_jet_engine' => true,
+                'meta_key' => 'tipus-tapisseria',
+                'flag_key' => 'tipus_tapisseria_flag'
+            ],
+            'color-tapisseria' => [
+                'is_jet_engine' => true,
+                'meta_key' => 'color-tapisseria',
+                'flag_key' => 'color_tapisseria_flag'
+            ],
+            'extres-cotxe' => [
+                'is_jet_engine' => true,
+                'meta_key' => 'extres-cotxe',
+                'flag_key' => 'extres_cotxe_flag'
+            ]
+        ];
+    }
+
+    /**
      * Obtiene las opciones para un campo de glosario específico
      */
     public static function get_glossary_options($field) {
@@ -143,6 +364,14 @@ class Vehicle_Fields {
                 return self::get_roda_recanvi_options();
             case 'traccio':
                 return self::get_traccio_options();
+            case 'color-vehicle':
+                return self::get_color_vehicle_options();
+            case 'tipus-tapisseria':
+                return self::get_tipus_tapisseria_options();
+            case 'color-tapisseria':
+                return self::get_color_tapisseria_options();
+            case 'extres-cotxe':
+                return self::get_extres_cotxe_options();
             case 'venedor':
                 return self::get_venedor_options();
             default:
@@ -197,50 +426,105 @@ class Vehicle_Fields {
     }
 
     /**
-     * Obtiene las opciones para el campo carrosseria/segment
+     * Obtiene las opciones para el campo color-vehicle
      */
-    public static function get_carrosseria_options() {
+    public static function get_color_vehicle_options() {
         return [
-            'utilitari-petit' => 'utilitari',
-            'turisme-mig' => 'turisme',
-            'sedan-berlina' => 'sedan',
-            'coupe' => 'coupe',
-            'gran-turisme' => 'gran-turisme',
-            'familiar' => 'familiar',
-            'suv' => 'suv',
-            '4x4-tot-terreny' => '4x4',
-            'monovolum' => 'monovolum',
-            'furgoneta-passatgers' => 'furgoneta',
-            'cabrio' => 'cabrio',
-            'pick-up' => 'pickup'
+            'bicolor' => 'bicolor',
+            'blanc' => 'blanc',
+            'negre' => 'negre',
+            'gris' => 'gris',
+            'antracita' => 'antracita',
+            'beige' => 'beige',
+            'camel' => 'camel',
+            'marro' => 'marro',
+            'blau' => 'blau',
+            'bordeus' => 'bordeus',
+            'granat' => 'granat',
+            'lila' => 'lila',
+            'vermell' => 'vermell',
+            'taronja' => 'taronja',
+            'groc' => 'groc',
+            'verd' => 'verd',
+            'altres' => 'altres-exterior',
+            'rosa' => 'rosa',
+            'daurat' => 'daurat'
         ];
     }
 
     /**
-     * Obtiene los campos que necesitan flags especiales
+     * Obtiene las opciones para el campo tipus-tapisseria
      */
-    public static function get_flag_fields() {
+    public static function get_tipus_tapisseria_options() {
         return [
-            'traccio' => [
-                'is_jet_engine' => true,
-                'meta_key' => 'traccio',
-                'flag_key' => 'traccio_flag'
-            ],
-            'segment' => [
-                'is_jet_engine' => true,
-                'meta_key' => 'segment',
-                'flag_key' => 'segment_flag'
-            ],
-            'roda-recanvi' => [
-                'is_jet_engine' => true,
-                'meta_key' => 'roda-recanvi',
-                'flag_key' => 'roda_recanvi_flag'
-            ],
-            'emissions-vehicle' => [
-                'is_jet_engine' => true,
-                'meta_key' => 'emissions-vehicle',
-                'flag_key' => 'emissions_vehicle_flag'
-            ]
+            'alcantara' => 'alcantara',
+            'cuir' => 'cuir',
+            'cuir-alcantara' => 'cuir-alcantara',
+            'cuir-sintetic' => 'cuir-sintetic',
+            'teixit' => 'teixit',
+            'teixit-alcantara' => 'teixit-alcantara',
+            'teixit-cuir' => 'teixit-cuir',
+            'altres' => 'altres-tipus-tapisseria'
         ];
+    }
+
+    /**
+     * Obtiene las opciones para el campo color-tapisseria
+     */
+    public static function get_color_tapisseria_options() {
+        return [
+            'bicolor' => 'tapisseria-bicolor',
+            'negre' => 'tapisseria-negre',
+            'antracita' => 'tapisseria-antracita',
+            'gris' => 'tapisseria-gris',
+            'blanc' => 'tapisseria-blanc',
+            'beige' => 'tapisseria-beige',
+            'camel' => 'tapisseria-camel',
+            'marro' => 'tapisseria-marro',
+            'bordeus' => 'tapisseria-bordeus',
+            'granat' => 'tapisseria-granat',
+            'blau' => 'tapisseria-blau',
+            'lila' => 'tapisseria-lila',
+            'vermell' => 'tapisseria-vermell',
+            'taronja' => 'tapisseria-taronja',
+            'groc' => 'tapisseria-groc',
+            'verd' => 'tapisseria-verd',
+            'altres' => 'altres-tapisseria'
+        ];
+    }
+
+    /**
+     * Obtiene las opciones para el campo extres-cotxe desde el glosario
+     */
+    public static function get_extres_cotxe_options() {
+        try {
+            if (!function_exists('jet_engine')) {
+                return [];
+            }
+
+            $jet_engine = jet_engine();
+            
+            if (!isset($jet_engine->glossaries) || !isset($jet_engine->glossaries->filters)) {
+                return [];
+            }
+
+            // Obtener las opciones del glosario de extras (ID: 54)
+            $options = $jet_engine->glossaries->filters->get_glossary_options(54);
+            
+            if (empty($options)) {
+                return [];
+            }
+
+            // Convertir el array de opciones al formato esperado
+            $formatted_options = [];
+            foreach ($options as $value => $label) {
+                $formatted_options[$value] = $label;
+            }
+
+            return $formatted_options;
+
+        } catch (Exception $e) {
+            return [];
+        }
     }
 }

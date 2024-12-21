@@ -11,9 +11,17 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
-// Incluir archivos de los endpoints
+// Incluir archivos necesarios
 require_once plugin_dir_path(__FILE__) . 'includes/taxonomy-endpoints.php';
 require_once plugin_dir_path(__FILE__) . 'includes/singlecar-endpoint.php';
+require_once plugin_dir_path(__FILE__) . 'includes/class-vehicle-fields.php';
+require_once plugin_dir_path(__FILE__) . 'includes/class-glossary-fields.php';
+
+// Inicializar las clases
+add_action('plugins_loaded', function() {
+    Vehicle_Fields::get_instance();
+    Glossary_Fields::get_instance();
+});
 
 // Registrar rutas de la API
 add_action('rest_api_init', function () {
