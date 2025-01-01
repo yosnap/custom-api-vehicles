@@ -293,7 +293,7 @@ class Glossary_Fields
      */
     public function get_carrosseria_moto_endpoint()
     {
-        return $this->get_glossary_response(55);
+        return $this->get_glossary_response(42);
     }
 
     /**

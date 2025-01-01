@@ -1,21 +1,22 @@
 <?php
 // Registrar las rutas REST API para taxonomías
 add_action('rest_api_init', function () {
-    $taxonomies = [
-        'types-of-transport',
-        'marques-coches',
-        'estat-vehicle',
-        'tipus-combustible',
-        'marques-de-moto',
-        'tipus-de-canvi',
-        'tipus-de-propulsor'
+    // Mapeo de endpoints a taxonomías
+    $taxonomy_mapping = [
+        'tipus-de-vehicle' => 'types-of-transport',
+        'marques-cotxe' => 'marques-coches',      // Cambiado de 'marques-coches'
+        'estat-vehicle' => 'estat-vehicle',
+        'tipus-combustible' => 'tipus-combustible',
+        'marques-de-moto' => 'marques-de-moto',
+        'tipus-canvi-cotxe' => 'tipus-de-canvi',  // Cambiado de 'tipus-de-canvi'
+        'tipus-de-propulsor' => 'tipus-de-propulsor'
     ];
 
-    foreach ($taxonomies as $taxonomy) {
-        register_rest_route('api-motor/v1', '/' . $taxonomy, [
+    foreach ($taxonomy_mapping as $endpoint => $taxonomy) {
+        register_rest_route('api-motor/v1', '/' . $endpoint, [
             'methods' => 'GET',
             'callback' => function ($request) use ($taxonomy) {
-                if ($taxonomy === 'marques-coches') {
+                if ($taxonomy === 'marques-coches') {  // Mantener la comparación con el nombre de la taxonomía original
                     $marca = $request->get_param('marca');
                     return get_marques_coches_hierarchy($marca);
                 }
@@ -30,7 +31,8 @@ add_action('rest_api_init', function () {
  * Obtener términos de marques-coches con jerarquía
  * @param string|null $marca Slug de la marca para filtrar sus modelos
  */
-function get_marques_coches_hierarchy($marca = null) {
+function get_marques_coches_hierarchy($marca = null)
+{
     // Si se proporciona una marca, obtener su ID
     $marca_id = 0;
     if ($marca) {
@@ -102,7 +104,8 @@ function get_marques_coches_hierarchy($marca = null) {
 /**
  * Obtener términos de una taxonomía
  */
-function get_taxonomy_terms($taxonomy) {
+function get_taxonomy_terms($taxonomy)
+{
     $terms = get_terms([
         'taxonomy' => $taxonomy,
         'hide_empty' => false,
@@ -119,12 +122,12 @@ function get_taxonomy_terms($taxonomy) {
     $terms_data = [];
     foreach ($terms as $term) {
         $value = $term->slug;
-        
+
         // Para tipus-combustible, eliminar el prefijo "combustible-"
         if ($taxonomy === 'tipus-combustible' && strpos($value, 'combustible-') === 0) {
             $value = str_replace('combustible-', '', $value);
         }
-        
+
         $terms_data[] = [
             'name' => $term->name,
             'value' => $value

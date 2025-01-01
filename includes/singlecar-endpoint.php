@@ -45,6 +45,12 @@ add_action('rest_api_init', function () {
             ]
         ]
     ]);
+
+    register_rest_route('api-motor/v1', '/debug-fields', [
+        'methods' => 'GET',
+        'callback' => 'debug_vehicle_fields',
+        'permission_callback' => '__return_true'
+    ]);
 });
 
 require_once plugin_dir_path(__FILE__) . 'class-vehicle-fields.php';
@@ -169,13 +175,14 @@ function get_singlecar($request)
     return new WP_REST_Response($response, 200);
 }
 
-function create_singlecar($request) {
+function create_singlecar($request)
+{
     try {
         global $wpdb;
         $wpdb->query('START TRANSACTION');
 
         $params = $request->get_params();
-        
+
         // Verificar campos requeridos
         $required_fields = ['title', 'content', 'marca', 'modelo'];
         foreach ($required_fields as $field) {
@@ -193,7 +200,7 @@ function create_singlecar($request) {
         // Validar taxonomías antes de crear el post
         $taxonomy_fields = Vehicle_Fields::get_taxonomy_fields();
         $allowed_values = Vehicle_Fields::get_allowed_taxonomy_values();
-        
+
         foreach ($taxonomy_fields as $field => $taxonomy) {
             if (isset($params[$field])) {
                 // Validar que el valor esté permitido
@@ -231,17 +238,17 @@ function create_singlecar($request) {
 
         // Validar todos los campos antes de crear el post
         validate_all_fields($params);
-        
+
         // Crear el post
         $post_data = array(
-            'post_title'    => wp_strip_all_tags($params['title']),
-            'post_content'  => $params['content'],
-            'post_status'   => 'publish',
-            'post_type'     => 'singlecar'
+            'post_title' => wp_strip_all_tags($params['title']),
+            'post_content' => $params['content'],
+            'post_status' => 'publish',
+            'post_type' => 'singlecar'
         );
 
         $post_id = wp_insert_post($post_data);
-        
+
         if (is_wp_error($post_id)) {
             throw new Exception($post_id->get_error_message());
         }
@@ -267,7 +274,7 @@ function create_singlecar($request) {
         process_and_save_meta_fields($post_id, $params);
 
         $wpdb->query('COMMIT');
-        
+
         // Obtener los datos actualizados del post
         $post = get_post($post_id);
         $response = [
@@ -303,11 +310,11 @@ function create_singlecar($request) {
 
     } catch (Exception $e) {
         $wpdb->query('ROLLBACK');
-        
+
         if (isset($post_id) && $post_id) {
             wp_delete_post($post_id, true);
         }
-        
+
         return new WP_REST_Response(array(
             'status' => 'error',
             'message' => $e->getMessage()
@@ -315,7 +322,8 @@ function create_singlecar($request) {
     }
 }
 
-function validate_all_fields($params) {
+function validate_all_fields($params)
+{
     // Lista de campos a validar con sus tipos
     $fields_to_validate = [
         'venedor' => 'glossary',
@@ -377,44 +385,63 @@ function validate_all_fields($params) {
     }
 }
 
-function process_and_save_meta_fields($post_id, $params) {
+function process_and_save_meta_fields($post_id, $params)
+{
     $meta_fields = Vehicle_Fields::get_meta_fields();
     $flag_fields = Vehicle_Fields::get_flag_fields();
     $errors = [];
 
+    // Agregar log de depuración
+    error_log('Procesando campos meta para post_id: ' . $post_id);
+    error_log('Parámetros recibidos: ' . print_r($params, true));
+    error_log('Meta fields configurados: ' . print_r($meta_fields, true));
+
     // Procesar campos normales
     foreach ($meta_fields as $field => $type) {
-        if (isset($params[$field])) {
+        if (isset($params[$field]) && !Vehicle_Fields::should_exclude_field($field)) {
             try {
-                // Procesar el campo
-                $processed_value = Vehicle_Field_Handler::process_field($field, $params[$field], $type);
-                
+                error_log("Procesando campo: {$field} con valor: {$params[$field]} de tipo: {$type}");
+
+                // Procesar campos numéricos
+                if ($type === 'number') {
+                    $value = floatval($params[$field]);
+                    $result = update_post_meta($post_id, $field, $value);
+                    error_log("Resultado de guardar {$field}: " . ($result ? 'éxito' : 'fallo'));
+                }
+                // Procesar campos switch/boolean
+                else if ($type === 'switch') {
+                    $value = filter_var($params[$field], FILTER_VALIDATE_BOOLEAN);
+                    update_post_meta($post_id, $field, $value ? 'true' : 'false');
+                }
+                // Procesar campos select/radio
+                else if (in_array($type, ['select', 'radio'])) {
+                    update_post_meta($post_id, $field, sanitize_text_field($params[$field]));
+                }
                 // Manejo especial para extres-cotxe
-                if ($field === 'extres-cotxe') {
-                    $processed_value = (array)$processed_value;
-                    
+                else if ($field === 'extres-cotxe') {
+                    $processed_value = (array) $params[$field];
+
                     // Eliminar valores antiguos
                     delete_post_meta($post_id, $field);
-                    
+
                     // Crear la estructura que espera JetEngine con tres índices
                     $jet_engine_format = [
                         0 => array_combine(range(0, count($processed_value) - 1), $processed_value),
                         1 => array_combine(range(0, count($processed_value) - 1), $processed_value),
                         2 => array_combine(range(0, count($processed_value) - 1), $processed_value)
                     ];
-                    
+
                     // Guardar cada array como una entrada separada
                     foreach ($jet_engine_format as $value_array) {
                         add_post_meta($post_id, $field, $value_array);
                     }
                 }
                 // Para otros arrays
-                else if (is_array($processed_value)) {
-                    // Eliminar valores vacíos o nulos
-                    $processed_value = array_filter($processed_value, function($value) {
+                else if (is_array($params[$field])) {
+                    $processed_value = array_filter($params[$field], function ($value) {
                         return $value !== null && $value !== '';
                     });
-                    
+
                     if (!empty($processed_value)) {
                         delete_post_meta($post_id, $field);
                         foreach ($processed_value as $value) {
@@ -425,13 +452,14 @@ function process_and_save_meta_fields($post_id, $params) {
                     }
                 } else {
                     // Para valores simples
-                    if ($processed_value !== null) {
-                        update_post_meta($post_id, $field, $processed_value);
+                    if ($params[$field] !== null) {
+                        update_post_meta($post_id, $field, $params[$field]);
                     } else {
                         delete_post_meta($post_id, $field);
                     }
                 }
             } catch (Exception $e) {
+                error_log("Error al procesar campo {$field}: " . $e->getMessage());
                 $errors[] = $e->getMessage();
             }
         }
@@ -477,7 +505,8 @@ function process_and_save_meta_fields($post_id, $params) {
     }
 }
 
-function update_singlecar($request) {
+function update_singlecar($request)
+{
     try {
         global $wpdb;
         $wpdb->query('START TRANSACTION');
@@ -500,7 +529,7 @@ function update_singlecar($request) {
         // Validar taxonomías antes de actualizar
         $taxonomy_fields = Vehicle_Fields::get_taxonomy_fields();
         $allowed_values = Vehicle_Fields::get_allowed_taxonomy_values();
-        
+
         foreach ($taxonomy_fields as $field => $taxonomy) {
             if (isset($params[$field])) {
                 // Validar que el valor esté permitido
@@ -546,7 +575,7 @@ function update_singlecar($request) {
 
         // Actualizar datos básicos del post si se proporcionan
         $post_data = array('ID' => $post_id);
-        
+
         if (isset($params['title'])) {
             $post_data['post_title'] = wp_strip_all_tags($params['title']);
         }
@@ -630,7 +659,8 @@ function update_singlecar($request) {
     }
 }
 
-function delete_singlecar($request) {
+function delete_singlecar($request)
+{
     try {
         global $wpdb;
         $wpdb->query('START TRANSACTION');
@@ -645,7 +675,7 @@ function delete_singlecar($request) {
 
         // Mover a la papelera en lugar de eliminar permanentemente
         $result = wp_trash_post($post_id);
-        
+
         if (!$result) {
             throw new Exception('Error al mover el vehículo a la papelera');
         }
@@ -667,7 +697,8 @@ function delete_singlecar($request) {
     }
 }
 
-function get_vehicle_details($request) {
+function get_vehicle_details($request)
+{
     $vehicle_id = $request['id'];
     $post = get_post($vehicle_id);
 
@@ -679,7 +710,8 @@ function get_vehicle_details($request) {
     $terms = wp_get_post_terms($vehicle_id, 'types-of-transport', ['fields' => 'names']);
     $marques_terms = wp_get_post_terms($vehicle_id, 'marques-coches', ['fields' => 'names']);
 
-    function get_glossary_label($value) {
+    function get_glossary_label($value)
+    {
         $glossary = [
             "39" => "Estat Vehicle Part",
             "40" => "Estat del vehícle pro",
@@ -719,7 +751,8 @@ function get_vehicle_details($request) {
         return $glossary[$value] ?? $value;
     }
 
-    function get_glossary_value($field, $value) {
+    function get_glossary_value($field, $value)
+    {
         if (!function_exists('jet_engine')) {
             return $value;
         }
@@ -775,4 +808,14 @@ function get_vehicle_details($request) {
     }
 
     return new WP_REST_Response($response, 200);
+}
+
+function debug_vehicle_fields()
+{
+    $post_type = 'vehicle'; // o el nombre que uses para el post type
+    $meta_fields = jet_engine()->meta_boxes->get_meta_fields_for_object($post_type);
+
+    return new WP_REST_Response([
+        'fields' => $meta_fields
+    ], 200);
 }

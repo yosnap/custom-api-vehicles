@@ -1,33 +1,37 @@
 <?php
-class Vehicle_Fields {
+class Vehicle_Fields
+{
     private static $instance = null;
-    
+
     /**
      * Obtiene la instancia única de la clase
      */
-    public static function get_instance() {
+    public static function get_instance()
+    {
         if (self::$instance === null) {
             self::$instance = new self();
         }
         return self::$instance;
     }
-    
+
     /**
      * Constructor
      */
-    private function __construct() {
+    private function __construct()
+    {
         add_action('rest_api_init', [$this, 'register_routes']);
     }
-    
+
     /**
      * Registra los endpoints de la API
      */
-    public function register_routes() {
+    public function register_routes()
+    {
         register_rest_route(
             'api-motor/v1',
             '/carrosseria',
             array(
-                'methods'  => 'GET',
+                'methods' => 'GET',
                 'callback' => array($this, 'get_carrosseria_endpoint'),
                 'permission_callback' => '__return_true'
             )
@@ -37,7 +41,7 @@ class Vehicle_Fields {
             'api-motor/v1',
             '/estat-vehicle',
             array(
-                'methods'  => 'GET',
+                'methods' => 'GET',
                 'callback' => array($this, 'get_estat_vehicle_endpoint'),
                 'permission_callback' => '__return_true'
             )
@@ -47,18 +51,41 @@ class Vehicle_Fields {
             'api-motor/v1',
             '/tipus-vehicle',
             array(
-                'methods'  => 'GET',
+                'methods' => 'GET',
                 'callback' => array($this, 'get_tipus_vehicle_endpoint'),
                 'permission_callback' => '__return_true'
             )
         );
     }
-    
+
+    /**
+     * Lista de campos a excluir del procesamiento
+     */
+    private static $excluded_fields = [
+        'tab-info-general_tab',
+        'tab-info-general',
+        'equipament-essencials-vehicle_tab',
+        'equipament-essencials-vehicle',
+        'carroseria-caravana_tab',
+        'carroseria-caravana',
+        'api_item_id',
+        'sync_status'
+    ];
+
+    /**
+     * Verifica si un campo debe ser excluido
+     */
+    public static function should_exclude_field($field_name)
+    {
+        return in_array($field_name, self::$excluded_fields);
+    }
+
     /**
      * Obtiene la configuración de los campos meta
      */
-    public static function get_meta_fields() {
-        return [
+    public static function get_meta_fields()
+    {
+        $fields = [
             // Campos booleanos
             'is-vip' => 'boolean',
             'venut' => 'boolean',
@@ -71,8 +98,10 @@ class Vehicle_Fields {
             'aire-acondicionat' => 'boolean',
             'climatitzacio' => 'boolean',
             'vehicle-fumador' => 'boolean',
-            
+
             // Campos numéricos
+            'places-moto' => 'number',       // Nuevo campo
+            'capacitat-total-l' => 'number', // Nuevo campo
             'dies-caducitat' => 'number',
             'preu' => 'number',
             'preu-mensual' => 'number',
@@ -85,10 +114,35 @@ class Vehicle_Fields {
             'portes-cotxe' => 'number',
             'places-cotxe' => 'number',
             'velocitat-maxima' => 'number',
+            'acceleracio-0-60' => 'number',  // Agregar este campo
             'acceleracio-0-100' => 'number',
             'capacitat-total' => 'number',
             'maleters' => 'number',
-            
+
+            // Campos eléctricos
+            'autonomia-wltp' => 'number',
+            'autonomia-urbana-wltp' => 'number',
+            'autonomia-extraurbana-wltp' => 'number',
+            'autonomia-electrica' => 'number',
+            'bateria' => 'radio',
+            'cables-recarrega' => 'select',
+            'connectors' => 'select',
+            'velocitat-recarrega' => 'radio',
+            'temps-recarrega-total' => 'number',
+            'temps-recarrega-fins-80' => 'number',
+            'n-motors' => 'number',
+            'potencia-combinada' => 'number',
+            'frenada-regenerativa' => 'switch',
+            'one-pedal' => 'switch',
+            'kw-motor-davant' => 'number',
+            'cv-motor-davant' => 'number',
+            'kw-motor-darrere' => 'number',
+            'cv-motor-darrere' => 'number',
+            'kw-motor-3' => 'number',
+            'cv-motor-3' => 'number',
+            'kw-motor-4' => 'number',
+            'cv-motor-4' => 'number',
+
             // Campos de texto/selección
             'venedor' => 'glossary',
             'any' => 'text',
@@ -110,12 +164,16 @@ class Vehicle_Fields {
             'emissions-vehicle' => 'glossary',
             'extres-cotxe' => 'glossary'
         ];
+
+        // Filtrar los campos excluidos
+        return array_diff_key($fields, array_flip(self::$excluded_fields));
     }
 
     /**
      * Obtiene la configuración de los campos de taxonomía
      */
-    public static function get_taxonomy_fields() {
+    public static function get_taxonomy_fields()
+    {
         return [
             'tipus-vehicle' => 'types-of-transport',
             'tipus-combustible' => 'tipus-combustible',
@@ -129,7 +187,8 @@ class Vehicle_Fields {
     /**
      * Obtiene los valores permitidos para cada taxonomía
      */
-    public static function get_allowed_taxonomy_values() {
+    public static function get_allowed_taxonomy_values()
+    {
         return [
             'tipus-vehicle' => [
                 'autocaravana-camper',
@@ -182,7 +241,8 @@ class Vehicle_Fields {
     /**
      * Obtiene los valores permitidos para una taxonomía específica
      */
-    public static function get_taxonomy_field_name($field) {
+    public static function get_taxonomy_field_name($field)
+    {
         $taxonomy_fields = self::get_taxonomy_fields();
         return isset($taxonomy_fields[$field]) ? $taxonomy_fields[$field] : $field;
     }
@@ -190,7 +250,8 @@ class Vehicle_Fields {
     /**
      * Obtiene los valores permitidos para una taxonomía específica
      */
-    public static function get_taxonomy_allowed_values($field) {
+    public static function get_taxonomy_allowed_values($field)
+    {
         $allowed_values = self::get_allowed_taxonomy_values();
         return isset($allowed_values[$field]) ? $allowed_values[$field] : [];
     }
@@ -198,7 +259,8 @@ class Vehicle_Fields {
     /**
      * Obtiene las opciones para el campo carrosseria
      */
-    public static function get_carrosseria_options() {
+    public static function get_carrosseria_options()
+    {
         try {
             if (!function_exists('jet_engine')) {
                 return new WP_Error(
@@ -209,7 +271,7 @@ class Vehicle_Fields {
             }
 
             $jet_engine = jet_engine();
-            
+
             if (!isset($jet_engine->glossaries) || !isset($jet_engine->glossaries->filters)) {
                 return new WP_Error(
                     'jet_engine_glossaries_missing',
@@ -220,7 +282,7 @@ class Vehicle_Fields {
 
             // Obtener las opciones del glosario de carrosseria (ID: 53)
             $options = $jet_engine->glossaries->filters->get_glossary_options(53);
-            
+
             if (empty($options)) {
                 return new WP_Error(
                     'no_options',
@@ -252,20 +314,22 @@ class Vehicle_Fields {
     /**
      * Endpoint para obtener los tipos de carrosseria
      */
-    public function get_carrosseria_endpoint() {
+    public function get_carrosseria_endpoint()
+    {
         $options = self::get_carrosseria_options();
-        
+
         if (is_wp_error($options)) {
             return new WP_REST_Response($options, $options->get_error_data()['status']);
         }
-        
+
         return new WP_REST_Response($options, 200);
     }
 
     /**
      * Obtiene el tipo de un campo específico
      */
-    public static function get_field_type($field_name) {
+    public static function get_field_type($field_name)
+    {
         // Campos booleanos
         $boolean_fields = [
             'is-vip',
@@ -283,6 +347,8 @@ class Vehicle_Fields {
 
         // Campos numéricos
         $number_fields = [
+            'places-moto',          // Nuevo campo
+            'capacitat-total-l',    // Nuevo campo
             'dies-caducitat',
             'preu',
             'preu-mensual',
@@ -295,9 +361,26 @@ class Vehicle_Fields {
             'portes-cotxe',
             'places-cotxe',
             'velocitat-maxima',
+            'acceleracio-0-60',
             'acceleracio-0-100',
             'capacitat-total',
-            'maleters'
+            'maleters',
+            'autonomia-wltp',
+            'autonomia-urbana-wltp',
+            'autonomia-extraurbana-wltp',
+            'autonomia-electrica',
+            'temps-recarrega-total',
+            'temps-recarrega-fins-80',
+            'n-motors',
+            'potencia-combinada',
+            'kw-motor-davant',
+            'cv-motor-davant',
+            'kw-motor-darrere',
+            'cv-motor-darrere',
+            'kw-motor-3',
+            'cv-motor-3',
+            'kw-motor-4',
+            'cv-motor-4'
         ];
 
         // Campos de fecha
@@ -343,7 +426,8 @@ class Vehicle_Fields {
     /**
      * Obtiene los campos con flag
      */
-    public static function get_flag_fields() {
+    public static function get_flag_fields()
+    {
         return [
             'is-vip' => [
                 'meta_key' => 'data-vip',
@@ -356,7 +440,8 @@ class Vehicle_Fields {
     /**
      * Obtiene los tipos de campos
      */
-    public static function get_field_types() {
+    public static function get_field_types()
+    {
         return [
             'traccio' => 'glossary',
             'roda-recanvi' => 'glossary',
@@ -375,18 +460,22 @@ class Vehicle_Fields {
     /**
      * Obtiene los campos que son booleanos (switches)
      */
-    public static function get_switch_fields() {
+    public static function get_switch_fields()
+    {
         return [
             'aire-acondicionat',
             'climatitzacio',
-            'vehicle-fumador'
+            'vehicle-fumador',
+            'frenada-regenerativa',
+            'one-pedal'
         ];
     }
 
     /**
      * Obtiene las opciones para un campo de glosario específico
      */
-    public static function get_glossary_options($field) {
+    public static function get_glossary_options($field)
+    {
         switch ($field) {
             case 'emissions-vehicle':
                 return self::get_emissions_vehicle_options();
@@ -415,7 +504,8 @@ class Vehicle_Fields {
     /**
      * Obtiene las opciones para el campo venedor
      */
-    public static function get_venedor_options() {
+    public static function get_venedor_options()
+    {
         return [
             'particular' => 'particular',
             'professional' => 'professional'
@@ -425,7 +515,8 @@ class Vehicle_Fields {
     /**
      * Obtiene las opciones para el campo emissions-vehicle
      */
-    public static function get_emissions_vehicle_options() {
+    public static function get_emissions_vehicle_options()
+    {
         return [
             'euro1' => 'euro1',
             'euro2' => 'euro2',
@@ -439,7 +530,8 @@ class Vehicle_Fields {
     /**
      * Obtiene las opciones para el campo de tracción
      */
-    public static function get_traccio_options() {
+    public static function get_traccio_options()
+    {
         return [
             'darrere' => 't_darrere',
             'davant' => 't_davant',
@@ -451,7 +543,8 @@ class Vehicle_Fields {
     /**
      * Obtiene las opciones para el campo de rueda de repuesto
      */
-    public static function get_roda_recanvi_options() {
+    public static function get_roda_recanvi_options()
+    {
         return [
             'roda-substitucio' => 'roda_substitucio',
             'kit-reparacio' => 'r_kit_reparacio'
@@ -461,7 +554,8 @@ class Vehicle_Fields {
     /**
      * Obtiene las opciones para el campo color-vehicle
      */
-    public static function get_color_vehicle_options() {
+    public static function get_color_vehicle_options()
+    {
         return [
             'bicolor' => 'bicolor',
             'blanc' => 'blanc',
@@ -488,7 +582,8 @@ class Vehicle_Fields {
     /**
      * Obtiene las opciones para el campo tipus-tapisseria
      */
-    public static function get_tipus_tapisseria_options() {
+    public static function get_tipus_tapisseria_options()
+    {
         return [
             'alcantara' => 'alcantara',
             'cuir' => 'cuir',
@@ -504,7 +599,8 @@ class Vehicle_Fields {
     /**
      * Obtiene las opciones para el campo color-tapisseria
      */
-    public static function get_color_tapisseria_options() {
+    public static function get_color_tapisseria_options()
+    {
         return [
             'bicolor' => 'tapisseria-bicolor',
             'negre' => 'tapisseria-negre',
@@ -529,21 +625,22 @@ class Vehicle_Fields {
     /**
      * Obtiene las opciones para el campo extres-cotxe desde el glosario
      */
-    public static function get_extres_cotxe_options() {
+    public static function get_extres_cotxe_options()
+    {
         try {
             if (!function_exists('jet_engine')) {
                 return [];
             }
 
             $jet_engine = jet_engine();
-            
+
             if (!isset($jet_engine->glossaries) || !isset($jet_engine->glossaries->filters)) {
                 return [];
             }
 
             // Obtener las opciones del glosario de extras (ID: 54)
             $options = $jet_engine->glossaries->filters->get_glossary_options(54);
-            
+
             if (empty($options)) {
                 return [];
             }
