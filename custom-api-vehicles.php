@@ -17,11 +17,19 @@ require_once plugin_dir_path(__FILE__) . 'includes/singlecar-endpoint.php';
 require_once plugin_dir_path(__FILE__) . 'includes/class-vehicle-fields.php';
 require_once plugin_dir_path(__FILE__) . 'includes/class-glossary-fields.php';
 
+// Cargar la clase del menú de administración
+require_once plugin_dir_path(__FILE__) . 'admin/class-admin-menu.php';
+
 // Inicializar las clases
-add_action('plugins_loaded', function() {
+add_action('plugins_loaded', function () {
     Vehicle_Fields::get_instance();
     Glossary_Fields::get_instance();
 });
+
+// Inicializar el menú de administración
+if (is_admin()) {
+    $admin_menu = new Vehicles_Admin_Menu();
+}
 
 // Registrar rutas de la API
 add_action('rest_api_init', function () {

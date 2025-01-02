@@ -790,11 +790,11 @@ function get_vehicle_details($request)
 
     $response = [
         'id' => $vehicle_id,
-        'titol' => get_the_title($vehicle_id),
-        'content' => $post->post_content,
-        'tipus' => get_glossary_label($terms[0] ?? null),
-        'marques-coches' => get_glossary_label($marques_terms[0] ?? null),
-        'model' => get_glossary_label($marques_terms[1] ?? null),
+        'titol-anunci' => get_the_title($vehicle_id),
+        'descripcio-anunci' => $post->post_content,
+        'tipus-de-vehicle' => get_glossary_label($terms[0] ?? null),
+        'marques-cotxe' => get_glossary_label($marques_terms[1] ?? null),
+        'models-cotxe' => get_glossary_label($marques_terms[0] ?? null),
         'preu' => $meta['preu'][0] ?? null,
         'emissions-vehicle' => get_glossary_value('emissions-vehicle', $meta['emissions-vehicle'][0] ?? null),
         'traccio' => get_glossary_value('traccio', $meta['traccio'][0] ?? null),
