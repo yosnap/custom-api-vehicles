@@ -191,12 +191,19 @@ function get_singlecar($request)
             $query->the_post();
             $singlecar_id = get_the_ID();
 
-            $vehicles[] = [
+            $vehicle = [
                 'id' => $singlecar_id,
                 'titol' => get_the_title(),
                 'tipus' => wp_get_post_terms($singlecar_id, 'types-of-transport', ['fields' => 'names'])[0],
                 'preu' => get_post_meta($singlecar_id, 'preu', true)
             ];
+
+            // Solo incluir dies-caducitat si es administrador
+            if (current_user_can('administrator')) {
+                $vehicle['dies-caducitat'] = get_post_meta($singlecar_id, 'dies-caducitat', true);
+            }
+
+            $vehicles[] = $vehicle;
         }
     }
 
@@ -249,25 +256,29 @@ function create_singlecar($request)
             $processed_params[$db_field] = $value;
         }
 
-        // Verificar campos requeridos
-        $required_fields = [
-            'titol-anunci',
-            'descripcio-anunci',
+        // Campos requeridos para crear/actualizar un vehículo
+        $required_fields = array(
             'marques-cotxe',
             'models-cotxe',
-            'preu',
+            'versio',
             'tipus-vehicle',
-            'estat-vehicle',
             'tipus-combustible',
             'tipus-canvi-cotxe',
-            'quilometratge'
-        ];
+            'tipus-propulsor',
+            'estat-vehicle',
+            'preu'
+        );
 
+        // Validar campos requeridos
         foreach ($required_fields as $field) {
-            if (empty($params[$field])) {
-                throw new Exception(sprintf('El campo %s es requerido', $field));
+            if (!isset($params[$field]) || empty($params[$field])) {
+                return new WP_Error('missing_field', 'El campo ' . $field . ' es obligatorio', array('status' => 400));
             }
         }
+
+        // Generar título automáticamente
+        $titol_anunci = $params['marques-cotxe'] . ' ' . $params['models-cotxe'] . ' ' . $params['versio'];
+        $params['titol-anunci'] = $titol_anunci;
 
         // Transformar el campo carrosseria a segment si existe
         if (isset($params['carrosseria'])) {
@@ -394,15 +405,21 @@ function create_singlecar($request)
                             if (strpos($image, 'data:image') === 0) {
                                 // Procesar imagen base64
                                 $upload_dir = wp_upload_dir();
+
+                                // Decodificar la imagen base64
                                 $image_parts = explode(";base64,", $image);
                                 $image_type_aux = explode("image/", $image_parts[0]);
                                 $image_type = $image_type_aux[1];
                                 $image_base64 = base64_decode($image_parts[1]);
+
+                                // Generar nombre único
                                 $filename = uniqid() . '.' . $image_type;
                                 $file_path = $upload_dir['path'] . '/' . $filename;
 
+                                // Guardar archivo
                                 file_put_contents($file_path, $image_base64);
 
+                                // Preparar attachment
                                 $wp_filetype = wp_check_filetype($filename, null);
                                 $attachment = array(
                                     'post_mime_type' => $wp_filetype['type'],
@@ -411,6 +428,7 @@ function create_singlecar($request)
                                     'post_status' => 'inherit'
                                 );
 
+                                // Insertar attachment
                                 $attach_id = wp_insert_attachment($attachment, $file_path);
                                 require_once(ABSPATH . 'wp-admin/includes/image.php');
                                 $attach_data = wp_generate_attachment_metadata($attach_id, $file_path);
@@ -509,6 +527,9 @@ function create_singlecar($request)
             }
         }
 
+        // Establecer valor inicial de dies-caducitat
+        update_post_meta($post_id, 'dies-caducitat', 365);
+
         $wpdb->query('COMMIT');
 
         // Obtener los datos actualizados del post
@@ -577,7 +598,11 @@ function validate_glossary_field($field, $value)
     ];
 
     // Si el campo es carrosseria-cotxe, usar segment para la validación
-    $field_to_validate = ($field === 'carrosseria-cotxe') ? 'segment' : $field;
+    if ($field === 'carrosseria-cotxe') {
+        $field_to_validate = 'segment';
+    } else {
+        $field_to_validate = $field;
+    }
 
     if (!isset($glossary_mapping[$field_to_validate])) {
         throw new Exception("Campo de glosario no reconocido: {$field}");
@@ -698,6 +723,8 @@ function process_and_save_meta_fields($post_id, $params)
         'capacitat-maleters-cotxe' => 'capacitat-total',
         'acceleracio-0-100-cotxe' => 'acceleracio-0-100',
         'numero-motors' => 'n-motors',
+        'any-fabricacio' => 'any',
+        'galeria-vehicle' => 'ad_gallery',
         'carrosseria-cotxe' => 'segment',
         'traccio' => 'traccio',
         'roda-recanvi' => 'roda-recanvi',
@@ -925,6 +952,15 @@ function process_and_save_meta_fields($post_id, $params)
         }
     }
 
+    // Manejar el campo dies-caducitat
+    if (current_user_can('administrator') && isset($params['dies-caducitat'])) {
+        $dies_caducitat = is_numeric($params['dies-caducitat']) ? intval($params['dies-caducitat']) : 365;
+        update_post_meta($post_id, 'dies-caducitat', $dies_caducitat);
+    } else if (!get_post_meta($post_id, 'dies-caducitat', true)) {
+        // Si no existe el valor, establecer el valor por defecto
+        update_post_meta($post_id, 'dies-caducitat', 365);
+    }
+
     // Procesar imagen destacada
     if (isset($params['imatge-destacada-id'])) {
         $image_id = intval($params['imatge-destacada-id']);
@@ -1074,9 +1110,9 @@ function update_singlecar($request)
         }
 
         // Transformar el campo carrosseria a segment si existe
-        if (isset($params['carrosseria-cotxe'])) {
-            $params['segment'] = $params['carrosseria-cotxe'];
-            unset($params['carrosseria-cotxe']);
+        if (isset($params['carrosseria'])) {
+            $params['segment'] = $params['carrosseria'];
+            unset($params['carrosseria']);
         }
 
         // Validar taxonomías si se están actualizando
@@ -1437,6 +1473,11 @@ function get_vehicle_details($request)
         $response['galeria-vehicle-urls'] = $gallery_urls;
     }
 
+    // Ocultar dies-caducitat a usuarios no administradores
+    if (!current_user_can('administrator')) {
+        unset($response['dies-caducitat']);
+    }
+
     return new WP_REST_Response($response, 200);
 }
 
@@ -1464,4 +1505,56 @@ function verify_post_ownership($post_id)
 
     // Permitir acceso si el usuario es el autor o es administrador
     return $post->post_author == get_current_user_id() || current_user_can('administrator');
+}
+
+function upload_base64_image($base64_string, $post_id = 0) {
+    // Extraer la información del base64
+    $data = explode(',', $base64_string);
+    if (count($data) !== 2) {
+        return new WP_Error('invalid_base64', 'Invalid base64 string format');
+    }
+
+    // Obtener el tipo MIME y los datos
+    preg_match('/data:(.*?);/', $data[0], $matches);
+    $mime_type = $matches[1];
+    $base64_data = $data[1];
+
+    // Decodificar los datos
+    $decoded_data = base64_decode($base64_data);
+    if (!$decoded_data) {
+        return new WP_Error('decode_failed', 'Failed to decode base64 data');
+    }
+
+    // Crear un nombre de archivo temporal
+    $upload_dir = wp_upload_dir();
+    $filename = wp_unique_filename($upload_dir['path'], 'image.jpg');
+    $file_path = $upload_dir['path'] . '/' . $filename;
+
+    // Guardar el archivo
+    if (!file_put_contents($file_path, $decoded_data)) {
+        return new WP_Error('save_failed', 'Failed to save image file');
+    }
+
+    // Preparar los datos del archivo para WordPress
+    $filetype = wp_check_filetype($filename, null);
+    $attachment = array(
+        'post_mime_type' => $filetype['type'],
+        'post_title' => sanitize_file_name($filename),
+        'post_content' => '',
+        'post_status' => 'inherit'
+    );
+
+    // Insertar el archivo en la biblioteca de medios
+    $attach_id = wp_insert_attachment($attachment, $file_path, $post_id);
+    if (is_wp_error($attach_id)) {
+        unlink($file_path);
+        return $attach_id;
+    }
+
+    // Generar los metadatos y miniaturas
+    require_once(ABSPATH . 'wp-admin/includes/image.php');
+    $attach_data = wp_generate_attachment_metadata($attach_id, $file_path);
+    wp_update_attachment_metadata($attach_id, $attach_data);
+
+    return $attach_id;
 }
