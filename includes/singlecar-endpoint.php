@@ -214,29 +214,29 @@ function get_singlecar($request)
 
 function create_singlecar($request)
 {
-    try {
-        global $wpdb;
-        $wpdb->query('START TRANSACTION');
+    global $wpdb;
+    $wpdb->query('START TRANSACTION');
 
+    try {
         $params = $request->get_params();
 
         // Agregar el mapeo de campos nuevos a antiguos
         $field_mapping = array(
             'anunci-destacat' => 'is-vip',
             'data-destacat' => 'data-vip',
-            'velocitat-max-cotxe' => 'velocitat-maxima',  // Corregido de velocitat-maxima-cotxe
+            'velocitat-max-cotxe' => 'velocitat-maxima',
             'numero-maleters-cotxe' => 'maleters',
             'capacitat-maleters-cotxe' => 'capacitat-total',
             'acceleracio-0-100-cotxe' => 'acceleracio-0-100',
             'numero-motors' => 'n-motors',
             'any-fabricacio' => 'any',
             'galeria-vehicle' => 'ad_gallery',
-            'carrosseria-cotxe' => 'segment',  // Agregado nuevo mapeo
-            'traccio' => 'traccio',           // Asegurar que se mapee correctamente
-            'roda-recanvi' => 'roda-recanvi'  // Asegurar que se mapee correctamente
+            'carrosseria-cotxe' => 'segment',
+            'traccio' => 'traccio',
+            'roda-recanvi' => 'roda-recanvi'
         );
 
-        // En la función que procesa los parámetros
+        // Procesar los parámetros con el mapeo
         $processed_params = array();
         foreach ($params as $key => $value) {
             $db_field = isset($field_mapping[$key]) ? $field_mapping[$key] : $key;
@@ -248,8 +248,8 @@ function create_singlecar($request)
         $required_fields = [
             'titol-anunci',
             'descripcio-anunci',
-            'marques-cotxe', // Cambiado de 'marca'
-            'models-cotxe',  // Cambiado de 'modelo'
+            'marques-cotxe',
+            'models-cotxe',
             'preu',
             'tipus-vehicle',
             'estat-vehicle',
@@ -312,58 +312,137 @@ function create_singlecar($request)
         // Validar todos los campos antes de crear el post
         validate_all_fields($params);
 
-        // Taxonomías requeridas y sus nombres en la base de datos
-        $required_taxonomies = [
-            'tipus-vehicle' => 'types-of-transport',
-            'tipus-combustible' => 'tipus-combustible',
-            'tipus-propulsor' => 'tipus-de-propulsor',
-            'estat-vehicle' => 'estat-vehicle'
-        ];
+        // Procesar imágenes antes de crear el post
+        $image_fields = ['imatge-destacada-id', 'galeria-vehicle'];
+        $processed_images = [];
 
-        // Verificar taxonomías requeridas
-        foreach ($required_taxonomies as $field => $taxonomy) {
-            if (!isset($params[$field]) || empty($params[$field])) {
-                throw new Exception(sprintf('La taxonomía %s es requerida', $field));
-            }
+        foreach ($image_fields as $field) {
+            if (isset($params[$field]) && !empty($params[$field])) {
+                if (is_string($params[$field])) {
+                    // Caso 1: Base64
+                    if (strpos($params[$field], 'data:image') === 0) {
+                        $upload_dir = wp_upload_dir();
 
-            // Primero intentar obtener el término por slug
-            $term = get_term_by('slug', $params[$field], $taxonomy);
+                        // Decodificar la imagen base64
+                        $image_parts = explode(";base64,", $params[$field]);
+                        $image_type_aux = explode("image/", $image_parts[0]);
+                        $image_type = $image_type_aux[1];
+                        $image_base64 = base64_decode($image_parts[1]);
 
-            // Si no se encuentra por slug, intentar por nombre
-            if (!$term) {
-                $term = get_term_by('name', $params[$field], $taxonomy);
-            }
+                        // Generar nombre único
+                        $filename = uniqid() . '.' . $image_type;
+                        $file_path = $upload_dir['path'] . '/' . $filename;
 
-            if (!$term) {
-                // Obtener todos los términos válidos
-                $valid_terms = get_terms([
-                    'taxonomy' => $taxonomy,
-                    'hide_empty' => false,
-                    'fields' => 'names'
-                ]);
+                        // Guardar archivo
+                        file_put_contents($file_path, $image_base64);
 
-                if (is_wp_error($valid_terms)) {
-                    $valid_terms = [];
+                        // Preparar attachment
+                        $wp_filetype = wp_check_filetype($filename, null);
+                        $attachment = array(
+                            'post_mime_type' => $wp_filetype['type'],
+                            'post_title' => sanitize_file_name($filename),
+                            'post_content' => '',
+                            'post_status' => 'inherit'
+                        );
+
+                        // Insertar attachment
+                        $attach_id = wp_insert_attachment($attachment, $file_path);
+                        require_once(ABSPATH . 'wp-admin/includes/image.php');
+                        $attach_data = wp_generate_attachment_metadata($attach_id, $file_path);
+                        wp_update_attachment_metadata($attach_id, $attach_data);
+
+                        $processed_images[$field] = $attach_id;
+                    }
+                    // Caso 2: URL
+                    else if (filter_var($params[$field], FILTER_VALIDATE_URL)) {
+                        require_once(ABSPATH . 'wp-admin/includes/file.php');
+                        require_once(ABSPATH . 'wp-admin/includes/media.php');
+                        require_once(ABSPATH . 'wp-admin/includes/image.php');
+
+                        $temp_file = download_url($params[$field]);
+
+                        if (!is_wp_error($temp_file)) {
+                            $file_array = array(
+                                'name' => basename($params[$field]),
+                                'tmp_name' => $temp_file
+                            );
+
+                            $attach_id = media_handle_sideload($file_array, 0);
+
+                            if (!is_wp_error($attach_id)) {
+                                $processed_images[$field] = $attach_id;
+                            }
+
+                            @unlink($temp_file);
+                        }
+                    }
+                    // Caso 3: ID existente
+                    else if (is_numeric($params[$field])) {
+                        $processed_images[$field] = intval($params[$field]);
+                    }
                 }
+                // Caso 4: Array de imágenes (galería)
+                else if (is_array($params[$field])) {
+                    $processed_images[$field] = [];
+                    foreach ($params[$field] as $image) {
+                        if (is_string($image)) {
+                            if (strpos($image, 'data:image') === 0) {
+                                // Procesar imagen base64
+                                $upload_dir = wp_upload_dir();
+                                $image_parts = explode(";base64,", $image);
+                                $image_type_aux = explode("image/", $image_parts[0]);
+                                $image_type = $image_type_aux[1];
+                                $image_base64 = base64_decode($image_parts[1]);
+                                $filename = uniqid() . '.' . $image_type;
+                                $file_path = $upload_dir['path'] . '/' . $filename;
 
-                $term_list = !empty($valid_terms) ? implode(', ', $valid_terms) : 'ninguno disponible';
+                                file_put_contents($file_path, $image_base64);
 
-                throw new Exception(sprintf(
-                    'Valor no válido para %s. Valores permitidos: %s',
-                    $field,
-                    $term_list
-                ));
-            }
+                                $wp_filetype = wp_check_filetype($filename, null);
+                                $attachment = array(
+                                    'post_mime_type' => $wp_filetype['type'],
+                                    'post_title' => sanitize_file_name($filename),
+                                    'post_content' => '',
+                                    'post_status' => 'inherit'
+                                );
 
-            // Si llegamos aquí, hemos encontrado un término válido, así que lo asignamos
-            $result = wp_set_object_terms($post_id, $term->term_id, $taxonomy);
-            if (is_wp_error($result)) {
-                throw new Exception(sprintf(
-                    'Error al asignar el término %s a la taxonomía %s: %s',
-                    $params[$field],
-                    $taxonomy,
-                    $result->get_error_message()
-                ));
+                                $attach_id = wp_insert_attachment($attachment, $file_path);
+                                require_once(ABSPATH . 'wp-admin/includes/image.php');
+                                $attach_data = wp_generate_attachment_metadata($attach_id, $file_path);
+                                wp_update_attachment_metadata($attach_id, $attach_data);
+
+                                $processed_images[$field][] = $attach_id;
+                            }
+                            else if (filter_var($image, FILTER_VALIDATE_URL)) {
+                                // Procesar URL
+                                require_once(ABSPATH . 'wp-admin/includes/file.php');
+                                require_once(ABSPATH . 'wp-admin/includes/media.php');
+                                require_once(ABSPATH . 'wp-admin/includes/image.php');
+
+                                $temp_file = download_url($image);
+
+                                if (!is_wp_error($temp_file)) {
+                                    $file_array = array(
+                                        'name' => basename($image),
+                                        'tmp_name' => $temp_file
+                                    );
+
+                                    $attach_id = media_handle_sideload($file_array, 0);
+
+                                    if (!is_wp_error($attach_id)) {
+                                        $processed_images[$field][] = $attach_id;
+                                    }
+
+                                    @unlink($temp_file);
+                                }
+                            }
+                            else if (is_numeric($image)) {
+                                // Usar ID existente
+                                $processed_images[$field][] = intval($image);
+                            }
+                        }
+                    }
+                }
             }
         }
 
@@ -410,6 +489,17 @@ function create_singlecar($request)
 
         // Procesar y guardar los campos meta
         process_and_save_meta_fields($post_id, $params);
+
+        // Después de crear el post, asignar las imágenes procesadas
+        if (!empty($processed_images)) {
+            foreach ($processed_images as $field => $value) {
+                if ($field === 'imatge-destacada-id') {
+                    set_post_thumbnail($post_id, $value);
+                } else if ($field === 'galeria-vehicle' && is_array($value)) {
+                    update_post_meta($post_id, 'ad_gallery', $value);
+                }
+            }
+        }
 
         $wpdb->query('COMMIT');
 
@@ -610,13 +700,13 @@ function process_and_save_meta_fields($post_id, $params)
     foreach ($field_mapping as $api_field => $db_field) {
         if (isset($params[$api_field])) {
             $value = $params[$api_field];
-            
+
             // Manejo especial para campos booleanos mapeados
             if ($db_field === 'is-vip') {
                 $value = strtolower(trim($value));
                 $true_values = ['true', 'si', '1', 'yes', 'on'];
                 $false_values = ['false', 'no', '0', 'off'];
-                
+
                 if (in_array($value, $true_values, true)) {
                     $value = 'true';
                     // Cuando is-vip es true, actualizamos data-vip con el timestamp actual
@@ -631,14 +721,17 @@ function process_and_save_meta_fields($post_id, $params)
                     update_post_meta($post_id, 'data-vip', '');
                 }
             }
-            
+
             error_log("Guardando campo mapeado {$api_field} como {$db_field} con valor: {$value}");
             update_post_meta($post_id, $db_field, $value);
         }
     }
 
-    // Excluir data-vip de los campos a procesar ya que se maneja automáticamente
-    $excluded_fields = ['data-vip'];
+    // Excluir data-vip y venedor de los campos a procesar ya que se manejan automáticamente
+    $excluded_fields = ['data-vip', 'venedor'];
+
+    // Establecer venedor como "professional" por defecto
+    update_post_meta($post_id, 'venedor', 'professional');
 
     // Procesar campos normales con el mapeo
     foreach ($meta_fields as $field => $type) {
@@ -660,7 +753,7 @@ function process_and_save_meta_fields($post_id, $params)
                     $value = strtolower(trim($params[$field]));
                     $true_values = ['true', 'si', '1', 'yes', 'on'];
                     $false_values = ['false', 'no', '0', 'off'];
-                    
+
                     if (in_array($value, $true_values, true)) {
                         $value = 'true';
                     } elseif (in_array($value, $false_values, true)) {
@@ -668,7 +761,7 @@ function process_and_save_meta_fields($post_id, $params)
                     } else {
                         $value = 'false'; // valor por defecto si no coincide con ninguno
                     }
-                    
+
                     update_post_meta($post_id, $db_field, $value);
                 }
                 // Procesar campos select/radio
@@ -677,7 +770,7 @@ function process_and_save_meta_fields($post_id, $params)
                 }
                 // Manejo especial para extres-cotxe
                 else if ($field === 'extres-cotxe') {
-                    $processed_value = (array) $params[$field];
+                    $processed_value = is_array($params[$field]) ? $params[$field] : [$params[$field]];
 
                     // Eliminar valores antiguos
                     delete_post_meta($post_id, $db_field);
@@ -690,31 +783,58 @@ function process_and_save_meta_fields($post_id, $params)
                     ];
 
                     // Guardar cada array como una entrada separada
-                    foreach ($jet_engine_format as $value_array) {
-                        add_post_meta($post_id, $db_field, $value_array);
+                    foreach ($jet_engine_format as $index => $value) {
+                        add_post_meta($post_id, $db_field, $value);
                     }
                 }
-                // Para otros arrays
-                else if (is_array($params[$field])) {
-                    $processed_value = array_filter($params[$field], function ($value) {
-                        return $value !== null && $value !== '';
-                    });
+                // Manejo especial para imágenes en base64
+                else if ($field === 'imatge-destacada-id' || $field === 'galeria-vehicle') {
+                    if (strpos($params[$field], 'data:image') === 0) {
+                        // Es una imagen en base64, la procesamos
+                        $upload_dir = wp_upload_dir();
+                        $upload_path = $upload_dir['path'];
+                        $upload_url = $upload_dir['url'];
 
-                    if (!empty($processed_value)) {
-                        delete_post_meta($post_id, $db_field);
-                        foreach ($processed_value as $value) {
-                            add_post_meta($post_id, $db_field, $value);
-                        }
+                        // Decodificar la imagen base64
+                        $image_parts = explode(";base64,", $params[$field]);
+                        $image_type_aux = explode("image/", $image_parts[0]);
+                        $image_type = $image_type_aux[1];
+                        $image_base64 = base64_decode($image_parts[1]);
+
+                        // Generar nombre único para el archivo
+                        $filename = uniqid() . '.' . $image_type;
+                        $file_path = $upload_path . '/' . $filename;
+
+                        // Guardar el archivo
+                        file_put_contents($file_path, $image_base64);
+
+                        // Preparar la información del archivo para WordPress
+                        $wp_filetype = wp_check_filetype($filename, null);
+                        $attachment = array(
+                            'post_mime_type' => $wp_filetype['type'],
+                            'post_title' => sanitize_file_name($filename),
+                            'post_content' => '',
+                            'post_status' => 'inherit'
+                        );
+
+                        // Insertar el adjunto en la biblioteca de medios
+                        $attach_id = wp_insert_attachment($attachment, $file_path);
+
+                        // Generar metadatos para el adjunto
+                        require_once(ABSPATH . 'wp-admin/includes/image.php');
+                        $attach_data = wp_generate_attachment_metadata($attach_id, $file_path);
+                        wp_update_attachment_metadata($attach_id, $attach_data);
+
+                        // Guardar el ID del adjunto como meta
+                        update_post_meta($post_id, $db_field, $attach_id);
                     } else {
-                        delete_post_meta($post_id, $db_field);
+                        // Si no es base64, asumimos que es un ID válido
+                        update_post_meta($post_id, $db_field, sanitize_text_field($params[$field]));
                     }
-                } else {
-                    // Para valores simples
-                    if ($params[$field] !== null) {
-                        update_post_meta($post_id, $db_field, $params[$field]);
-                    } else {
-                        delete_post_meta($post_id, $db_field);
-                    }
+                }
+                // Procesar el resto de campos como texto normal
+                else {
+                    update_post_meta($post_id, $db_field, sanitize_text_field($params[$field]));
                 }
             } catch (Exception $e) {
                 error_log("Error al procesar campo {$field}: " . $e->getMessage());
