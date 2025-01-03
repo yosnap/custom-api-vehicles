@@ -49,6 +49,24 @@ class Vehicles_Admin_Menu
 
     public function display_logs_page()
     {
-        require_once plugin_dir_path(__FILE__) . 'views/logs-page.php';
+        if (!class_exists('Vehicle_API_Logger')) {
+            wp_die('El sistema de logs no está disponible');
+        }
+
+        // Verificar si la tabla existe y crearla si no
+        Vehicle_API_Logger::get_instance()->create_log_table();
+
+        $per_page = 20;
+        $current_page = isset($_GET['paged']) ? max(1, intval($_GET['paged'])) : 1;
+
+        $filters = array(
+            'user_id' => isset($_GET['user_id']) ? intval($_GET['user_id']) : '',
+            'vehicle_id' => isset($_GET['vehicle_id']) ? intval($_GET['vehicle_id']) : '',
+            'action' => isset($_GET['action']) ? sanitize_text_field($_GET['action']) : ''
+        );
+
+        $logs_data = Vehicle_API_Logger::get_instance()->get_logs($per_page, $current_page, $filters);
+
+        include plugin_dir_path(__FILE__) . 'views/logs-page.php';
     }
 }

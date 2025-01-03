@@ -381,6 +381,16 @@ function create_singlecar($request)
             throw new Exception($post_id->get_error_message());
         }
 
+        // Logging de creación
+        Vehicle_API_Logger::get_instance()->log_action(
+            $post_id,
+            'create',
+            array(
+                'title' => $params['titol-anunci'],
+                'user_id' => get_current_user_id()
+            )
+        );
+
         // Asignar las taxonomías al post creado
         foreach ($taxonomy_fields as $field => $taxonomy) {
             if (isset($params[$field])) {
@@ -750,6 +760,48 @@ function process_and_save_meta_fields($post_id, $params)
         }
     }
 
+    // Procesar imagen destacada
+    if (isset($params['imatge-destacada-id'])) {
+        $image_id = intval($params['imatge-destacada-id']);
+        if ($image_id > 0) {
+            // Verificar que la imagen existe y es una imagen válida
+            $image = get_post($image_id);
+            if ($image && wp_attachment_is_image($image_id)) {
+                set_post_thumbnail($post_id, $image_id);
+                error_log("Imagen destacada establecida: {$image_id}");
+            } else {
+                error_log("Error: ID de imagen no válido o no existe: {$image_id}");
+                throw new Exception("ID de imagen destacada no válido");
+            }
+        }
+    }
+
+    // Procesar galería de imágenes
+    if (isset($params['galeria-vehicle'])) {
+        $gallery_ids = is_array($params['galeria-vehicle'])
+            ? $params['galeria-vehicle']
+            : explode(',', $params['galeria-vehicle']);
+
+        $valid_gallery_ids = [];
+
+        foreach ($gallery_ids as $img_id) {
+            $img_id = intval($img_id);
+            if ($img_id > 0) {
+                // Verificar que cada imagen existe y es válida
+                if (wp_attachment_is_image($img_id)) {
+                    $valid_gallery_ids[] = $img_id;
+                } else {
+                    error_log("Error: ID de imagen de galería no válido: {$img_id}");
+                }
+            }
+        }
+
+        if (!empty($valid_gallery_ids)) {
+            update_post_meta($post_id, 'ad_gallery', $valid_gallery_ids);
+            error_log("Galería de imágenes guardada: " . implode(', ', $valid_gallery_ids));
+        }
+    }
+
     if (!empty($errors)) {
         throw new Exception("Errores de validación:\n" . implode("\n", $errors));
     }
@@ -844,6 +896,16 @@ function update_singlecar($request)
             }
         }
 
+        // Logging de actualización
+        Vehicle_API_Logger::get_instance()->log_action(
+            $post_id,
+            'update',
+            array(
+                'title' => $params['titol-anunci'] ?? get_the_title($post_id),
+                'user_id' => get_current_user_id()
+            )
+        );
+
         // Actualizar taxonomías
         foreach ($taxonomy_fields as $field => $taxonomy) {
             if (isset($params[$field])) {
@@ -932,6 +994,16 @@ function delete_singlecar($request)
         if (!$post || $post->post_type !== 'singlecar') {
             throw new Exception('Vehículo no encontrado');
         }
+
+        // Logging antes de eliminar
+        Vehicle_API_Logger::get_instance()->log_action(
+            $post_id,
+            'delete',
+            array(
+                'title' => get_the_title($post_id),
+                'user_id' => get_current_user_id()
+            )
+        );
 
         // Mover a la papelera en lugar de eliminar permanentemente
         $result = wp_trash_post($post_id);
@@ -1075,6 +1147,21 @@ function get_vehicle_details($request)
         if (!in_array($key, ['emissions-vehicle', 'traccio', 'roda-recanvi'])) {
             $response[$key] = $value[0];
         }
+    }
+
+    // Añadir información de imágenes a la respuesta
+    $response['imatge-destacada-id'] = get_post_thumbnail_id($vehicle_id);
+    $response['imatge-destacada-url'] = get_the_post_thumbnail_url($vehicle_id, 'full');
+
+    // Obtener galería
+    $gallery_ids = get_post_meta($vehicle_id, 'ad_gallery', true);
+    if (!empty($gallery_ids)) {
+        $gallery_urls = [];
+        foreach ((array) $gallery_ids as $gallery_id) {
+            $gallery_urls[$gallery_id] = wp_get_attachment_url($gallery_id);
+        }
+        $response['galeria-vehicle'] = $gallery_ids;
+        $response['galeria-vehicle-urls'] = $gallery_urls;
     }
 
     return new WP_REST_Response($response, 200);

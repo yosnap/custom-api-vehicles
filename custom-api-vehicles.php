@@ -11,14 +11,24 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
-// Incluir archivos necesarios
-require_once plugin_dir_path(__FILE__) . 'includes/taxonomy-endpoints.php';
-require_once plugin_dir_path(__FILE__) . 'includes/singlecar-endpoint.php';
-require_once plugin_dir_path(__FILE__) . 'includes/class-vehicle-fields.php';
+// Incluir archivos necesarios en orden correcto
+require_once plugin_dir_path(__FILE__) . 'admin/class-admin-menu.php';          // Primero la clase del menú admin
+require_once plugin_dir_path(__FILE__) . 'includes/class-api-logger.php';       // Luego el logger
+require_once plugin_dir_path(__FILE__) . 'includes/class-vehicle-fields.php';   // Clases de campos
 require_once plugin_dir_path(__FILE__) . 'includes/class-glossary-fields.php';
+require_once plugin_dir_path(__FILE__) . 'includes/taxonomy-endpoints.php';      // Endpoints
+require_once plugin_dir_path(__FILE__) . 'includes/singlecar-endpoint.php';
 
-// Cargar la clase del menú de administración
-require_once plugin_dir_path(__FILE__) . 'admin/class-admin-menu.php';
+// Agregar función de activación del plugin
+function activate_vehicle_api_plugin()
+{
+    // Crear tabla de logs
+    Vehicle_API_Logger::get_instance()->create_log_table();
+
+    // Limpiar caché de rewrite rules
+    flush_rewrite_rules();
+}
+register_activation_hook(__FILE__, 'activate_vehicle_api_plugin');
 
 // Inicializar las clases
 add_action('plugins_loaded', function () {
