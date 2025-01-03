@@ -276,8 +276,16 @@ function create_singlecar($request)
             }
         }
 
-        // Generar título automáticamente
-        $titol_anunci = $params['marques-cotxe'] . ' ' . $params['models-cotxe'] . ' ' . $params['versio'];
+        // Obtener los nombres de los términos para el título
+        $marca_term = get_term_by('slug', $params['marques-cotxe'], 'marques-coches');
+        $model_term = get_term_by('slug', $params['models-cotxe'], 'marques-coches');
+        
+        // Usar los nombres de los términos si existen, si no usar los slugs
+        $marca_name = $marca_term ? $marca_term->name : $params['marques-cotxe'];
+        $model_name = $model_term ? $model_term->name : $params['models-cotxe'];
+        
+        // Generar título automáticamente usando los nombres
+        $titol_anunci = ucfirst($marca_name) . ' ' . strtoupper($model_name) . ' ' . $params['versio'];
         $params['titol-anunci'] = $titol_anunci;
 
         // Transformar el campo carrosseria a segment si existe
