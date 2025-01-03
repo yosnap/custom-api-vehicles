@@ -602,21 +602,47 @@ function process_and_save_meta_fields($post_id, $params)
         'numero-motors' => 'n-motors',
         'carrosseria-cotxe' => 'segment',
         'traccio' => 'traccio',
-        'roda-recanvi' => 'roda-recanvi'
+        'roda-recanvi' => 'roda-recanvi',
+        'anunci-destacat' => 'is-vip'  // Añadido el mapeo de anunci-destacat a is-vip
     );
 
     // Procesar los campos mapeados primero
     foreach ($field_mapping as $api_field => $db_field) {
         if (isset($params[$api_field])) {
             $value = $params[$api_field];
+            
+            // Manejo especial para campos booleanos mapeados
+            if ($db_field === 'is-vip') {
+                $value = strtolower(trim($value));
+                $true_values = ['true', 'si', '1', 'yes', 'on'];
+                $false_values = ['false', 'no', '0', 'off'];
+                
+                if (in_array($value, $true_values, true)) {
+                    $value = 'true';
+                    // Cuando is-vip es true, actualizamos data-vip con el timestamp actual
+                    update_post_meta($post_id, 'data-vip', current_time('timestamp'));
+                } elseif (in_array($value, $false_values, true)) {
+                    $value = 'false';
+                    // Cuando is-vip es false, limpiamos data-vip
+                    update_post_meta($post_id, 'data-vip', '');
+                } else {
+                    $value = 'false';
+                    // Por defecto también limpiamos data-vip
+                    update_post_meta($post_id, 'data-vip', '');
+                }
+            }
+            
             error_log("Guardando campo mapeado {$api_field} como {$db_field} con valor: {$value}");
             update_post_meta($post_id, $db_field, $value);
         }
     }
 
+    // Excluir data-vip de los campos a procesar ya que se maneja automáticamente
+    $excluded_fields = ['data-vip'];
+
     // Procesar campos normales con el mapeo
     foreach ($meta_fields as $field => $type) {
-        if (isset($params[$field]) && !Vehicle_Fields::should_exclude_field($field) && !isset($field_mapping[$field])) {
+        if (isset($params[$field]) && !Vehicle_Fields::should_exclude_field($field) && !isset($field_mapping[$field]) && !in_array($field, $excluded_fields)) {
             try {
                 // Determinar el nombre real del campo en la base de datos
                 $db_field = isset($field_mapping[$field]) ? $field_mapping[$field] : $field;
@@ -630,9 +656,20 @@ function process_and_save_meta_fields($post_id, $params)
                     error_log("Resultado de guardar {$db_field}: " . ($result ? 'éxito' : 'fallo'));
                 }
                 // Procesar campos switch/boolean
-                else if ($type === 'switch') {
-                    $value = filter_var($params[$field], FILTER_VALIDATE_BOOLEAN);
-                    update_post_meta($post_id, $db_field, $value ? 'true' : 'false');
+                else if ($type === 'switch' || $type === 'boolean') {
+                    $value = strtolower(trim($params[$field]));
+                    $true_values = ['true', 'si', '1', 'yes', 'on'];
+                    $false_values = ['false', 'no', '0', 'off'];
+                    
+                    if (in_array($value, $true_values, true)) {
+                        $value = 'true';
+                    } elseif (in_array($value, $false_values, true)) {
+                        $value = 'false';
+                    } else {
+                        $value = 'false'; // valor por defecto si no coincide con ninguno
+                    }
+                    
+                    update_post_meta($post_id, $db_field, $value);
                 }
                 // Procesar campos select/radio
                 else if (in_array($type, ['select', 'radio'])) {
