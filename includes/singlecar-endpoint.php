@@ -86,6 +86,11 @@ add_action('rest_api_init', function () {
 require_once plugin_dir_path(__FILE__) . 'class-vehicle-fields.php';
 require_once plugin_dir_path(__FILE__) . 'class-vehicle-field-handler.php';
 
+// Incluir funciones necesarias para el manejo de medios
+require_once(ABSPATH . 'wp-admin/includes/media.php');
+require_once(ABSPATH . 'wp-admin/includes/file.php');
+require_once(ABSPATH . 'wp-admin/includes/image.php');
+
 function get_singlecar($request)
 {
     $params = $request->get_params();
@@ -301,12 +306,12 @@ function create_singlecar($request)
         // Verificar marca y modelo
         $marca = get_term_by('slug', $params['marques-cotxe'], 'marques-coches');
         if (!$marca) {
-            throw new Exception('La marca especificada no existe');
+            throw new Exception("La marca especificada no existe");
         }
 
         $modelo = get_term_by('slug', $params['models-cotxe'], 'marques-coches');
         if (!$modelo || $modelo->parent != $marca->term_id) {
-            throw new Exception('El modelo especificado no existe o no pertenece a la marca indicada');
+            throw new Exception("El modelo especificado no existe o no pertenece a la marca indicada");
         }
 
         // Validar todos los campos antes de crear el post
@@ -496,7 +501,10 @@ function create_singlecar($request)
                 if ($field === 'imatge-destacada-id') {
                     set_post_thumbnail($post_id, $value);
                 } else if ($field === 'galeria-vehicle' && is_array($value)) {
-                    update_post_meta($post_id, 'ad_gallery', $value);
+                    // Convertir array de IDs a string separado por comas
+                    $gallery_string = implode(',', $value);
+                    delete_post_meta($post_id, 'ad_gallery');
+                    add_post_meta($post_id, 'ad_gallery', $gallery_string);
                 }
             }
         }
@@ -935,27 +943,40 @@ function process_and_save_meta_fields($post_id, $params)
 
     // Procesar galería de imágenes
     if (isset($params['galeria-vehicle'])) {
-        $gallery_ids = is_array($params['galeria-vehicle'])
-            ? $params['galeria-vehicle']
-            : explode(',', $params['galeria-vehicle']);
+        $gallery_ids = [];
+        $gallery = $params['galeria-vehicle'];
+        
+        if (!is_array($gallery)) {
+            $gallery = [$gallery];
+        }
 
-        $valid_gallery_ids = [];
-
-        foreach ($gallery_ids as $img_id) {
-            $img_id = intval($img_id);
-            if ($img_id > 0) {
-                // Verificar que cada imagen existe y es válida
-                if (wp_attachment_is_image($img_id)) {
-                    $valid_gallery_ids[] = $img_id;
-                } else {
-                    error_log("Error: ID de imagen de galería no válido: {$img_id}");
+        foreach ($gallery as $image) {
+            if (is_string($image)) {
+                if (filter_var($image, FILTER_VALIDATE_URL)) {
+                    // Es una URL
+                    $upload = media_sideload_image($image, $post_id, '', 'id');
+                    if (!is_wp_error($upload)) {
+                        $gallery_ids[] = $upload;
+                    }
+                } else if (strpos($image, 'data:image') === 0) {
+                    // Es base64
+                    $upload = upload_base64_image($image, $post_id);
+                    if (!is_wp_error($upload)) {
+                        $gallery_ids[] = $upload;
+                    }
                 }
+            } else if (is_numeric($image)) {
+                // Es un ID de imagen existente
+                $gallery_ids[] = $image;
             }
         }
 
-        if (!empty($valid_gallery_ids)) {
-            update_post_meta($post_id, 'ad_gallery', $valid_gallery_ids);
-            error_log("Galería de imágenes guardada: " . implode(', ', $valid_gallery_ids));
+        if (!empty($gallery_ids)) {
+            // Convertir array de IDs a string separado por comas y guardarlo como array con un elemento
+            $gallery_string = implode(',', $gallery_ids);
+            delete_post_meta($post_id, 'ad_gallery');
+            add_post_meta($post_id, 'ad_gallery', $gallery_string);
+            error_log("Guardando galería: " . print_r(array($gallery_string), true));
         }
     }
 
@@ -984,109 +1005,204 @@ function update_singlecar($request)
             throw new Exception('No tienes permiso para editar este vehículo');
         }
 
+        // Procesar imagen destacada si se proporciona
+        if (isset($params['imatge-destacada-id'])) {
+            $featured_image = $params['imatge-destacada-id'];
+            
+            // Si es una URL o base64
+            if (is_string($featured_image)) {
+                if (filter_var($featured_image, FILTER_VALIDATE_URL)) {
+                    // Es una URL
+                    $upload = media_sideload_image($featured_image, $post_id, '', 'id');
+                    if (!is_wp_error($upload)) {
+                        set_post_thumbnail($post_id, $upload);
+                    } else {
+                        throw new Exception('Error al procesar la imagen destacada: ' . $upload->get_error_message());
+                    }
+                } else if (strpos($featured_image, 'data:image') === 0) {
+                    // Es base64
+                    $upload = upload_base64_image($featured_image, $post_id);
+                    if (!is_wp_error($upload)) {
+                        set_post_thumbnail($post_id, $upload);
+                    } else {
+                        throw new Exception('Error al procesar la imagen destacada: ' . $upload->get_error_message());
+                    }
+                }
+            } else if (is_numeric($featured_image)) {
+                // Es un ID de imagen existente
+                set_post_thumbnail($post_id, $featured_image);
+            }
+        }
+
+        // Procesar galería si se proporciona
+        if (isset($params['galeria-vehicle'])) {
+            $gallery_images = [];
+            $gallery = $params['galeria-vehicle'];
+            
+            if (!is_array($gallery)) {
+                $gallery = [$gallery];
+            }
+
+            foreach ($gallery as $image) {
+                if (is_string($image)) {
+                    if (filter_var($image, FILTER_VALIDATE_URL)) {
+                        // Es una URL
+                        $upload = media_sideload_image($image, $post_id, '', 'id');
+                        if (!is_wp_error($upload)) {
+                            $gallery_images[] = $upload;
+                        }
+                    } else if (strpos($image, 'data:image') === 0) {
+                        // Es base64
+                        $upload = upload_base64_image($image, $post_id);
+                        if (!is_wp_error($upload)) {
+                            $gallery_images[] = $upload;
+                        }
+                    }
+                } else if (is_numeric($image)) {
+                    // Es un ID de imagen existente
+                    $gallery_images[] = $image;
+                }
+            }
+
+            if (!empty($gallery_images)) {
+                // Convertir array de IDs a string separado por comas y guardarlo como array con un elemento
+                $gallery_string = implode(',', $gallery_images);
+                delete_post_meta($post_id, 'ad_gallery');
+                add_post_meta($post_id, 'ad_gallery', $gallery_string);
+                error_log("Guardando galería: " . print_r(array($gallery_string), true));
+            }
+        }
+
         // Transformar el campo carrosseria a segment si existe
         if (isset($params['carrosseria-cotxe'])) {
             $params['segment'] = $params['carrosseria-cotxe'];
             unset($params['carrosseria-cotxe']);
         }
 
-        // Validar taxonomías antes de actualizar
+        // Validar taxonomías si se están actualizando
         $taxonomy_fields = Vehicle_Fields::get_taxonomy_fields();
         $allowed_values = Vehicle_Fields::get_allowed_taxonomy_values();
 
         foreach ($taxonomy_fields as $field => $taxonomy) {
             if (isset($params[$field])) {
                 // Validar que el valor esté permitido
-                if (isset($allowed_values[$field]) && !in_array($params[$field], $allowed_values[$field])) {
-                    throw new Exception(sprintf(
-                        'El valor "%s" no es válido para %s. Valores válidos: %s',
-                        $params[$field],
-                        $field,
-                        implode(', ', $allowed_values[$field])
-                    ));
+                if (isset($allowed_values[$field])) {
+                    if (!in_array($params[$field], $allowed_values[$field])) {
+                        throw new Exception(sprintf(
+                            'El valor "%s" no es válido para %s. Valores permitidos: %s',
+                            $params[$field],
+                            $field,
+                            implode(', ', $allowed_values[$field])
+                        ));
+                    }
                 }
 
                 // Verificar que el término existe
                 $term = get_term_by('slug', $params[$field], $taxonomy);
                 if (!$term) {
+                    // Obtener términos válidos para esta taxonomía
+                    $valid_terms = get_terms([
+                        'taxonomy' => $taxonomy,
+                        'hide_empty' => false,
+                        'fields' => 'slugs'
+                    ]);
+                    
                     throw new Exception(sprintf(
-                        'El término "%s" no existe en la taxonomía %s',
+                        'El término "%s" no existe en la taxonomía %s. Términos válidos: %s',
                         $params[$field],
-                        $taxonomy
+                        $taxonomy,
+                        implode(', ', $valid_terms)
                     ));
                 }
             }
         }
 
-        // Si se proporcionan marca y modelo, verificar que son válidos
+        // Validar marca y modelo si se están actualizando
         if (isset($params['marques-cotxe'])) {
             $marca = get_term_by('slug', $params['marques-cotxe'], 'marques-coches');
             if (!$marca) {
-                throw new Exception('La marca especificada no existe');
+                $marcas_disponibles = get_terms([
+                    'taxonomy' => 'marques-coches',
+                    'parent' => 0,
+                    'hide_empty' => false,
+                    'fields' => 'slugs'
+                ]);
+                throw new Exception(sprintf(
+                    'La marca "%s" no existe. Marcas disponibles: %s',
+                    $params['marques-cotxe'],
+                    implode(', ', $marcas_disponibles)
+                ));
             }
 
             // Si hay modelo, verificar que pertenece a la marca
             if (isset($params['models-cotxe'])) {
                 $modelo = get_term_by('slug', $params['models-cotxe'], 'marques-coches');
                 if (!$modelo || $modelo->parent != $marca->term_id) {
-                    throw new Exception('El modelo especificado no existe o no pertenece a la marca indicada');
+                    $modelos_disponibles = get_terms([
+                        'taxonomy' => 'marques-coches',
+                        'parent' => $marca->term_id,
+                        'hide_empty' => false,
+                        'fields' => 'slugs'
+                    ]);
+                    throw new Exception(sprintf(
+                        'El modelo "%s" no existe o no pertenece a la marca %s. Modelos disponibles para esta marca: %s',
+                        $params['models-cotxe'],
+                        $marca->name,
+                        implode(', ', $modelos_disponibles)
+                    ));
                 }
             }
         }
 
-        // Validar todos los campos antes de actualizar
+        // Validar los campos que se están actualizando
         validate_all_fields($params);
 
-        // Actualizar datos básicos del post si se proporcionan
-        $post_data = array('ID' => $post_id);
-
+        // Actualizar datos básicos del post solo si se proporcionan
+        $post_data = ['ID' => $post_id];
+        
         if (isset($params['titol-anunci'])) {
             $post_data['post_title'] = wp_strip_all_tags($params['titol-anunci']);
         }
         if (isset($params['descripcio-anunci'])) {
             $post_data['post_content'] = $params['descripcio-anunci'];
         }
-        if (!empty($post_data)) {
+
+        if (count($post_data) > 1) { // Si hay más campos además del ID
             $result = wp_update_post($post_data);
             if (is_wp_error($result)) {
                 throw new Exception($result->get_error_message());
             }
         }
 
-        // Logging de actualización
-        Vehicle_API_Logger::get_instance()->log_action(
-            $post_id,
-            'update',
-            array(
-                'title' => $params['titol-anunci'] ?? get_the_title($post_id),
-                'user_id' => get_current_user_id()
-            )
-        );
-
-        // Actualizar taxonomías
+        // Actualizar taxonomías que se proporcionan
         foreach ($taxonomy_fields as $field => $taxonomy) {
             if (isset($params[$field])) {
                 $term = get_term_by('slug', $params[$field], $taxonomy);
-                $result = wp_set_object_terms($post_id, $term->term_id, $taxonomy);
-                if (is_wp_error($result)) {
-                    throw new Exception(sprintf('Error al actualizar el término %s', $params[$field]));
+                if ($term) {
+                    $result = wp_set_object_terms($post_id, [$term->term_id], $taxonomy);
+                    if (is_wp_error($result)) {
+                        throw new Exception(sprintf('Error al actualizar el término %s: %s', 
+                            $params[$field], 
+                            $result->get_error_message()
+                        ));
+                    }
                 }
             }
         }
 
         // Actualizar marca y modelo si se proporcionan
         if (isset($params['marques-cotxe'])) {
-            $terms = array($marca->term_id);
+            $terms = [$marca->term_id];
             if (isset($params['models-cotxe'])) {
                 $terms[] = $modelo->term_id;
             }
             $result = wp_set_object_terms($post_id, $terms, 'marques-coches');
             if (is_wp_error($result)) {
-                throw new Exception('Error al actualizar marca y modelo');
+                throw new Exception('Error al actualizar marca y modelo: ' . $result->get_error_message());
             }
         }
 
-        // Procesar y guardar campos meta
+        // Procesar y guardar campos meta e imágenes
         process_and_save_meta_fields($post_id, $params);
 
         $wpdb->query('COMMIT');
@@ -1115,9 +1231,9 @@ function update_singlecar($request)
         if (!is_wp_error($terms)) {
             foreach ($terms as $term) {
                 if ($term->parent === 0) {
-                    $response['marca'] = $term->slug;
+                    $response['marques-cotxe'] = $term->slug;
                 } else {
-                    $response['modelo'] = $term->slug;
+                    $response['models-cotxe'] = $term->slug;
                 }
             }
         }
@@ -1126,10 +1242,10 @@ function update_singlecar($request)
 
     } catch (Exception $e) {
         $wpdb->query('ROLLBACK');
-        return new WP_REST_Response(array(
+        return new WP_REST_Response([
             'status' => 'error',
             'message' => $e->getMessage()
-        ), 400);
+        ], 400);
     }
 }
 
