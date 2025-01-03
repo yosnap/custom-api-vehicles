@@ -177,7 +177,7 @@ class Vehicle_Fields
         return [
             'tipus-vehicle' => 'types-of-transport',
             'tipus-combustible' => 'tipus-combustible',
-            'tipus-canvi' => 'tipus-de-canvi',
+            'tipus-canvi-cotxe' => 'tipus-de-canvi',
             'tipus-propulsor' => 'tipus-de-propulsor',
             'estat-vehicle' => 'estat-vehicle',
             'color-exterior' => 'color'

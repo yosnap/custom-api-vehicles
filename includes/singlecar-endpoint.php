@@ -183,8 +183,44 @@ function create_singlecar($request)
 
         $params = $request->get_params();
 
+        // Agregar el mapeo de campos nuevos a antiguos
+        $field_mapping = array(
+            'anunci-destacat' => 'is-vip',
+            'data-destacat' => 'data-vip',
+            'velocitat-max-cotxe' => 'velocitat-maxima',  // Corregido de velocitat-maxima-cotxe
+            'numero-maleters-cotxe' => 'maleters',
+            'capacitat-maleters-cotxe' => 'capacitat-total',
+            'acceleracio-0-100-cotxe' => 'acceleracio-0-100',
+            'numero-motors' => 'n-motors',
+            'any-fabricacio' => 'any',
+            'galeria-vehicle' => 'ad_gallery',
+            'carrosseria-cotxe' => 'segment',  // Agregado nuevo mapeo
+            'traccio' => 'traccio',           // Asegurar que se mapee correctamente
+            'roda-recanvi' => 'roda-recanvi'  // Asegurar que se mapee correctamente
+        );
+
+        // En la función que procesa los parámetros
+        $processed_params = array();
+        foreach ($params as $key => $value) {
+            $db_field = isset($field_mapping[$key]) ? $field_mapping[$key] : $key;
+            error_log("Mapeando campo {$key} a {$db_field}");
+            $processed_params[$db_field] = $value;
+        }
+
         // Verificar campos requeridos
-        $required_fields = ['title', 'content', 'marca', 'modelo'];
+        $required_fields = [
+            'titol-anunci',
+            'descripcio-anunci',
+            'marques-cotxe', // Cambiado de 'marca'
+            'models-cotxe',  // Cambiado de 'modelo'
+            'preu',
+            'tipus-vehicle',
+            'estat-vehicle',
+            'tipus-combustible',
+            'tipus-canvi-cotxe',
+            'quilometratge'
+        ];
+
         foreach ($required_fields as $field) {
             if (empty($params[$field])) {
                 throw new Exception(sprintf('El campo %s es requerido', $field));
@@ -226,12 +262,12 @@ function create_singlecar($request)
         }
 
         // Verificar marca y modelo
-        $marca = get_term_by('slug', $params['marca'], 'marques-coches');
+        $marca = get_term_by('slug', $params['marques-cotxe'], 'marques-coches');
         if (!$marca) {
             throw new Exception('La marca especificada no existe');
         }
 
-        $modelo = get_term_by('slug', $params['modelo'], 'marques-coches');
+        $modelo = get_term_by('slug', $params['models-cotxe'], 'marques-coches');
         if (!$modelo || $modelo->parent != $marca->term_id) {
             throw new Exception('El modelo especificado no existe o no pertenece a la marca indicada');
         }
@@ -239,10 +275,65 @@ function create_singlecar($request)
         // Validar todos los campos antes de crear el post
         validate_all_fields($params);
 
+        // Taxonomías requeridas y sus nombres en la base de datos
+        $required_taxonomies = [
+            'tipus-vehicle' => 'types-of-transport',
+            'tipus-combustible' => 'tipus-combustible',
+            'tipus-propulsor' => 'tipus-de-propulsor',
+            'estat-vehicle' => 'estat-vehicle'
+        ];
+
+        // Verificar taxonomías requeridas
+        foreach ($required_taxonomies as $field => $taxonomy) {
+            if (!isset($params[$field]) || empty($params[$field])) {
+                throw new Exception(sprintf('La taxonomía %s es requerida', $field));
+            }
+
+            // Primero intentar obtener el término por slug
+            $term = get_term_by('slug', $params[$field], $taxonomy);
+
+            // Si no se encuentra por slug, intentar por nombre
+            if (!$term) {
+                $term = get_term_by('name', $params[$field], $taxonomy);
+            }
+
+            if (!$term) {
+                // Obtener todos los términos válidos
+                $valid_terms = get_terms([
+                    'taxonomy' => $taxonomy,
+                    'hide_empty' => false,
+                    'fields' => 'names'
+                ]);
+
+                if (is_wp_error($valid_terms)) {
+                    $valid_terms = [];
+                }
+
+                $term_list = !empty($valid_terms) ? implode(', ', $valid_terms) : 'ninguno disponible';
+
+                throw new Exception(sprintf(
+                    'Valor no válido para %s. Valores permitidos: %s',
+                    $field,
+                    $term_list
+                ));
+            }
+
+            // Si llegamos aquí, hemos encontrado un término válido, así que lo asignamos
+            $result = wp_set_object_terms($post_id, $term->term_id, $taxonomy);
+            if (is_wp_error($result)) {
+                throw new Exception(sprintf(
+                    'Error al asignar el término %s a la taxonomía %s: %s',
+                    $params[$field],
+                    $taxonomy,
+                    $result->get_error_message()
+                ));
+            }
+        }
+
         // Crear el post
         $post_data = array(
-            'post_title' => wp_strip_all_tags($params['title']),
-            'post_content' => $params['content'],
+            'post_title' => wp_strip_all_tags($params['titol-anunci']),
+            'post_content' => $params['descripcio-anunci'],
             'post_status' => 'publish',
             'post_type' => 'singlecar'
         );
@@ -281,8 +372,8 @@ function create_singlecar($request)
             'status' => 'success',
             'message' => 'Vehículo creado exitosamente',
             'post_id' => $post_id,
-            'title' => $post->post_title,
-            'content' => $post->post_content,
+            'titol-anunci' => $post->post_title,
+            'descripcio-anunci' => $post->post_content,
             'status' => $post->post_status
         ];
 
@@ -322,6 +413,44 @@ function create_singlecar($request)
     }
 }
 
+function validate_glossary_field($field, $value)
+{
+    if (!function_exists('jet_engine')) {
+        throw new Exception("JetEngine no está disponible");
+    }
+
+    $glossary_mapping = [
+        'traccio' => '59',             // Tracció
+        'roda-recanvi' => '60',        // Roda recanvi
+        'segment' => '41',             // Carrosseria
+        'carrosseria-cotxe' => '41',   // También usar el glosario 41 para carrosseria-cotxe
+        'color-vehicle' => '51',       // Color Exterior
+        'tipus-canvi' => '46',         // Tipus de canvi coche
+        'tipus-tapisseria' => '52',    // Tapisseria
+        'color-tapisseria' => '53',    // Color Tapisseria
+        'emissions-vehicle' => '58'    // Tipus Emissions
+    ];
+
+    // Si el campo es carrosseria-cotxe, usar segment para la validación
+    $field_to_validate = ($field === 'carrosseria-cotxe') ? 'segment' : $field;
+
+    if (!isset($glossary_mapping[$field_to_validate])) {
+        throw new Exception("Campo de glosario no reconocido: {$field}");
+    }
+
+    $glossary_id = $glossary_mapping[$field_to_validate];
+
+    $jet_engine = jet_engine();
+    $options = $jet_engine->glossaries->filters->get_glossary_options($glossary_id);
+
+    if (!isset($options[$value])) {
+        $valid_values = implode(', ', array_keys($options));
+        throw new Exception("Valor no válido para {$field}. Valores permitidos: {$valid_values}");
+    }
+
+    return true;
+}
+
 function validate_all_fields($params)
 {
     // Lista de campos a validar con sus tipos
@@ -331,14 +460,11 @@ function validate_all_fields($params)
         'roda-recanvi' => 'glossary',
         'segment' => 'glossary',
         'color-vehicle' => 'glossary',
-        'tipus-vehicle' => 'glossary',
-        'tipus-combustible' => 'glossary',
         'tipus-canvi' => 'glossary',
-        'tipus-propulsor' => 'glossary',
-        'estat-vehicle' => 'glossary',
         'tipus-tapisseria' => 'glossary',
         'color-tapisseria' => 'glossary',
         'emissions-vehicle' => 'glossary',
+        // Removidos los campos que son taxonomías
         // Campos booleanos
         'is-vip' => 'boolean',
         'venut' => 'boolean',
@@ -379,6 +505,29 @@ function validate_all_fields($params)
         }
     }
 
+    // Validar campos de glosario
+    $glossary_fields = [
+        'traccio',
+        'roda-recanvi',
+        'segment',
+        'color-vehicle',
+        'tipus-canvi',
+        'tipus-tapisseria',
+        'color-tapisseria',
+        'emissions-vehicle'
+        // Removidos los campos que son taxonomías
+    ];
+
+    foreach ($glossary_fields as $field) {
+        if (isset($params[$field])) {
+            try {
+                validate_glossary_field($field, $params[$field]);
+            } catch (Exception $e) {
+                $errors[] = $e->getMessage();
+            }
+        }
+    }
+
     // Si hay errores, lanzar una excepción con todos los errores
     if (!empty($errors)) {
         throw new Exception("Errores de validación:\n" . implode("\n", $errors));
@@ -396,33 +545,58 @@ function process_and_save_meta_fields($post_id, $params)
     error_log('Parámetros recibidos: ' . print_r($params, true));
     error_log('Meta fields configurados: ' . print_r($meta_fields, true));
 
-    // Procesar campos normales
-    foreach ($meta_fields as $field => $type) {
-        if (isset($params[$field]) && !Vehicle_Fields::should_exclude_field($field)) {
-            try {
-                error_log("Procesando campo: {$field} con valor: {$params[$field]} de tipo: {$type}");
+    // Mapeo específico para campos que necesitan transformación
+    $field_mapping = array(
+        'any-fabricacio' => 'any',
+        'velocitat-max-cotxe' => 'velocitat-maxima',  // Corregido de velocitat-maxima-cotxe
+        'numero-maleters-cotxe' => 'maleters',
+        'capacitat-maleters-cotxe' => 'capacitat-total',
+        'acceleracio-0-100-cotxe' => 'acceleracio-0-100',
+        'numero-motors' => 'n-motors',
+        'carrosseria-cotxe' => 'segment',
+        'traccio' => 'traccio',
+        'roda-recanvi' => 'roda-recanvi'
+    );
 
-                // Procesar campos numéricos
+    // Procesar los campos mapeados primero
+    foreach ($field_mapping as $api_field => $db_field) {
+        if (isset($params[$api_field])) {
+            $value = $params[$api_field];
+            error_log("Guardando campo mapeado {$api_field} como {$db_field} con valor: {$value}");
+            update_post_meta($post_id, $db_field, $value);
+        }
+    }
+
+    // Procesar campos normales con el mapeo
+    foreach ($meta_fields as $field => $type) {
+        if (isset($params[$field]) && !Vehicle_Fields::should_exclude_field($field) && !isset($field_mapping[$field])) {
+            try {
+                // Determinar el nombre real del campo en la base de datos
+                $db_field = isset($field_mapping[$field]) ? $field_mapping[$field] : $field;
+
+                error_log("Procesando campo: {$field} (DB field: {$db_field}) con valor: {$params[$field]} de tipo: {$type}");
+
+                // El resto del procesamiento usando $db_field en lugar de $field para guardar
                 if ($type === 'number') {
                     $value = floatval($params[$field]);
-                    $result = update_post_meta($post_id, $field, $value);
-                    error_log("Resultado de guardar {$field}: " . ($result ? 'éxito' : 'fallo'));
+                    $result = update_post_meta($post_id, $db_field, $value);
+                    error_log("Resultado de guardar {$db_field}: " . ($result ? 'éxito' : 'fallo'));
                 }
                 // Procesar campos switch/boolean
                 else if ($type === 'switch') {
                     $value = filter_var($params[$field], FILTER_VALIDATE_BOOLEAN);
-                    update_post_meta($post_id, $field, $value ? 'true' : 'false');
+                    update_post_meta($post_id, $db_field, $value ? 'true' : 'false');
                 }
                 // Procesar campos select/radio
                 else if (in_array($type, ['select', 'radio'])) {
-                    update_post_meta($post_id, $field, sanitize_text_field($params[$field]));
+                    update_post_meta($post_id, $db_field, sanitize_text_field($params[$field]));
                 }
                 // Manejo especial para extres-cotxe
                 else if ($field === 'extres-cotxe') {
                     $processed_value = (array) $params[$field];
 
                     // Eliminar valores antiguos
-                    delete_post_meta($post_id, $field);
+                    delete_post_meta($post_id, $db_field);
 
                     // Crear la estructura que espera JetEngine con tres índices
                     $jet_engine_format = [
@@ -433,7 +607,7 @@ function process_and_save_meta_fields($post_id, $params)
 
                     // Guardar cada array como una entrada separada
                     foreach ($jet_engine_format as $value_array) {
-                        add_post_meta($post_id, $field, $value_array);
+                        add_post_meta($post_id, $db_field, $value_array);
                     }
                 }
                 // Para otros arrays
@@ -443,19 +617,19 @@ function process_and_save_meta_fields($post_id, $params)
                     });
 
                     if (!empty($processed_value)) {
-                        delete_post_meta($post_id, $field);
+                        delete_post_meta($post_id, $db_field);
                         foreach ($processed_value as $value) {
-                            add_post_meta($post_id, $field, $value);
+                            add_post_meta($post_id, $db_field, $value);
                         }
                     } else {
-                        delete_post_meta($post_id, $field);
+                        delete_post_meta($post_id, $db_field);
                     }
                 } else {
                     // Para valores simples
                     if ($params[$field] !== null) {
-                        update_post_meta($post_id, $field, $params[$field]);
+                        update_post_meta($post_id, $db_field, $params[$field]);
                     } else {
-                        delete_post_meta($post_id, $field);
+                        delete_post_meta($post_id, $db_field);
                     }
                 }
             } catch (Exception $e) {
@@ -463,6 +637,45 @@ function process_and_save_meta_fields($post_id, $params)
                 $errors[] = $e->getMessage();
             }
         }
+    }
+
+    // Procesar los campos de glosario primero
+    $glossary_fields = array(
+        'carrosseria-cotxe' => 'carrosseria-cotxe', // Cambiado para usar el mismo nombre y validar contra glosario 41
+        'traccio' => 'traccio',
+        'roda-recanvi' => 'roda-recanvi'
+    );
+
+    // Procesar carrosseria-cotxe especialmente ya que su valor va al glosario segment
+    if (isset($params['carrosseria-cotxe'])) {
+        try {
+            // Validar el valor contra el glosario segment
+            validate_glossary_field('carrosseria-cotxe', $params['carrosseria-cotxe']);
+            // Si es válido, guardarlo en el meta segment
+            update_post_meta($post_id, 'segment', $params['carrosseria-cotxe']);
+            error_log("Guardando carrosseria-cotxe en segment con valor: " . $params['carrosseria-cotxe']);
+        } catch (Exception $e) {
+            $errors[] = $e->getMessage();
+        }
+    }
+
+    foreach ($glossary_fields as $api_field => $db_field) {
+        if (isset($params[$api_field])) {
+            try {
+                $value = $params[$api_field];
+                validate_glossary_field($db_field, $value); // Esto validará contra el glosario correcto
+                error_log("Guardando campo de glosario {$api_field} como {$db_field} con valor: {$value}");
+                update_post_meta($post_id, $db_field, $value);
+            } catch (Exception $e) {
+                $errors[] = $e->getMessage();
+            }
+        }
+    }
+
+    // También procesar el campo any-fabricacio si existe pero no está en meta_fields
+    if (isset($params['any-fabricacio']) && !isset($meta_fields['any-fabricacio'])) {
+        update_post_meta($post_id, 'any', $params['any-fabricacio']);
+        error_log("Guardando any-fabricacio como any: " . $params['any-fabricacio']);
     }
 
     // Manejar el campo data-vip y is-vip
@@ -521,9 +734,9 @@ function update_singlecar($request)
         }
 
         // Transformar el campo carrosseria a segment si existe
-        if (isset($params['carrosseria'])) {
-            $params['segment'] = $params['carrosseria'];
-            unset($params['carrosseria']);
+        if (isset($params['carrosseria-cotxe'])) {
+            $params['segment'] = $params['carrosseria-cotxe'];
+            unset($params['carrosseria-cotxe']);
         }
 
         // Validar taxonomías antes de actualizar
@@ -555,15 +768,15 @@ function update_singlecar($request)
         }
 
         // Si se proporcionan marca y modelo, verificar que son válidos
-        if (isset($params['marca'])) {
-            $marca = get_term_by('slug', $params['marca'], 'marques-coches');
+        if (isset($params['marques-cotxe'])) {
+            $marca = get_term_by('slug', $params['marques-cotxe'], 'marques-coches');
             if (!$marca) {
                 throw new Exception('La marca especificada no existe');
             }
 
             // Si hay modelo, verificar que pertenece a la marca
-            if (isset($params['modelo'])) {
-                $modelo = get_term_by('slug', $params['modelo'], 'marques-coches');
+            if (isset($params['models-cotxe'])) {
+                $modelo = get_term_by('slug', $params['models-cotxe'], 'marques-coches');
                 if (!$modelo || $modelo->parent != $marca->term_id) {
                     throw new Exception('El modelo especificado no existe o no pertenece a la marca indicada');
                 }
@@ -576,11 +789,11 @@ function update_singlecar($request)
         // Actualizar datos básicos del post si se proporcionan
         $post_data = array('ID' => $post_id);
 
-        if (isset($params['title'])) {
-            $post_data['post_title'] = wp_strip_all_tags($params['title']);
+        if (isset($params['titol-anunci'])) {
+            $post_data['post_title'] = wp_strip_all_tags($params['titol-anunci']);
         }
-        if (isset($params['content'])) {
-            $post_data['post_content'] = $params['content'];
+        if (isset($params['descripcio-anunci'])) {
+            $post_data['post_content'] = $params['descripcio-anunci'];
         }
         if (!empty($post_data)) {
             $result = wp_update_post($post_data);
@@ -601,9 +814,9 @@ function update_singlecar($request)
         }
 
         // Actualizar marca y modelo si se proporcionan
-        if (isset($params['marca'])) {
+        if (isset($params['marques-cotxe'])) {
             $terms = array($marca->term_id);
-            if (isset($params['modelo'])) {
+            if (isset($params['models-cotxe'])) {
                 $terms[] = $modelo->term_id;
             }
             $result = wp_set_object_terms($post_id, $terms, 'marques-coches');
@@ -623,8 +836,8 @@ function update_singlecar($request)
             'status' => 'success',
             'message' => 'Vehículo actualizado exitosamente',
             'post_id' => $post_id,
-            'title' => $post->post_title,
-            'content' => $post->post_content,
+            'titol-anunci' => $post->post_title,
+            'descripcio-anunci' => $post->post_content,
             'status' => $post->post_status
         ];
 
