@@ -2,8 +2,8 @@
 /*
 Plugin Name: Custom API Vehicles
 Description: API personalizada para gestionar vehículos
-Version: 1.0
-Author: Your Name
+Version: 1.3
+Author: Sn4p.dev
 */
 
 // No direct access allowed

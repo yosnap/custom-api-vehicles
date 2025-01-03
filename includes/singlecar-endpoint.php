@@ -5,7 +5,9 @@ add_action('rest_api_init', function () {
         [
             'methods' => 'GET',
             'callback' => 'get_singlecar',
-            'permission_callback' => '__return_true',
+            'permission_callback' => function () {
+                return is_user_logged_in();
+            },
         ],
         [
             'methods' => 'POST',
@@ -35,8 +37,36 @@ add_action('rest_api_init', function () {
     ]);
 
     register_rest_route('api-motor/v1', '/vehicles/(?P<id>\d+)', [
-        'methods' => 'GET',
-        'callback' => 'get_vehicle_details',
+        [
+            'methods' => 'GET',
+            'callback' => 'get_vehicle_details',
+            'permission_callback' => function ($request) {
+                if (!is_user_logged_in()) {
+                    return false;
+                }
+                return verify_post_ownership($request['id']);
+            },
+        ],
+        [
+            'methods' => 'PUT',
+            'callback' => 'update_singlecar',
+            'permission_callback' => function ($request) {
+                if (!is_user_logged_in()) {
+                    return false;
+                }
+                return verify_post_ownership($request['id']);
+            },
+        ],
+        [
+            'methods' => 'DELETE',
+            'callback' => 'delete_singlecar',
+            'permission_callback' => function ($request) {
+                if (!is_user_logged_in()) {
+                    return false;
+                }
+                return verify_post_ownership($request['id']);
+            },
+        ],
         'args' => [
             'id' => [
                 'validate_callback' => function ($param, $request, $key) {
@@ -59,6 +89,7 @@ require_once plugin_dir_path(__FILE__) . 'class-vehicle-field-handler.php';
 function get_singlecar($request)
 {
     $params = $request->get_params();
+    $current_user_id = get_current_user_id();
 
     // Configuración de paginación
     $paged = isset($params['page']) ? intval($params['page']) : 1;
@@ -69,7 +100,13 @@ function get_singlecar($request)
         'post_type' => 'singlecar',
         'posts_per_page' => $posts_per_page,
         'paged' => $paged,
+        'author' => $current_user_id, // Filtrar solo por el autor actual
     ];
+
+    // Si el usuario es administrador y se proporciona un user_id específico
+    if (current_user_can('administrator') && isset($params['user_id'])) {
+        $args['author'] = intval($params['user_id']);
+    }
 
     // Filtro por post_id
     if (isset($params['post_id'])) {
@@ -733,6 +770,11 @@ function update_singlecar($request)
             throw new Exception('Vehículo no encontrado');
         }
 
+        // Verificar propiedad
+        if (!verify_post_ownership($post_id)) {
+            throw new Exception('No tienes permiso para editar este vehículo');
+        }
+
         // Transformar el campo carrosseria a segment si existe
         if (isset($params['carrosseria-cotxe'])) {
             $params['segment'] = $params['carrosseria-cotxe'];
@@ -880,6 +922,11 @@ function delete_singlecar($request)
 
         $post_id = $request['id'];
 
+        // Verificación adicional de propiedad antes de eliminar
+        if (!verify_post_ownership($post_id)) {
+            throw new Exception('No tienes permiso para eliminar este vehículo');
+        }
+
         // Verificar que el post existe y es del tipo correcto
         $post = get_post($post_id);
         if (!$post || $post->post_type !== 'singlecar') {
@@ -906,13 +953,23 @@ function delete_singlecar($request)
         return new WP_REST_Response([
             'status' => 'error',
             'message' => $e->getMessage()
-        ], 400);
+        ], 403); // Cambiado a 403 para indicar acceso prohibido
     }
 }
 
 function get_vehicle_details($request)
 {
     $vehicle_id = $request['id'];
+
+    // Verificar propiedad
+    if (!verify_post_ownership($vehicle_id)) {
+        return new WP_Error(
+            'forbidden_access',
+            'No tienes permiso para ver este vehículo',
+            ['status' => 403]
+        );
+    }
+
     $post = get_post($vehicle_id);
 
     if (!$post || $post->post_type !== 'singlecar') {
@@ -1031,4 +1088,20 @@ function debug_vehicle_fields()
     return new WP_REST_Response([
         'fields' => $meta_fields
     ], 200);
+}
+
+// Función helper para verificar propiedad del post
+function verify_post_ownership($post_id)
+{
+    if (!is_user_logged_in()) {
+        return false;
+    }
+
+    $post = get_post($post_id);
+    if (!$post || $post->post_type !== 'singlecar') {
+        return false;
+    }
+
+    // Permitir acceso si el usuario es el autor o es administrador
+    return $post->post_author == get_current_user_id() || current_user_can('administrator');
 }
