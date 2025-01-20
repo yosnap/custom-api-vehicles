@@ -121,18 +121,7 @@ function get_singlecar($request)
     // Filtro por post_name
     if (isset($params['post_name'])) {
         $args['name'] = sanitize_title($params['post_name']);
-        error_log('Filtro aplicado por post_name: ' . $args['name']);
     }
-
-    // Filtro por user_id
-    if (isset($params['user_id'])) {
-        $args['author'] = intval($params['user_id']);
-        error_log('Filtro aplicado por user_id: ' . $args['author']);
-    }
-
-    // Filtro por el usuario actual
-    $current_user_id = get_current_user_id();
-    $args['author'] = $current_user_id;
 
     // Filtros por taxonomías
     $tax_query = [];
@@ -180,27 +169,146 @@ function get_singlecar($request)
         $args['meta_query'] = $meta_query;
     }
 
-    // Agregar líneas de depuración para la consulta
-    error_log('Argumentos de consulta: ' . print_r($args, true));
-
     $query = new WP_Query($args);
     $vehicles = [];
+
+    function get_field_label($field_name, $value) {
+        // Si no hay valor, devolver string vacío
+        if (empty($value) && $value !== '0' && $value !== 0) {
+            return '';
+        }
+
+        // Obtener el tipo de campo
+        $meta_fields = Vehicle_Fields::get_meta_fields();
+        $field_type = $meta_fields[$field_name] ?? null;
+
+        // Manejar campos booleanos y switch
+        if ($field_type === 'boolean' || $field_type === 'switch') {
+            return filter_var($value, FILTER_VALIDATE_BOOLEAN);
+        }
+
+        // Si es un campo numérico, devolverlo como está
+        if ($field_type === 'number') {
+            return $value;
+        }
+
+        // Si es un campo de glosario
+        if ($field_type === 'glossary') {
+            if (!function_exists('jet_engine') || !isset(jet_engine()->glossaries)) {
+                return $value;
+            }
+
+            try {
+                // Obtener las opciones del glosario
+                $glossary_id = null;
+                switch ($field_name) {
+                    case 'segment':
+                        $glossary_id = '52'; // ID del glosario de segmentos
+                        break;
+                    case 'extres-cotxe':
+                        $glossary_id = '54'; // ID del glosario de extras
+                        break;
+                    case 'traccio':
+                        $glossary_id = '53'; // ID del glosario de tracción
+                        break;
+                    // Añadir más casos según sea necesario
+                }
+
+                if ($glossary_id) {
+                    $options = jet_engine()->glossaries->filters->get_glossary_options($glossary_id);
+                    
+                    // Si es un array (como en extres-cotxe)
+                    if (is_array($value) || (is_string($value) && strpos($value, 'a:') === 0)) {
+                        if (is_string($value)) {
+                            $value = unserialize($value);
+                        }
+                        if (empty($value)) {
+                            return [];
+                        }
+                        $labels = [];
+                        foreach ($value as $single_value) {
+                            $labels[] = $options[$single_value] ?? $single_value;
+                        }
+                        return $labels;
+                    }
+                    
+                    // Para valores individuales
+                    return $options[$value] ?? $value;
+                }
+                
+                return $value;
+            } catch (Exception $e) {
+                error_log("Error al procesar campo de glosario: " . $e->getMessage());
+                return $value;
+            }
+        }
+
+        // Si es un campo de taxonomía
+        $taxonomy_fields = Vehicle_Fields::get_taxonomy_fields();
+        if (isset($taxonomy_fields[$field_name])) {
+            $term = get_term_by('slug', $value, $taxonomy_fields[$field_name]);
+            return $term ? $term->name : ($value ?: '');
+        }
+
+        // Si es un campo de selección o radio
+        if ($field_type === 'select' || $field_type === 'radio') {
+            // Obtener opciones del campo desde JetEngine
+            if (function_exists('jet_engine')) {
+                $meta_fields = jet_engine()->meta_boxes->get_meta_fields_for_object('singlecar');
+                foreach ($meta_fields as $meta_field) {
+                    if ($meta_field['name'] === $field_name && isset($meta_field['options'])) {
+                        return $meta_field['options'][$value] ?? ($value ?: '');
+                    }
+                }
+            }
+        }
+
+        return $value ?: '';
+    }
 
     if ($query->have_posts()) {
         while ($query->have_posts()) {
             $query->the_post();
-            $singlecar_id = get_the_ID();
+            $vehicle_id = get_the_ID();
+            $post = get_post($vehicle_id);
+            $meta = get_post_meta($vehicle_id);
+            $terms = wp_get_post_terms($vehicle_id, 'types-of-transport', ['fields' => 'all']);
+            $marques_terms = wp_get_post_terms($vehicle_id, 'marques-coches', ['fields' => 'all']);
 
             $vehicle = [
-                'id' => $singlecar_id,
-                'titol' => get_the_title(),
-                'tipus' => wp_get_post_terms($singlecar_id, 'types-of-transport', ['fields' => 'names'])[0],
-                'preu' => get_post_meta($singlecar_id, 'preu', true)
+                'id' => $vehicle_id,
+                'titol-anunci' => get_the_title($vehicle_id),
+                'descripcio-anunci' => $post->post_content,
+                'tipus-de-vehicle' => $terms[0]->name ?? null,
+                'marques-cotxe' => $marques_terms[1]->name ?? null,
+                'models-cotxe' => $marques_terms[0]->name ?? null,
             ];
 
-            // Solo incluir dies-caducitat si es administrador
-            if (current_user_can('administrator')) {
-                $vehicle['dies-caducitat'] = get_post_meta($singlecar_id, 'dies-caducitat', true);
+            // Añadir todos los metadatos adicionales con sus etiquetas
+            foreach ($meta as $key => $value) {
+                if (!Vehicle_Fields::should_exclude_field($key)) {
+                    $vehicle[$key] = get_field_label($key, $value[0]);
+                }
+            }
+
+            // Añadir información de imágenes
+            $vehicle['imatge-destacada-id'] = get_post_thumbnail_id($vehicle_id);
+            $vehicle['imatge-destacada-url'] = get_the_post_thumbnail_url($vehicle_id, 'full');
+
+            // Obtener galería
+            $gallery_ids = get_post_meta($vehicle_id, 'ad_gallery', true);
+            if (!empty($gallery_ids)) {
+                $gallery_urls = [];
+                foreach ((array) $gallery_ids as $gallery_id) {
+                    $gallery_urls[$gallery_id] = wp_get_attachment_url($gallery_id);
+                }
+                $vehicle['galeria-vehicle'] = $gallery_ids;
+                $vehicle['galeria-vehicle-urls'] = $gallery_urls;
+            }
+
+            // Ocultar dies-caducitat a usuarios no administradores
+            if (!current_user_can('administrator')) {
+                unset($vehicle['dies-caducitat']);
             }
 
             $vehicles[] = $vehicle;
@@ -1433,7 +1541,6 @@ function get_vehicle_details($request)
             case 'roda-recanvi':
                 $glossary_id = '60'; // ID del glosario de rueda de recambio
                 break;
-            // Añadir más casos según sea necesario
         }
 
         if (!$glossary_id) {
