@@ -69,27 +69,40 @@ class Vehicle_Field_Handler {
      * Procesa un campo de glosario
      */
     public static function process_glossary_field($field_name, $value) {
-        // Si el campo es extres-cotxe, siempre tratar como array
-        if ($field_name === 'extres-cotxe') {
+        error_log("Procesando campo de glosario: " . $field_name);
+        error_log("Valor recibido: " . print_r($value, true));
+
+        // Campos que siempre deben tratarse como array
+        $array_fields = ['extres-cotxe', 'cables-recarrega', 'connectors'];
+        
+        // Si el campo es de tipo array, siempre tratar como array
+        if (in_array($field_name, $array_fields)) {
             if (!is_array($value)) {
                 $value = [$value];
             }
         }
 
-        // Obtener el ID del glosario según el campo
+        // Obtener el ID del glosario
         $glossary_id = self::get_glossary_id($field_name);
+        error_log("ID del glosario obtenido: " . print_r($glossary_id, true));
+
         if (!$glossary_id) {
-            throw new Exception("Campo de glosario no válido: " . $field_name);
+            error_log("ERROR: No se encontró ID de glosario para el campo: " . $field_name);
+            throw new Exception("Campo de glosario no reconocido: " . $field_name);
         }
 
         // Obtener las opciones del glosario
         if (!function_exists('jet_engine') || !isset(jet_engine()->glossaries)) {
+            error_log("ERROR: JetEngine Glossaries no está disponible");
             throw new Exception("JetEngine Glossaries no está disponible");
         }
 
         $options = jet_engine()->glossaries->filters->get_glossary_options($glossary_id);
+        error_log("Opciones del glosario: " . print_r($options, true));
+
         if (empty($options)) {
-            throw new Exception("No se encontraron opciones para el glosario: " . $field_name);
+            error_log("ERROR: No se encontraron opciones para el glosario ID: " . $glossary_id);
+            throw new Exception("No se encontraron opciones para el glosario");
         }
 
         // Si es un array, procesar cada valor
@@ -97,12 +110,12 @@ class Vehicle_Field_Handler {
             $processed_values = [];
             foreach ($value as $single_value) {
                 // Buscar el valor en las opciones del glosario
-                $found_value = array_search($single_value, $options);
-                if ($found_value !== false) {
-                    $processed_values[] = $found_value;
-                } else if (isset($options[$single_value])) {
-                    $processed_values[] = $single_value;
+                if (isset($options[$single_value]) || in_array($single_value, $options)) {
+                    error_log("Valor válido encontrado para: " . $single_value);
+                    $found_value = array_search($single_value, $options);
+                    $processed_values[] = $found_value !== false ? $found_value : $single_value;
                 } else {
+                    error_log("ERROR: Valor inválido para el campo. Valores válidos: " . implode(', ', array_keys($options)));
                     throw new Exception(sprintf(
                         'Valor inválido "%s" para el campo %s. Valores válidos: %s',
                         $single_value,
@@ -115,15 +128,13 @@ class Vehicle_Field_Handler {
         }
 
         // Para valores simples
-        $found_value = array_search($value, $options);
-        if ($found_value !== false) {
-            return $found_value;
+        if (isset($options[$value]) || in_array($value, $options)) {
+            error_log("Valor válido encontrado para: " . $value);
+            $found_value = array_search($value, $options);
+            return $found_value !== false ? $found_value : $value;
         }
 
-        if (isset($options[$value])) {
-            return $value;
-        }
-
+        error_log("ERROR: Valor inválido para el campo. Valores válidos: " . implode(', ', array_keys($options)));
         throw new Exception(sprintf(
             'Valor inválido "%s" para el campo %s. Valores válidos: %s',
             $value,
@@ -134,11 +145,13 @@ class Vehicle_Field_Handler {
 
     private static function get_glossary_id($field_name) {
         $glossary_map = [
-            'segment' => '57',
+            'segment' => '41',
             'traccio' => '59',
             'emissions-vehicle' => '58',
             'roda-recanvi' => '60',
-            'extres-cotxe' => '54'  
+            'extres-cotxe' => '54',
+            'cables-recarrega' => '50',
+            'connectors' => '49'
         ];
 
         return isset($glossary_map[$field_name]) ? $glossary_map[$field_name] : null;
@@ -158,7 +171,9 @@ class Vehicle_Field_Handler {
             'estat-vehicle',
             'tipus-tapisseria',
             'color-tapisseria',
-            'extres-cotxe'  
+            'extres-cotxe',
+            'cables-recarrega',
+            'connectors'
         ]);
     }
 
@@ -284,6 +299,47 @@ class Vehicle_Field_Handler {
                     // Si el valor es una etiqueta, obtener su clave
                     $found_value = array_search($extra, $options);
                     $processed_values[] = $found_value !== false ? $found_value : $extra;
+                }
+
+                return $processed_values;
+
+            case 'cables-recarrega':
+            case 'connectors':
+                // Si el valor es un string, convertirlo a array
+                if (is_string($value)) {
+                    $value = [$value];
+                }
+                
+                // Validar que sea un array
+                if (!is_array($value)) {
+                    throw new Exception("El campo {$field_name} debe ser un array de valores");
+                }
+
+                // Obtener las opciones válidas del glosario
+                if (!function_exists('jet_engine') || !isset(jet_engine()->glossaries)) {
+                    throw new Exception("JetEngine Glossaries no está disponible");
+                }
+
+                $glossary_id = self::get_glossary_id($field_name);
+                $options = jet_engine()->glossaries->filters->get_glossary_options($glossary_id);
+                if (empty($options)) {
+                    throw new Exception("No se encontraron opciones para el glosario {$field_name}");
+                }
+
+                // Validar cada valor del array
+                $processed_values = [];
+                foreach ($value as $item) {
+                    if (!isset($options[$item]) && !in_array($item, $options)) {
+                        throw new Exception(sprintf(
+                            'Valor inválido "%s" para el campo %s. Valores válidos: %s',
+                            $item,
+                            $field_name,
+                            implode(', ', array_keys($options))
+                        ));
+                    }
+                    // Si el valor es una etiqueta, obtener su clave
+                    $found_value = array_search($item, $options);
+                    $processed_values[] = $found_value !== false ? $found_value : $item;
                 }
 
                 return $processed_values;

@@ -1,8 +1,8 @@
 <?php
 /*
-Plugin Name: Custom API Vehicles
-Description: API personalizada para gestionar vehículos
-Version: 1.3
+Plugin Name: Custom API Vehicles for Motoraldia
+Description: API personalizada para gestionar vehículos de Motoraldia
+Version: 1.5
 Author: Sn4p.dev
 */
 

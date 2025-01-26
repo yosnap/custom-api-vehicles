@@ -98,7 +98,7 @@ function get_field_label($field_name, $value) {
     }
 
     // Manejar arrays serializados de extras
-    $extras_fields = ['extres-cotxe', 'extres-moto', 'extres-autocaravana', 'extres-habitacle'];
+    $extras_fields = ['extres-cotxe', 'extres-moto', 'extres-autocaravana', 'extres-habitacle', 'cables-recarrega', 'connectors'];
     if (in_array($field_name, $extras_fields)) {
         try {
             // Intentar deserializar si es una cadena serializada
@@ -330,8 +330,10 @@ function get_singlecar($request)
             $terms = wp_get_post_terms($vehicle_id, 'types-of-transport', ['fields' => 'all']);
             $marques_terms = wp_get_post_terms($vehicle_id, 'marques-coches', ['fields' => 'all']);
 
+            // Campos básicos del vehículo
             $vehicle = [
                 'id' => $vehicle_id,
+                'slug' => $post->post_name, // Agregar el slug del post
                 'titol-anunci' => get_the_title($vehicle_id),
                 'descripcio-anunci' => $post->post_content,
                 'tipus-de-vehicle' => $terms[0]->name ?? null,
@@ -339,10 +341,21 @@ function get_singlecar($request)
                 'models-cotxe' => $marques_terms[0]->name ?? null,
             ];
 
-            // Añadir todos los metadatos adicionales con sus etiquetas
+            // Lista de campos a excluir
+            $excluded_fields = [
+                '_thumbnail_id',
+                'ad_gallery',
+                '_edit_lock',
+                '_edit_last',
+                '_bricks_template_type',
+                '_bricks_page_content_2',
+                '_bricks_editor_mode',
+                'jet_engine_store_count_ads-views'
+            ];
+
+            // Añadir metadatos filtrados
             foreach ($meta as $key => $value) {
-                if (!Vehicle_Fields::should_exclude_field($key)) {
-                    // Asegurarnos de que el valor no esté en un array
+                if (!in_array($key, $excluded_fields) && !Vehicle_Fields::should_exclude_field($key)) {
                     $meta_value = is_array($value) ? $value[0] : $value;
                     $vehicle[$key] = get_field_label($key, $meta_value);
                 }
@@ -649,6 +662,7 @@ function create_singlecar($request)
         }
 
         // Crear el post
+        error_log("Creando post con datos: " . print_r($post_data, true));
         $post_data = array(
             'post_title' => wp_strip_all_tags($params['titol-anunci']),
             'post_content' => $params['descripcio-anunci'],
@@ -657,8 +671,10 @@ function create_singlecar($request)
         );
 
         $post_id = wp_insert_post($post_data);
+        error_log("Post creado con ID: " . $post_id);
 
         if (is_wp_error($post_id)) {
+            error_log("Error al crear post: " . $post_id->get_error_message());
             throw new Exception($post_id->get_error_message());
         }
 
@@ -690,16 +706,22 @@ function create_singlecar($request)
         }
 
         // Procesar y guardar los campos meta
+        error_log("Iniciando procesamiento de campos meta para post_id: " . $post_id);
+        error_log("Parámetros a procesar: " . print_r($params, true));
         process_and_save_meta_fields($post_id, $params);
+        error_log("Campos meta procesados exitosamente");
 
         // Después de crear el post, asignar las imágenes procesadas
         if (!empty($processed_images)) {
+            error_log("Procesando imágenes: " . print_r($processed_images, true));
             foreach ($processed_images as $field => $value) {
                 if ($field === 'imatge-destacada-id') {
+                    error_log("Estableciendo imagen destacada: " . $value);
                     set_post_thumbnail($post_id, $value);
                 } else if ($field === 'galeria-vehicle' && is_array($value)) {
                     // Convertir array de IDs a string separado por comas
                     $gallery_string = implode(',', $value);
+                    error_log("Estableciendo galería: " . $gallery_string);
                     delete_post_meta($post_id, 'ad_gallery');
                     add_post_meta($post_id, 'ad_gallery', $gallery_string);
                 }
@@ -760,43 +782,83 @@ function create_singlecar($request)
 
 function validate_glossary_field($field, $value)
 {
-    if (!function_exists('jet_engine')) {
-        throw new Exception("JetEngine no está disponible");
-    }
+    error_log("Validando campo de glosario: " . $field);
+    error_log("Valor a validar: " . print_r($value, true));
 
+    // Mapeo de campos a IDs de glosario
     $glossary_mapping = [
-        'traccio' => '59',             // Tracció
-        'roda-recanvi' => '60',        // Roda recanvi
-        'segment' => '41',             // Carrosseria
-        'carrosseria-cotxe' => '41',   // También usar el glosario 41 para carrosseria-cotxe
-        'color-vehicle' => '51',       // Color Exterior
-        'tipus-canvi' => '46',         // Tipus de canvi coche
-        'tipus-tapisseria' => '52',    // Tapisseria
-        'color-tapisseria' => '53',    // Color Tapisseria
-        'emissions-vehicle' => '58'    // Tipus Emissions
+        'segment' => '41',
+        'carrosseria-cotxe' => '41',    // Mismo ID que segment
+        'traccio' => '59',
+        'emissions-vehicle' => '58',
+        'roda-recanvi' => '60',
+        'extres-cotxe' => '54',
+        'cables-recarrega' => '50',
+        'connectors' => '49',
+        'tipus-tapisseria' => '52',     // ID para tipus-tapisseria (tipos de tapicería)
+        'color-tapisseria' => '53',     // ID para color-tapisseria (colores de tapicería)
+        'color-vehicle' => '51'         // ID para color-vehicle (colores de vehículo)
     ];
 
-    // Si el campo es carrosseria-cotxe, usar segment para la validación
-    if ($field === 'carrosseria-cotxe') {
-        $field_to_validate = 'segment';
-    } else {
-        $field_to_validate = $field;
+    error_log("Glosarios disponibles: " . print_r($glossary_mapping, true));
+
+    if (!isset($glossary_mapping[$field])) {
+        error_log("ERROR: Campo no encontrado en el mapeo de glosarios: " . $field);
+        throw new Exception("Campo de glosario no reconocido: " . $field);
     }
 
-    if (!isset($glossary_mapping[$field_to_validate])) {
-        throw new Exception("Campo de glosario no reconocido: {$field}");
-    }
-
-    $glossary_id = $glossary_mapping[$field_to_validate];
+    $glossary_id = $glossary_mapping[$field];
+    error_log("ID del glosario para el campo: " . $glossary_id);
 
     $jet_engine = jet_engine();
     $options = $jet_engine->glossaries->filters->get_glossary_options($glossary_id);
+    error_log("Opciones disponibles: " . print_r($options, true));
 
-    if (!isset($options[$value])) {
-        $valid_values = implode(', ', array_keys($options));
-        throw new Exception("Valor no válido para {$field}. Valores permitidos: {$valid_values}");
+    // Si el campo acepta múltiples valores
+    if (in_array($field, ['cables-recarrega', 'connectors', 'extres-cotxe'])) {
+        // Si es string, convertir a array
+        if (is_string($value)) {
+            $value = json_decode($value, true);
+            if (json_last_error() !== JSON_ERROR_NONE) {
+                $value = [$value];
+            }
+        }
+
+        // Validar que sea un array
+        if (!is_array($value)) {
+            throw new Exception("El campo {$field} debe ser un array de valores");
+        }
+
+        // Validar cada valor del array
+        foreach ($value as $single_value) {
+            if (!is_string($single_value)) {
+                error_log("ERROR: El valor debe ser una cadena de texto: " . print_r($single_value, true));
+                throw new Exception("Los valores para {$field} deben ser cadenas de texto");
+            }
+
+            $valid_keys = array_keys($options);
+            if (!in_array($single_value, $valid_keys)) {
+                error_log("ERROR: Valor no válido: " . $single_value);
+                $valid_values = implode(', ', $valid_keys);
+                throw new Exception("Valor no válido para {$field}. Valores permitidos: {$valid_values}");
+            }
+        }
+    } else {
+        // Para campos que solo aceptan un valor
+        if (!is_string($value)) {
+            error_log("ERROR: El valor debe ser una cadena de texto: " . print_r($value, true));
+            throw new Exception("El valor para {$field} debe ser una cadena de texto");
+        }
+
+        $valid_keys = array_keys($options);
+        if (!in_array($value, $valid_keys)) {
+            error_log("ERROR: Valor no válido. Valores permitidos: " . implode(', ', $valid_keys));
+            $valid_values = implode(', ', $valid_keys);
+            throw new Exception("Valor no válido para {$field}. Valores permitidos: {$valid_values}");
+        }
     }
 
+    error_log("Validación exitosa para el campo: " . $field);
     return true;
 }
 
@@ -809,11 +871,12 @@ function validate_all_fields($params)
         'roda-recanvi' => 'glossary',
         'segment' => 'glossary',
         'color-vehicle' => 'glossary',
-        'tipus-canvi' => 'glossary',
         'tipus-tapisseria' => 'glossary',
         'color-tapisseria' => 'glossary',
         'emissions-vehicle' => 'glossary',
-        // Removidos los campos que son taxonomías
+        'cables-recarrega' => 'glossary',
+        'connectors' => 'glossary',
+        'extres-cotxe' => 'glossary',
         // Campos booleanos
         'is-vip' => 'boolean',
         'venut' => 'boolean',
@@ -860,11 +923,12 @@ function validate_all_fields($params)
         'roda-recanvi',
         'segment',
         'color-vehicle',
-        'tipus-canvi',
         'tipus-tapisseria',
         'color-tapisseria',
-        'emissions-vehicle'
-        // Removidos los campos que son taxonomías
+        'emissions-vehicle',
+        'cables-recarrega',
+        'connectors',
+        'extres-cotxe'
     ];
 
     foreach ($glossary_fields as $field) {
@@ -893,11 +957,22 @@ function process_and_save_meta_fields($post_id, $params)
     error_log('Procesando campos meta para post_id: ' . $post_id);
     error_log('Parámetros recibidos: ' . print_r($params, true));
     error_log('Meta fields configurados: ' . print_r($meta_fields, true));
+    error_log('Flag fields configurados: ' . print_r($flag_fields, true));
+
+    try {
+        // Validar todos los campos antes de procesar
+        error_log("Iniciando validación de campos");
+        validate_all_fields($params);
+        error_log("Validación de campos exitosa");
+    } catch (Exception $e) {
+        error_log("Error al validar campos: " . $e->getMessage());
+        throw $e;
+    }
 
     // Mapeo específico para campos que necesitan transformación
     $field_mapping = array(
         'any-fabricacio' => 'any',
-        'velocitat-max-cotxe' => 'velocitat-maxima',  // Corregido de velocitat-maxima-cotxe
+        'velocitat-max-cotxe' => 'velocitat-maxima',
         'numero-maleters-cotxe' => 'maleters',
         'capacitat-maleters-cotxe' => 'capacitat-total',
         'acceleracio-0-100-cotxe' => 'acceleracio-0-100',
@@ -907,37 +982,35 @@ function process_and_save_meta_fields($post_id, $params)
         'carrosseria-cotxe' => 'segment',
         'traccio' => 'traccio',
         'roda-recanvi' => 'roda-recanvi',
-        'anunci-destacat' => 'is-vip'  // Añadido el mapeo de anunci-destacat a is-vip
+        'anunci-destacat' => 'is-vip'
     );
+
+    error_log("Mapeo de campos: " . print_r($field_mapping, true));
 
     // Procesar los campos mapeados primero
     foreach ($field_mapping as $api_field => $db_field) {
         if (isset($params[$api_field])) {
             $value = $params[$api_field];
+            error_log("Procesando campo mapeado - API: {$api_field}, DB: {$db_field}, Valor: " . print_r($value, true));
 
             // Manejo especial para campos booleanos mapeados
             if ($db_field === 'is-vip') {
                 $value = strtolower(trim($value));
                 $true_values = ['true', 'si', '1', 'yes', 'on'];
-                $false_values = ['false', 'no', '0', 'off'];
 
                 if (in_array($value, $true_values, true)) {
                     $value = 'true';
-                    // Cuando is-vip es true, actualizamos data-vip con el timestamp actual
+                    error_log("Campo is-vip establecido a true, actualizando data-vip");
                     update_post_meta($post_id, 'data-vip', current_time('timestamp'));
-                } elseif (in_array($value, $false_values, true)) {
-                    $value = 'false';
-                    // Cuando is-vip es false, limpiamos data-vip
-                    update_post_meta($post_id, 'data-vip', '');
                 } else {
                     $value = 'false';
-                    // Por defecto también limpiamos data-vip
+                    error_log("Campo is-vip establecido a false, limpiando data-vip");
                     update_post_meta($post_id, 'data-vip', '');
                 }
             }
 
-            error_log("Guardando campo mapeado {$api_field} como {$db_field} con valor: {$value}");
-            update_post_meta($post_id, $db_field, $value);
+            $result = update_post_meta($post_id, $db_field, $value);
+            error_log("Resultado de actualización de {$db_field}: " . ($result ? "exitoso" : "fallido"));
         }
     }
 
@@ -954,7 +1027,8 @@ function process_and_save_meta_fields($post_id, $params)
                 // Determinar el nombre real del campo en la base de datos
                 $db_field = isset($field_mapping[$field]) ? $field_mapping[$field] : $field;
 
-                error_log("Procesando campo: {$field} (DB field: {$db_field}) con valor: {$params[$field]} de tipo: {$type}");
+                $log_value = is_array($params[$field]) ? json_encode($params[$field]) : $params[$field];
+                error_log("Procesando campo: {$field} (DB field: {$db_field}) con valor: {$log_value} de tipo: {$type}");
 
                 // El resto del procesamiento usando $db_field en lugar de $field para guardar
                 if ($type === 'number') {
@@ -1033,8 +1107,6 @@ function process_and_save_meta_fields($post_id, $params)
 
                         // Insertar el adjunto en la biblioteca de medios
                         $attach_id = wp_insert_attachment($attachment, $file_path);
-
-                        // Generar metadatos para el adjunto
                         require_once(ABSPATH . 'wp-admin/includes/image.php');
                         $attach_data = wp_generate_attachment_metadata($attach_id, $file_path);
                         wp_update_attachment_metadata($attach_id, $attach_data);
@@ -1059,30 +1131,70 @@ function process_and_save_meta_fields($post_id, $params)
 
     // Procesar los campos de glosario primero
     $glossary_fields = array(
-        'carrosseria-cotxe' => 'carrosseria-cotxe', // Cambiado para usar el mismo nombre y validar contra glosario 41
+        'carrosseria-cotxe' => 'carrosseria-cotxe',
         'traccio' => 'traccio',
-        'roda-recanvi' => 'roda-recanvi'
+        'roda-recanvi' => 'roda-recanvi',
+        'extres-cotxe' => 'extres-cotxe',
+        'cables-recarrega' => 'cables-recarrega',
+        'connectors' => 'connectors'
     );
 
-    // Procesar carrosseria-cotxe especialmente ya que su valor va al glosario segment
-    if (isset($params['carrosseria-cotxe'])) {
-        try {
-            // Validar el valor contra el glosario segment
-            validate_glossary_field('carrosseria-cotxe', $params['carrosseria-cotxe']);
-            // Si es válido, guardarlo en el meta segment
-            update_post_meta($post_id, 'segment', $params['carrosseria-cotxe']);
-            error_log("Guardando carrosseria-cotxe en segment con valor: " . $params['carrosseria-cotxe']);
-        } catch (Exception $e) {
-            $errors[] = $e->getMessage();
+    // Función helper para procesar campos de array de glosario
+    function process_glossary_array_field($post_id, $field_name, $value) {
+        error_log("Procesando campo de array de glosario {$field_name} con valor: " . print_r($value, true));
+        
+        // Validar el valor contra el glosario
+        validate_glossary_field($field_name, $value);
+        
+        // Procesar el valor
+        $processed_value = is_array($value) ? $value : [$value];
+        
+        error_log("Valor procesado de {$field_name}: " . print_r($processed_value, true));
+
+        // Eliminar valores antiguos
+        delete_post_meta($post_id, $field_name);
+
+        // Crear la estructura que espera JetEngine con tres índices
+        $jet_engine_format = [
+            0 => array_combine(range(0, count($processed_value) - 1), $processed_value),
+            1 => array_combine(range(0, count($processed_value) - 1), $processed_value),
+            2 => array_combine(range(0, count($processed_value) - 1), $processed_value)
+        ];
+
+        error_log("Formato JetEngine para {$field_name}: " . print_r($jet_engine_format, true));
+
+        // Guardar cada array como una entrada separada
+        foreach ($jet_engine_format as $index => $value) {
+            $result = add_post_meta($post_id, $field_name, $value);
+            error_log("Resultado de guardar {$field_name} índice {$index}: " . ($result ? "exitoso" : "fallido"));
         }
     }
 
-    foreach ($glossary_fields as $api_field => $db_field) {
-        if (isset($params[$api_field])) {
+    // Procesar campos que requieren formato de array especial
+    $array_fields = ['extres-cotxe', 'cables-recarrega', 'connectors'];
+    foreach ($array_fields as $field) {
+        if (isset($params[$field])) {
             try {
-                $value = $params[$api_field];
+                process_glossary_array_field($post_id, $field, $params[$field]);
+            } catch (Exception $e) {
+                error_log("Error al procesar {$field}: " . $e->getMessage());
+                $errors[] = $e->getMessage();
+            }
+        }
+    }
+
+    // Procesar carrosseria-cotxe especialmente ya que su valor va al glosario segment
+    if (isset($params['carrosseria'])) {
+        $params['segment'] = $params['carrosseria'];
+        unset($params['carrosseria']);
+    }
+
+    foreach ($glossary_fields as $field => $db_field) {
+        if (isset($params[$field])) {
+            try {
+                $value = $params[$field];
                 validate_glossary_field($db_field, $value); // Esto validará contra el glosario correcto
-                error_log("Guardando campo de glosario {$api_field} como {$db_field} con valor: {$value}");
+                error_log("Guardando campo de glosario {$field} como {$db_field} con valor: {$value}");
                 update_post_meta($post_id, $db_field, $value);
             } catch (Exception $e) {
                 $errors[] = $e->getMessage();
@@ -1324,7 +1436,7 @@ function update_singlecar($request)
             }
         }
 
-        // Validar marca y modelo si se están actualizando
+        // Validar marca y modelo si se proporcionan
         if (isset($params['marques-cotxe'])) {
             $marca = get_term_by('slug', $params['marques-cotxe'], 'marques-coches');
             if (!$marca) {
@@ -1438,9 +1550,9 @@ function update_singlecar($request)
         if (!is_wp_error($terms)) {
             foreach ($terms as $term) {
                 if ($term->parent === 0) {
-                    $response['marques-cotxe'] = $term->slug;
+                    $response['marca'] = $term->slug;
                 } else {
-                    $response['models-cotxe'] = $term->slug;
+                    $response['modelo'] = $term->slug;
                 }
             }
         }
@@ -1529,8 +1641,8 @@ function get_vehicle_details($request)
     }
 
     $meta = get_post_meta($vehicle_id);
-    $terms = wp_get_post_terms($vehicle_id, 'types-of-transport', ['fields' => 'names']);
-    $marques_terms = wp_get_post_terms($vehicle_id, 'marques-coches', ['fields' => 'names']);
+    $terms = wp_get_post_terms($vehicle_id, 'types-of-transport', ['fields' => 'all']);
+    $marques_terms = wp_get_post_terms($vehicle_id, 'marques-coches', ['fields' => 'all']);
 
     function get_glossary_label($value)
     {
@@ -1716,7 +1828,7 @@ function upload_base64_image($base64_string, $post_id = 0) {
     $filename = wp_unique_filename($upload_dir['path'], 'image.jpg');
     $file_path = $upload_dir['path'] . '/' . $filename;
 
-    // Guardar el archivo
+    // Guardar archivo
     if (!file_put_contents($file_path, $decoded_data)) {
         return new WP_Error('save_failed', 'Failed to save image file');
     }
@@ -1731,7 +1843,7 @@ function upload_base64_image($base64_string, $post_id = 0) {
     );
 
     // Insertar el archivo en la biblioteca de medios
-    $attach_id = wp_insert_attachment($attachment, $file_path, $post_id);
+    $attach_id = wp_insert_attachment($attachment, $file_path);
     if (is_wp_error($attach_id)) {
         unlink($file_path);
         return $attach_id;

@@ -114,7 +114,7 @@ class Vehicle_Fields
             'portes-cotxe' => 'number',
             'places-cotxe' => 'number',
             'velocitat-maxima' => 'number',
-            'acceleracio-0-60' => 'number',  // Agregar este campo
+            'acceleracio-0-60' => 'number',
             'acceleracio-0-100' => 'number',
             'capacitat-total' => 'number',
             'maleters' => 'number',
@@ -125,8 +125,8 @@ class Vehicle_Fields
             'autonomia-extraurbana-wltp' => 'number',
             'autonomia-electrica' => 'number',
             'bateria' => 'radio',
-            'cables-recarrega' => 'select',
-            'connectors' => 'select',
+            'cables-recarrega' => 'glossary',
+            'connectors' => 'glossary',
             'velocitat-recarrega' => 'radio',
             'temps-recarrega-total' => 'number',
             'temps-recarrega-fins-80' => 'number',
@@ -403,7 +403,9 @@ class Vehicle_Fields
             'tipus-tapisseria',
             'color-tapisseria',
             'emissions-vehicle',
-            'extres-cotxe'
+            'extres-cotxe',
+            'cables-recarrega',
+            'connectors'
         ];
 
         if (in_array($field_name, $boolean_fields)) {
@@ -453,7 +455,9 @@ class Vehicle_Fields
             'vehicle-fumador' => 'switch',
             'tipus-tapisseria' => 'glossary',
             'color-tapisseria' => 'glossary',
-            'extres-cotxe' => 'glossary'
+            'extres-cotxe' => 'glossary',
+            'cables-recarrega' => 'glossary',
+            'connectors' => 'glossary'
         ];
     }
 
@@ -496,6 +500,10 @@ class Vehicle_Fields
                 return self::get_extres_cotxe_options();
             case 'venedor':
                 return self::get_venedor_options();
+            case 'cables-recarrega':
+                return self::get_cables_recarrega_options();
+            case 'connectors':
+                return self::get_connectors_options();
             default:
                 return [];
         }
@@ -656,5 +664,29 @@ class Vehicle_Fields
         } catch (Exception $e) {
             return [];
         }
+    }
+
+    /**
+     * Obtiene las opciones para el campo cables-recarrega
+     */
+    public static function get_cables_recarrega_options()
+    {
+        return [
+            'tipus-1' => 'tipus-1',
+            'tipus-2' => 'tipus-2',
+            'tipus-3' => 'tipus-3'
+        ];
+    }
+
+    /**
+     * Obtiene las opciones para el campo connectors
+     */
+    public static function get_connectors_options()
+    {
+        return [
+            'tipus-1' => 'tipus-1',
+            'tipus-2' => 'tipus-2',
+            'tipus-3' => 'tipus-3'
+        ];
     }
 }
