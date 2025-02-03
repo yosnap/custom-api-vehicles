@@ -18,6 +18,7 @@ require_once plugin_dir_path(__FILE__) . 'includes/class-vehicle-fields.php';   
 require_once plugin_dir_path(__FILE__) . 'includes/class-glossary-fields.php';
 require_once plugin_dir_path(__FILE__) . 'includes/taxonomy-endpoints.php';      // Endpoints
 require_once plugin_dir_path(__FILE__) . 'includes/singlecar-endpoint.php';
+require_once plugin_dir_path(__FILE__) . 'includes/author-endpoint.php';
 
 // Agregar función de activación del plugin
 function activate_vehicle_api_plugin()
@@ -71,3 +72,25 @@ add_action('rest_api_init', function () {
         ]
     ]);
 });
+
+// Corregir el registro de scripts
+if (!function_exists('enqueue_custom_scripts')) {
+    function enqueue_custom_scripts() {
+        if (!is_admin()) { // Solo para el frontend
+            wp_register_script('react-js', plugins_url('js/react.js', __FILE__), array(), '1.0.0', true);
+            wp_register_script('react-product-js', plugins_url('js/react-product.js', __FILE__), array('react-js'), '1.0.0', true);
+            wp_enqueue_script('my-react-app', plugins_url('js/my-react-app.js', __FILE__), array('react-product-js'), '1.0.0', true);
+            wp_enqueue_style('my-product-css', plugins_url('css/my-product.css', __FILE__), array(), '1.0.0', 'all');
+        }
+    }
+}
+add_action('wp_enqueue_scripts', 'enqueue_custom_scripts');
+
+// Para scripts del admin
+function enqueue_admin_scripts() {
+    wp_register_script('react-js', plugins_url('js/react.js', __FILE__), array(), '1.0.0', true);
+    wp_register_script('react-product-js', plugins_url('js/react-product.js', __FILE__), array('react-js'), '1.0.0', true);
+    wp_enqueue_script('my-react-app', plugins_url('js/my-react-app.js', __FILE__), array('react-product-js'), '1.0.0', true);
+    wp_enqueue_style('my-product-css', plugins_url('css/my-product.css', __FILE__), array(), '1.0.0', 'all');
+}
+add_action('admin_enqueue_scripts', 'enqueue_admin_scripts');

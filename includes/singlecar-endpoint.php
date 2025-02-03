@@ -1864,17 +1864,18 @@ function upload_base64_image($base64_string, $post_id = 0) {
     return $attach_id;
 }
 
+if (!function_exists('enqueue_custom_scripts')) {
+    function enqueue_custom_scripts() {
+        // Registrar y encolar scripts y estilos en el hook adecuado
+        wp_register_script('react-product-js', plugins_url('js/react-product.js', __FILE__), array(), '1.0.0', true);
+        wp_enqueue_script('react-product-js');
 
-function enqueue_custom_scripts() {
-    // Registrar y encolar scripts y estilos en el hook adecuado
-    wp_register_script('react-product-js', plugins_url('js/react-product.js', __FILE__), array(), '1.0.0', true);
-    wp_enqueue_script('react-product-js');
+        wp_register_script('my-react-app', plugins_url('js/my-react-app.js', __FILE__), array(), '1.0.0', true);
+        wp_enqueue_script('my-react-app');
 
-    wp_register_script('my-react-app', plugins_url('js/my-react-app.js', __FILE__), array(), '1.0.0', true);
-    wp_enqueue_script('my-react-app');
-
-    wp_register_style('my-product-css', plugins_url('css/my-product.css', __FILE__), array(), '1.0.0', 'all');
-    wp_enqueue_style('my-product-css');
+        wp_register_style('my-product-css', plugins_url('css/my-product.css', __FILE__), array(), '1.0.0', 'all');
+        wp_enqueue_style('my-product-css');
+    }
 }
 add_action('wp_enqueue_scripts', 'enqueue_custom_scripts');
 

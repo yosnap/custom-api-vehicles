@@ -1,7 +1,22 @@
 <?php
-// Registrar la ruta REST API para /author
+// Registrar la ruta REST API para /sellers
 add_action('rest_api_init', function () {
     register_rest_route('api-motor/v1', '/sellers', [
+        'methods' => 'GET',
+        'callback' => 'get_author_details',
+        'permission_callback' => function ($request) {
+            $params = $request->get_params();
+            if (isset($params['user_id'])) {
+                return current_user_can('administrator') || get_current_user_id() == intval($params['user_id']);
+            }
+            return current_user_can('administrator');
+        },
+    ]);
+});
+
+// Registrar la ruta REST API para /owner
+add_action('rest_api_init', function () {
+    register_rest_route('custom-api/v1', '/owner', [
         'methods' => 'GET',
         'callback' => 'get_author_details',
         'permission_callback' => '__return_true',
