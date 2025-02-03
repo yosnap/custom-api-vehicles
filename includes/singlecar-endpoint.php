@@ -740,16 +740,29 @@ function create_singlecar($request)
         }
 
         // Establecer el valor inicial de dies-caducitat y anunci_actiu
-        $anunci_actiu = isset($params['anunci_actiu']) ? 
-            filter_var($params['anunci_actiu'], FILTER_VALIDATE_BOOLEAN) : 
-            true;
-            
-        $dies_caducitat = $anunci_actiu ? 
+        if (isset($params['anunci_actiu'])) {
+            $anunci_actiu = strtolower(trim($params['anunci_actiu']));
+            $true_values = ['true', 'si', '1', 'yes', 'on'];
+            $false_values = ['false', 'no', '0', 'off'];
+
+            if (in_array($anunci_actiu, $true_values, true)) {
+                $anunci_actiu = 'true';
+            } elseif (in_array($anunci_actiu, $false_values, true)) {
+                $anunci_actiu = 'false';
+            } else {
+                $anunci_actiu = 'false'; // valor por defecto si no coincide con ninguno
+            }
+        } else {
+            $anunci_actiu = 'true';
+        }
+
+        $dies_caducitat = $anunci_actiu === 'true' ? 
             (current_user_can('administrator') && isset($params['dies-caducitat']) ? 
                 intval($params['dies-caducitat']) : 365) : 
             0;
         
         update_post_meta($post_id, 'dies-caducitat', $dies_caducitat);
+        update_post_meta($post_id, 'anunci_actiu', $anunci_actiu);
 
         $wpdb->query('COMMIT');
 
@@ -1851,7 +1864,6 @@ function upload_base64_image($base64_string, $post_id = 0) {
     return $attach_id;
 }
 
-// ...existing code...
 
 function enqueue_custom_scripts() {
     // Registrar y encolar scripts y estilos en el hook adecuado
@@ -1866,4 +1878,3 @@ function enqueue_custom_scripts() {
 }
 add_action('wp_enqueue_scripts', 'enqueue_custom_scripts');
 
-// ...existing code...
