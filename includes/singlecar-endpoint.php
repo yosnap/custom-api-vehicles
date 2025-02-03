@@ -1560,20 +1560,19 @@ function update_singlecar($request)
 
         // Verificar estado activo del anuncio
         if (isset($params['anunci_actiu'])) {
-            $anunci_actiu = filter_var($params['anunci_actiu'], FILTER_VALIDATE_BOOLEAN);
-            $dies_caducitat = $anunci_actiu ? 
-                (current_user_can('administrator') && isset($params['dies-caducitat']) ? 
-                    intval($params['dies-caducitat']) : 365) : 
-                0;
-            
-            update_post_meta($post_id, 'dies-caducitat', $dies_caducitat);
-        } else {
-            // Calcular anunci_actiu basado en dies-caducitat existente
-            $dies_caducitat = intval(get_post_meta($post_id, 'dies-caducitat', true));
-            $data_creacio = strtotime($post->post_date);
-            $data_actual = current_time('timestamp');
-            $dies_transcorreguts = floor(($data_actual - $data_creacio) / (60 * 60 * 24));
-            $anunci_actiu = $dies_transcorreguts <= $dies_caducitat;
+            $anunci_actiu = strtolower(trim($params['anunci_actiu']));
+            $true_values = ['true', 'si', '1', 'yes', 'on'];
+            $false_values = ['false', 'no', '0', 'off'];
+
+            if (in_array($anunci_actiu, $true_values, true)) {
+                $anunci_actiu = 'true';
+            } elseif (in_array($anunci_actiu, $false_values, true)) {
+                $anunci_actiu = 'false';
+            } else {
+                $anunci_actiu = 'false'; // valor por defecto si no coincide con ninguno
+            }
+
+            update_post_meta($post_id, 'anunci_actiu', $anunci_actiu);
         }
 
         $wpdb->query('COMMIT');
@@ -1610,7 +1609,7 @@ function update_singlecar($request)
         }
 
         // Añadir anunci_actiu a la respuesta
-        $response['anunci_actiu'] = $anunci_actiu;
+        $response['anunci_actiu'] = get_post_meta($post_id, 'anunci_actiu', true);
 
         return new WP_REST_Response($response, 200);
 
@@ -1851,3 +1850,20 @@ function upload_base64_image($base64_string, $post_id = 0) {
 
     return $attach_id;
 }
+
+// ...existing code...
+
+function enqueue_custom_scripts() {
+    // Registrar y encolar scripts y estilos en el hook adecuado
+    wp_register_script('react-product-js', plugins_url('js/react-product.js', __FILE__), array(), '1.0.0', true);
+    wp_enqueue_script('react-product-js');
+
+    wp_register_script('my-react-app', plugins_url('js/my-react-app.js', __FILE__), array(), '1.0.0', true);
+    wp_enqueue_script('my-react-app');
+
+    wp_register_style('my-product-css', plugins_url('css/my-product.css', __FILE__), array(), '1.0.0', 'all');
+    wp_enqueue_style('my-product-css');
+}
+add_action('wp_enqueue_scripts', 'enqueue_custom_scripts');
+
+// ...existing code...
