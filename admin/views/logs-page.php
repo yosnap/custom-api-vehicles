@@ -5,6 +5,12 @@ if (!defined('ABSPATH'))
 global $wpdb;
 $table_name = $wpdb->prefix . 'vehicle_api_logs';
 $logs = $wpdb->get_results("SELECT * FROM {$table_name} ORDER BY created_at DESC LIMIT 100");
+
+// Manejar la eliminación de todos los registros
+if (isset($_POST['delete_all_logs'])) {
+    $wpdb->query("TRUNCATE TABLE {$table_name}");
+    echo '<div class="updated"><p>Todos los registros han sido eliminados.</p></div>';
+}
 ?>
 
 <div class="wrap">
@@ -30,7 +36,12 @@ $logs = $wpdb->get_results("SELECT * FROM {$table_name} ORDER BY created_at DESC
         </div>
     </form>
 
-    <table class="wp-list-table widefat fixed striped">
+    <form method="post" id="delete-all-logs-form">
+        <input type="hidden" name="delete_all_logs" value="1">
+        <input type="submit" class="button button-danger" value="Eliminar todos los registros" onclick="return confirm('¿Estás seguro de que deseas eliminar todos los registros?');">
+    </form>
+
+    <table class="fixed wp-list-table widefat striped">
         <thead>
             <tr>
                 <th>ID</th>
