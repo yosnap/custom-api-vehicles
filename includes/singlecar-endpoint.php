@@ -339,7 +339,18 @@ function get_singlecar($request)
                 'tipus-de-vehicle' => $terms[0]->name ?? null,
                 'marques-cotxe' => $marques_terms[1]->name ?? null,
                 'models-cotxe' => $marques_terms[0]->name ?? null,
+                'anunci_actiu' => true // Por defecto es true, a menos que se indique lo contrario
             ];
+
+            // Verificar si el anuncio está caducado
+            $dies_caducitat = intval(get_post_meta($vehicle_id, 'dies-caducitat', true));
+            $data_creacio = strtotime($post->post_date);
+            $data_actual = current_time('timestamp');
+            $dies_transcorreguts = floor(($data_actual - $data_creacio) / (60 * 60 * 24));
+            
+            if ($dies_transcorreguts > $dies_caducitat) {
+                $vehicle['anunci_actiu'] = false;
+            }
 
             // Lista de campos a excluir
             $excluded_fields = [
@@ -728,8 +739,17 @@ function create_singlecar($request)
             }
         }
 
-        // Establecer valor inicial de dies-caducitat
-        update_post_meta($post_id, 'dies-caducitat', 365);
+        // Establecer el valor inicial de dies-caducitat y anunci_actiu
+        $anunci_actiu = isset($params['anunci_actiu']) ? 
+            filter_var($params['anunci_actiu'], FILTER_VALIDATE_BOOLEAN) : 
+            true;
+            
+        $dies_caducitat = $anunci_actiu ? 
+            (current_user_can('administrator') && isset($params['dies-caducitat']) ? 
+                intval($params['dies-caducitat']) : 365) : 
+            0;
+        
+        update_post_meta($post_id, 'dies-caducitat', $dies_caducitat);
 
         $wpdb->query('COMMIT');
 
@@ -763,6 +783,9 @@ function create_singlecar($request)
                 }
             }
         }
+
+        // Añadir anunci_actiu a la respuesta
+        $response['anunci_actiu'] = $anunci_actiu;
 
         return new WP_REST_Response($response, 201);
 
@@ -1252,6 +1275,17 @@ function process_and_save_meta_fields($post_id, $params)
         update_post_meta($post_id, 'dies-caducitat', 365);
     }
 
+    // Verificar y procesar anunci_actiu
+    if (isset($params['anunci_actiu'])) {
+        $anunci_actiu = filter_var($params['anunci_actiu'], FILTER_VALIDATE_BOOLEAN);
+        $dies_caducitat = $anunci_actiu ? 
+            (current_user_can('administrator') && isset($params['dies-caducitat']) ? 
+                intval($params['dies-caducitat']) : 365) : 
+            0;
+        
+        update_post_meta($post_id, 'dies-caducitat', $dies_caducitat);
+    }
+
     // Procesar imagen destacada
     if (isset($params['imatge-destacada-id'])) {
         $image_id = intval($params['imatge-destacada-id']);
@@ -1524,6 +1558,24 @@ function update_singlecar($request)
         // Procesar y guardar campos meta e imágenes
         process_and_save_meta_fields($post_id, $params);
 
+        // Verificar estado activo del anuncio
+        if (isset($params['anunci_actiu'])) {
+            $anunci_actiu = filter_var($params['anunci_actiu'], FILTER_VALIDATE_BOOLEAN);
+            $dies_caducitat = $anunci_actiu ? 
+                (current_user_can('administrator') && isset($params['dies-caducitat']) ? 
+                    intval($params['dies-caducitat']) : 365) : 
+                0;
+            
+            update_post_meta($post_id, 'dies-caducitat', $dies_caducitat);
+        } else {
+            // Calcular anunci_actiu basado en dies-caducitat existente
+            $dies_caducitat = intval(get_post_meta($post_id, 'dies-caducitat', true));
+            $data_creacio = strtotime($post->post_date);
+            $data_actual = current_time('timestamp');
+            $dies_transcorreguts = floor(($data_actual - $data_creacio) / (60 * 60 * 24));
+            $anunci_actiu = $dies_transcorreguts <= $dies_caducitat;
+        }
+
         $wpdb->query('COMMIT');
 
         // Obtener los datos actualizados del post
@@ -1556,6 +1608,9 @@ function update_singlecar($request)
                 }
             }
         }
+
+        // Añadir anunci_actiu a la respuesta
+        $response['anunci_actiu'] = $anunci_actiu;
 
         return new WP_REST_Response($response, 200);
 
@@ -1644,99 +1699,46 @@ function get_vehicle_details($request)
     $terms = wp_get_post_terms($vehicle_id, 'types-of-transport', ['fields' => 'all']);
     $marques_terms = wp_get_post_terms($vehicle_id, 'marques-coches', ['fields' => 'all']);
 
-    function get_glossary_label($value)
-    {
-        $glossary = [
-            "39" => "Estat Vehicle Part",
-            "40" => "Estat del vehícle pro",
-            "41" => "Carrosseria",
-            "42" => "Tipus Moto",
-            "43" => "Carrosseria Caravanes",
-            "44" => "Carrosseria comercials",
-            "45" => "Carrosseria camions",
-            "46" => "Tipus de canvi coche",
-            "47" => "Autonomia",
-            "48" => "Bateria",
-            "49" => "Connectors-electric",
-            "50" => "Cables recàrrega",
-            "51" => "Color Exterior",
-            "52" => "Tapisseria",
-            "53" => "Color Tapisseria",
-            "54" => "Extres Coche",
-            "55" => "Extres Moto",
-            "56" => "Extres Autocaravana",
-            "57" => "Extres Habitacle",
-            "58" => "Tipus Emissions",
-            "59" => "Tracció",
-            "60" => "Roda recanvi",
-            "61" => "Velocitat de recàrrega",
-            "62" => "Tipus canvi moto",
-            "63" => "Tipus canvi elèctric",
-            "euro1" => "Euro 1",
-            "euro2" => "Euro 2",
-            "euro3" => "Euro 3",
-            "euro4" => "Euro 4",
-            "euro5" => "Euro 5",
-            "euro6" => "Euro 6",
-            "t_davant" => "Tracción Delantera",
-            "t_darrera" => "Tracción Trasera",
-            "t_4x4" => "Tracción 4x4"
-        ];
-        return $glossary[$value] ?? $value;
-    }
-
-    function get_glossary_value($field, $value)
-    {
-        if (!function_exists('jet_engine')) {
-            return $value;
-        }
-
-        $jet_engine = jet_engine();
-        if (!isset($jet_engine->glossaries) || !isset($jet_engine->glossaries->filters)) {
-            return $value;
-        }
-
-        // Obtener el ID del glosario según el campo
-        $glossary_id = '';
-        switch ($field) {
-            case 'traccio':
-                $glossary_id = '59'; // ID del glosario de tracción
-                break;
-            case 'emissions-vehicle':
-                $glossary_id = '58'; // ID del glosario de emisiones
-                break;
-            case 'roda-recanvi':
-                $glossary_id = '60'; // ID del glosario de rueda de recambio
-                break;
-        }
-
-        if (!$glossary_id) {
-            return $value;
-        }
-
-        // Obtener las opciones del glosario
-        $options = $jet_engine->glossaries->filters->get_glossary_options($glossary_id);
-
-        // Devolver la etiqueta si existe, si no devolver el valor original
-        return isset($options[$value]) ? $options[$value] : $value;
-    }
-
+    // Construir la respuesta base con manejo seguro de términos
     $response = [
         'id' => $vehicle_id,
         'titol-anunci' => get_the_title($vehicle_id),
         'descripcio-anunci' => $post->post_content,
-        'tipus-de-vehicle' => get_glossary_label($terms[0] ?? null),
-        'marques-cotxe' => get_glossary_label($marques_terms[1] ?? null),
-        'models-cotxe' => get_glossary_label($marques_terms[0] ?? null),
-        'preu' => $meta['preu'][0] ?? null,
-        'emissions-vehicle' => get_glossary_value('emissions-vehicle', $meta['emissions-vehicle'][0] ?? null),
-        'traccio' => get_glossary_value('traccio', $meta['traccio'][0] ?? null),
-        'roda-recanvi' => get_glossary_value('roda-recanvi', $meta['roda-recanvi'][0] ?? null)
+        'tipus-de-vehicle' => !empty($terms) ? $terms[0]->name : '',
+        'marques-cotxe' => '',
+        'models-cotxe' => '',
+        'anunci_actiu' => true // Por defecto asumimos que está activo
     ];
 
+    // Procesar términos de marca y modelo
+    if (!empty($marques_terms)) {
+        foreach ($marques_terms as $term) {
+            if ($term->parent === 0) {
+                // Es una marca
+                $response['marques-cotxe'] = $term->name;
+            } else {
+                // Es un modelo
+                $response['models-cotxe'] = $term->name;
+            }
+        }
+    }
+
+    // Calcular si el anuncio está activo basado en la fecha de creación y días de caducidad
+    $dies_caducitat = intval(get_post_meta($vehicle_id, 'dies-caducitat', true) ?: 365);
+    $data_creacio = strtotime($post->post_date);
+    $data_actual = current_time('timestamp');
+    $dies_transcorreguts = floor(($data_actual - $data_creacio) / (60 * 60 * 24));
+    
+    if ($dies_transcorreguts > $dies_caducitat) {
+        $response['anunci_actiu'] = false;
+    }
+
+    // Procesar campos meta
     foreach ($meta as $key => $value) {
-        if (!in_array($key, ['emissions-vehicle', 'traccio', 'roda-recanvi'])) {
-            $response[$key] = $value[0];
+        if (!Vehicle_Fields::should_exclude_field($key)) {
+            // Asegurarnos de que el valor no esté en un array
+            $meta_value = is_array($value) ? $value[0] : $value;
+            $response[$key] = get_field_label($key, $meta_value);
         }
     }
 
@@ -1744,36 +1746,29 @@ function get_vehicle_details($request)
     $response['imatge-destacada-id'] = get_post_thumbnail_id($vehicle_id);
     $response['imatge-destacada-url'] = get_the_post_thumbnail_url($vehicle_id, 'full');
 
-    // Obtener galería
+    // Obtener galería de forma segura
     $gallery_ids = get_post_meta($vehicle_id, 'ad_gallery', true);
+    $gallery_urls = [];
+    
     if (!empty($gallery_ids)) {
-        $gallery_urls = [];
-        // Si es una cadena, convertir a array
-        if (is_string($gallery_ids)) {
-            $gallery_ids = explode(',', $gallery_ids);
-        }
+        // Asegurar que tenemos un array de IDs
+        $gallery_ids = is_array($gallery_ids) ? $gallery_ids : explode(',', $gallery_ids);
+        
         foreach ($gallery_ids as $gallery_id) {
             $url = wp_get_attachment_url(trim($gallery_id));
             if ($url) {
                 $gallery_urls[] = $url;
             }
         }
+    }
+    
+    if (!empty($gallery_urls)) {
         $response['galeria-vehicle-urls'] = $gallery_urls;
     }
 
     // Ocultar dies-caducitat a usuarios no administradores
     if (!current_user_can('administrator')) {
         unset($response['dies-caducitat']);
-    }
-
-    // Corrección del manejo de metadatos
-    $meta = get_post_meta($vehicle_id);
-    foreach ($meta as $key => $value) {
-        if (!Vehicle_Fields::should_exclude_field($key)) {
-            // Asegurarnos de que el valor no esté en un array
-            $meta_value = is_array($value) ? $value[0] : $value;
-            $response[$key] = get_field_label($key, $meta_value);
-        }
     }
 
     return new WP_REST_Response($response, 200);
