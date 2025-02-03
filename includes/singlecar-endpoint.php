@@ -339,7 +339,7 @@ function get_singlecar($request)
                 'tipus-de-vehicle' => $terms[0]->name ?? null,
                 'marques-cotxe' => $marques_terms[1]->name ?? null,
                 'models-cotxe' => $marques_terms[0]->name ?? null,
-                'anunci_actiu' => true // Por defecto es true, a menos que se indique lo contrario
+                'anunci-actiu' => true // Por defecto es true, a menos que se indique lo contrario
             ];
 
             // Verificar si el anuncio está caducado
@@ -349,7 +349,7 @@ function get_singlecar($request)
             $dies_transcorreguts = floor(($data_actual - $data_creacio) / (60 * 60 * 24));
             
             if ($dies_transcorreguts > $dies_caducitat) {
-                $vehicle['anunci_actiu'] = false;
+                $vehicle['anunci-actiu'] = false;
             }
 
             // Lista de campos a excluir
@@ -739,9 +739,9 @@ function create_singlecar($request)
             }
         }
 
-        // Establecer el valor inicial de dies-caducitat y anunci_actiu
-        if (isset($params['anunci_actiu'])) {
-            $anunci_actiu = strtolower(trim($params['anunci_actiu']));
+        // Establecer el valor inicial de dies-caducitat y anunci-actiu
+        if (isset($params['anunci-actiu'])) {
+            $anunci_actiu = strtolower(trim($params['anunci-actiu']));
             $true_values = ['true', 'si', '1', 'yes', 'on'];
             $false_values = ['false', 'no', '0', 'off'];
 
@@ -762,7 +762,7 @@ function create_singlecar($request)
             0;
         
         update_post_meta($post_id, 'dies-caducitat', $dies_caducitat);
-        update_post_meta($post_id, 'anunci_actiu', $anunci_actiu);
+        update_post_meta($post_id, 'anunci-actiu', $anunci_actiu);
 
         $wpdb->query('COMMIT');
 
@@ -797,8 +797,8 @@ function create_singlecar($request)
             }
         }
 
-        // Añadir anunci_actiu a la respuesta
-        $response['anunci_actiu'] = $anunci_actiu;
+        // Añadir anunci-actiu a la respuesta
+        $response['anunci-actiu'] = $anunci_actiu;
 
         return new WP_REST_Response($response, 201);
 
@@ -1282,15 +1282,15 @@ function process_and_save_meta_fields($post_id, $params)
     // Manejar el campo dies-caducitat
     if (current_user_can('administrator') && isset($params['dies-caducitat'])) {
         $dies_caducitat = is_numeric($params['dies-caducitat']) ? intval($params['dies-caducitat']) : 365;
-        update_post_meta($post_id, 'dies-caducitat', $dies_caducitat);
+        update_post_meta($post_id, $dies_caducitat);
     } else if (!get_post_meta($post_id, 'dies-caducitat', true)) {
         // Si no existe el valor, establecer el valor por defecto
         update_post_meta($post_id, 'dies-caducitat', 365);
     }
 
-    // Verificar y procesar anunci_actiu
-    if (isset($params['anunci_actiu'])) {
-        $anunci_actiu = filter_var($params['anunci_actiu'], FILTER_VALIDATE_BOOLEAN);
+    // Verificar y procesar anunci-actiu
+    if (isset($params['anunci-actiu'])) {
+        $anunci_actiu = filter_var($params['anunci-actiu'], FILTER_VALIDATE_BOOLEAN);
         $dies_caducitat = $anunci_actiu ? 
             (current_user_can('administrator') && isset($params['dies-caducitat']) ? 
                 intval($params['dies-caducitat']) : 365) : 
@@ -1572,8 +1572,8 @@ function update_singlecar($request)
         process_and_save_meta_fields($post_id, $params);
 
         // Verificar estado activo del anuncio
-        if (isset($params['anunci_actiu'])) {
-            $anunci_actiu = strtolower(trim($params['anunci_actiu']));
+        if (isset($params['anunci-actiu'])) {
+            $anunci_actiu = strtolower(trim($params['anunci-actiu']));
             $true_values = ['true', 'si', '1', 'yes', 'on'];
             $false_values = ['false', 'no', '0', 'off'];
 
@@ -1585,7 +1585,7 @@ function update_singlecar($request)
                 $anunci_actiu = 'false'; // valor por defecto si no coincide con ninguno
             }
 
-            update_post_meta($post_id, 'anunci_actiu', $anunci_actiu);
+            update_post_meta($post_id, 'anunci-actiu', $anunci_actiu);
         }
 
         $wpdb->query('COMMIT');
@@ -1621,8 +1621,8 @@ function update_singlecar($request)
             }
         }
 
-        // Añadir anunci_actiu a la respuesta
-        $response['anunci_actiu'] = get_post_meta($post_id, 'anunci_actiu', true);
+        // Añadir anunci-actiu a la respuesta
+        $response['anunci-actiu'] = get_post_meta($post_id, 'anunci-actiu', true);
 
         return new WP_REST_Response($response, 200);
 
@@ -1719,7 +1719,7 @@ function get_vehicle_details($request)
         'tipus-de-vehicle' => !empty($terms) ? $terms[0]->name : '',
         'marques-cotxe' => '',
         'models-cotxe' => '',
-        'anunci_actiu' => true // Por defecto asumimos que está activo
+        'anunci-actiu' => true // Por defecto asumimos que está activo
     ];
 
     // Procesar términos de marca y modelo
@@ -1742,7 +1742,7 @@ function get_vehicle_details($request)
     $dies_transcorreguts = floor(($data_actual - $data_creacio) / (60 * 60 * 24));
     
     if ($dies_transcorreguts > $dies_caducitat) {
-        $response['anunci_actiu'] = false;
+        $response['anunci-actiu'] = false;
     }
 
     // Procesar campos meta
