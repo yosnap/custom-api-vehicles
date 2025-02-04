@@ -1714,6 +1714,7 @@ function get_vehicle_details($request)
     // Construir la respuesta base con manejo seguro de términos
     $response = [
         'id' => $vehicle_id,
+        'slug' => $post->post_name,
         'titol-anunci' => get_the_title($vehicle_id),
         'descripcio-anunci' => $post->post_content,
         'tipus-de-vehicle' => !empty($terms) ? $terms[0]->name : '',
