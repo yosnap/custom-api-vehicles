@@ -76,6 +76,19 @@ add_action('rest_api_init', function () {
         ]
     ]);
 
+    register_rest_route('api-motor/v1', '/vehicles/(?P<slug>[\w-]+)', [
+        [
+            'methods' => 'GET',
+            'callback' => 'get_vehicle_details_by_slug',
+            'permission_callback' => function ($request) {
+                if (!is_user_logged_in()) {
+                    return false;
+                }
+                return verify_post_ownership_by_slug($request['slug']);
+            },
+        ],
+    ]);
+
     register_rest_route('api-motor/v1', '/debug-fields', [
         'methods' => 'GET',
         'callback' => 'debug_vehicle_fields',
@@ -1691,7 +1704,22 @@ function delete_singlecar($request)
 function get_vehicle_details($request)
 {
     $vehicle_id = $request['id'];
+    return get_vehicle_details_common($vehicle_id);
+}
 
+function get_vehicle_details_by_slug($request)
+{
+    $slug = $request['slug'];
+    $post = get_page_by_path($slug, OBJECT, 'singlecar');
+    if (!$post) {
+        return new WP_Error('no_vehicle', 'Vehicle not found', ['status' => 404]);
+    }
+    $vehicle_id = $post->ID;
+    return get_vehicle_details_common($vehicle_id);
+}
+
+function get_vehicle_details_common($vehicle_id)
+{
     // Verificar propiedad
     if (!verify_post_ownership($vehicle_id)) {
         return new WP_Error(
@@ -1806,6 +1834,21 @@ function verify_post_ownership($post_id)
 
     $post = get_post($post_id);
     if (!$post || $post->post_type !== 'singlecar') {
+        return false;
+    }
+
+    // Permitir acceso si el usuario es el autor o es administrador
+    return $post->post_author == get_current_user_id() || current_user_can('administrator');
+}
+
+function verify_post_ownership_by_slug($slug)
+{
+    if (!is_user_logged_in()) {
+        return false;
+    }
+
+    $post = get_page_by_path($slug, OBJECT, 'singlecar');
+    if (!$post) {
         return false;
     }
 

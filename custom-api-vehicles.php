@@ -2,7 +2,7 @@
 /*
 Plugin Name: Custom API Vehicles for Motoraldia
 Description: API personalizada para gestionar vehículos de Motoraldia
-Version: 1.6
+Version: 1.6.1
 Author: Sn4p.dev
 */
 
