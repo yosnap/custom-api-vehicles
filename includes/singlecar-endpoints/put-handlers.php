@@ -11,26 +11,30 @@ function update_singlecar($request) {
         // Verificar existencia y propiedad del vehículo
         validate_vehicle_ownership($post_id);
 
+        // Validar todos los campos con flag is_update = true
+        validate_all_fields($params, true);
+
         // Actualizar el post
         update_vehicle_base_data($post_id, $params);
 
-        // Validar y actualizar taxonomías
-        if (has_taxonomy_updates($params)) {
-            validate_taxonomies($params);
-            update_vehicle_taxonomies($post_id, $params);
+        // Procesar actualizaciones solo para los campos proporcionados
+        if (!empty($params)) {
+            if (has_taxonomy_updates($params)) {
+                validate_taxonomies($params);
+                update_vehicle_taxonomies($post_id, $params);
+            }
+
+            if (has_image_updates($params)) {
+                process_vehicle_images($post_id, $params);
+            }
+
+            if (isset($params['anunci-actiu'])) {
+                update_vehicle_status($post_id, $params);
+            }
+
+            // Procesar campos meta solo si hay campos para actualizar
+            process_and_save_meta_fields($post_id, $params, true);
         }
-
-        // Validar y actualizar campos meta
-        validate_all_fields($params);
-        process_and_save_meta_fields($post_id, $params);
-
-        // Procesar imágenes si se proporcionan
-        if (has_image_updates($params)) {
-            process_vehicle_images($post_id, $params);
-        }
-
-        // Actualizar estado activo si se proporciona
-        update_vehicle_status($post_id, $params);
 
         $wpdb->query('COMMIT');
 

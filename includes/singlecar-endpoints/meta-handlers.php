@@ -1,13 +1,13 @@
 <?php
 
-function process_and_save_meta_fields($post_id, $params) {
+function process_and_save_meta_fields($post_id, $params, $is_update = false) {
     $meta_fields = Vehicle_Fields::get_meta_fields();
     $flag_fields = Vehicle_Fields::get_flag_fields();
     $errors = [];
 
     try {
         // Validar todos los campos antes de procesar
-        validate_all_fields($params);
+        validate_all_fields($params, $is_update);
 
         // Mapeo de campos
         $field_mapping = get_field_mapping();
@@ -32,7 +32,7 @@ function process_and_save_meta_fields($post_id, $params) {
         process_active_status($post_id, $params);
 
     } catch (Exception $e) {
-        throw new Exception("Errores de validación:\n" . $e->getMessage());
+        throw new Exception($e->getMessage());
     }
 }
 
@@ -44,7 +44,7 @@ function get_field_mapping() {
         'capacitat-maleters-cotxe' => 'capacitat-total',
         'acceleracio-0-100-cotxe' => 'acceleracio-0-100',
         'numero-motors' => 'n-motors',
-        'galeria-vehicle' => 'ad_gallery',
+        'galeria-vehicle' => 'ad_gallery', // Asegurarnos que este mapeo esté correcto
         'carrosseria-cotxe' => 'segment',
         'traccio' => 'traccio',
         'roda-recanvi' => 'roda-recanvi',
@@ -59,6 +59,9 @@ function process_mapped_fields($post_id, $params, $field_mapping) {
             
             if ($db_field === 'is-vip') {
                 process_vip_status($post_id, $value);
+            } else if ($db_field === 'ad_gallery') {
+                // No procesar la galería aquí, ya que se maneja en process_vehicle_images
+                continue;
             } else {
                 update_post_meta($post_id, $db_field, $value);
             }
@@ -115,17 +118,22 @@ function process_single_meta_field($post_id, $field, $value, $type) {
 }
 
 function process_boolean_value($value) {
+    // Si es booleano nativo
+    if (is_bool($value)) {
+        return $value ? 'true' : 'false';
+    }
+
+    // Si es string
     if (is_string($value)) {
         $value = strtolower(trim($value));
-        $true_values = ['true', 'si', '1', 'yes', 'on'];
-        $false_values = ['false', 'no', '0', 'off'];
-
-        if (in_array($value, $true_values, true)) {
-            return 'true';
-        } elseif (in_array($value, $false_values, true)) {
-            return 'false';
-        }
+        return in_array($value, get_true_values()) ? 'true' : 'false';
     }
+
+    // Si es numérico
+    if (is_numeric($value)) {
+        return $value == 1 ? 'true' : 'false';
+    }
+
     return 'false';
 }
 
