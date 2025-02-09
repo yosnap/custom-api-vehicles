@@ -200,9 +200,15 @@ function get_field_label($field_name, $value) {
         'emissions-vehicle',
         'carroseria-camions',
         'carroseria-vehicle-comercial',
-        'tipus-de-canvi-moto',
+        'tipus-de-canvi',
         'bateria',
-        'velocitat-recarrega'
+        'velocitat-recarrega',
+        'extres-cotxe',
+        'extres-moto',
+        'extres-autocaravana',
+        'extres-habitacle',
+        'cables-recarrega',
+        'connectors'
     ];
 
     // Si es un campo de glosario (valor único)
@@ -252,7 +258,7 @@ function get_field_label($field_name, $value) {
         'tipus-propulsor' => 'tipus-de-propulsor',
         'estat-vehicle' => 'estat-vehicle',
         'tipus-de-moto' => 'tipus-de-moto',
-        'tipus-de-canvi-moto' => 'tipus-de-canvi-moto',
+        'tipus-canvi-cotxe' => 'tipus-de-canvi',
         'tipus-carroseria-caravana' => 'tipus-carroseria-caravana'
     ];
 
@@ -1694,7 +1700,7 @@ function get_vehicle_details_common($vehicle_id)
         'emissions-vehicle',
         'carroseria-camions',
         'carroseria-vehicle-comercial',
-        'tipus-de-canvi-moto',
+        'tipus-de-canvi',
         'bateria',
         'velocitat-recarrega',
         'extres-cotxe',
@@ -1712,7 +1718,7 @@ function get_vehicle_details_common($vehicle_id)
         'tipus-propulsor',
         'estat-vehicle',
         'tipus-de-moto',
-        'tipus-de-canvi-moto',
+        'tipus-canvi-cotxe',
         'tipus-carroseria-caravana'
     ];
 
