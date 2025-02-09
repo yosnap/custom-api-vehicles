@@ -105,6 +105,23 @@ require_once(ABSPATH . 'wp-admin/includes/file.php');
 require_once(ABSPATH . 'wp-admin/includes/image.php');
 
 function get_field_label($field_name, $value) {
+    // Si es el campo bateria, hacer log especial
+    if ($field_name === 'bateria') {
+        error_log("=== DEBUG CAMPO BATERIA ===");
+        error_log("Valor original: " . print_r($value, true));
+        
+        // Obtener y loguear el ID del glosario
+        $glossary_id = Vehicle_Glossary_Mappings::get_glossary_id($field_name);
+        error_log("ID del glosario mapeado: " . print_r($glossary_id, true));
+        
+        if ($glossary_id && function_exists('jet_engine') && isset(jet_engine()->glossaries)) {
+            $options = jet_engine()->glossaries->filters->get_glossary_options($glossary_id);
+            error_log("Opciones disponibles en el glosario:");
+            error_log(print_r($options, true));
+        }
+        error_log("=========================");
+    }
+
     // Si no hay valor, devolver string vacío
     if (empty($value) && $value !== '0' && $value !== 0) {
         return '';
@@ -191,27 +208,36 @@ function get_field_label($field_name, $value) {
     // Si es un campo de glosario (valor único)
     if (in_array($field_name, $glossary_fields)) {
         if (!function_exists('jet_engine') || !isset(jet_engine()->glossaries)) {
+            error_log("Campo $field_name: JetEngine no está disponible");
             return $value;
         }
 
         try {
             $glossary_id = Vehicle_Glossary_Mappings::get_glossary_id($field_name);
+            error_log("Campo $field_name: ID del glosario obtenido: " . ($glossary_id ? $glossary_id : 'no encontrado'));
+            
             if (!$glossary_id) {
                 return $value;
             }
 
             $options = jet_engine()->glossaries->filters->get_glossary_options($glossary_id);
+            error_log("Campo $field_name: Opciones del glosario: " . print_r($options, true));
+            
             if (empty($options)) {
                 return $value;
             }
 
             // Buscar el label correspondiente al value
+            error_log("Campo $field_name: Buscando label para el valor: " . $value);
             if (isset($options[$value])) {
+                error_log("Campo $field_name: Label encontrado directamente: " . $options[$value]);
                 return $options[$value];
             } elseif (isset($options[trim($value)])) {
+                error_log("Campo $field_name: Label encontrado después de trim: " . $options[trim($value)]);
                 return $options[trim($value)];
             }
             
+            error_log("Campo $field_name: No se encontró label para el valor: " . $value);
             return $value; // Devolver el valor original si no se encuentra el label
         } catch (Exception $e) {
             error_log("Error procesando glosario $field_name: " . $e->getMessage());
@@ -433,8 +459,8 @@ function create_singlecar($request)
         foreach ($image_fields as $field) {
             if (isset($params[$field]) && !empty($params[$field])) {
                 if (is_string($params[$field])) {
-                    // Caso 1: Base64
                     if (strpos($params[$field], 'data:image') === 0) {
+                        // Caso 1: Base64
                         $upload_dir = wp_upload_dir();
 
                         // Decodificar la imagen base64
@@ -1167,6 +1193,7 @@ function process_and_save_meta_fields($post_id, $params)
                     }
                 }
             } catch (Exception $e) {
+                error_log("Error al procesar campo {$field}: " . $e->getMessage());
                 $errors[] = $e->getMessage();
             }
         }
@@ -1667,10 +1694,15 @@ function get_vehicle_details_common($vehicle_id)
         'emissions-vehicle',
         'carroseria-camions',
         'carroseria-vehicle-comercial',
+        'tipus-de-canvi-moto',
+        'bateria',
+        'velocitat-recarrega',
+        'extres-cotxe',
         'extres-moto',
         'extres-autocaravana',
         'extres-habitacle',
-        'extres-cotxe'
+        'cables-recarrega',
+        'connectors'
     ];
 
     // Lista de taxonomías que deben devolver labels
