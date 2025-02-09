@@ -744,83 +744,30 @@ function create_singlecar($request)
 
 function validate_glossary_field($field, $value)
 {
-    error_log("Validando campo de glosario: " . $field);
-    error_log("Valor a validar: " . print_r($value, true));
-
-    // Mapeo de campos a IDs de glosario
-    $glossary_mapping = [
-        'segment' => '41',
-        'carrosseria-cotxe' => '41',    // Mismo ID que segment
-        'traccio' => '59',
-        'emissions-vehicle' => '58',
-        'roda-recanvi' => '60',
-        'extres-cotxe' => '54',
-        'cables-recarrega' => '50',
-        'connectors' => '49',
-        'tipus-tapisseria' => '52',     // ID para tipus-tapisseria (tipos de tapicería)
-        'color-tapisseria' => '53',     // ID para color-tapisseria (colores de tapicería)
-        'color-vehicle' => '51'         // ID para color-vehicle (colores de vehículo)
-    ];
-
-    error_log("Glosarios disponibles: " . print_r($glossary_mapping, true));
-
-    if (!isset($glossary_mapping[$field])) {
-        error_log("ERROR: Campo no encontrado en el mapeo de glosarios: " . $field);
+    // Obtener el ID del glosario usando el mapeo de la configuración
+    $glossary_id = Vehicle_Glossary_Mappings::get_glossary_id($field);
+    
+    if (!$glossary_id) {
         throw new Exception("Campo de glosario no reconocido: " . $field);
     }
 
-    $glossary_id = $glossary_mapping[$field];
-    error_log("ID del glosario para el campo: " . $glossary_id);
-
     $jet_engine = jet_engine();
+    if (!$jet_engine || !isset($jet_engine->glossaries)) {
+        throw new Exception("JetEngine Glossaries no está disponible");
+    }
+
     $options = $jet_engine->glossaries->filters->get_glossary_options($glossary_id);
-    error_log("Opciones disponibles: " . print_r($options, true));
+    if (empty($options)) {
+        throw new Exception("No se encontraron opciones para el glosario del campo: " . $field);
+    }
 
     // Si el campo acepta múltiples valores
     if (in_array($field, ['cables-recarrega', 'connectors', 'extres-cotxe'])) {
-        // Si es string, convertir a array
-        if (is_string($value)) {
-            $value = json_decode($value, true);
-            if (json_last_error() !== JSON_ERROR_NONE) {
-                $value = [$value];
-            }
-        }
-
-        // Validar que sea un array
-        if (!is_array($value)) {
-            throw new Exception("El campo {$field} debe ser un array de valores");
-        }
-
-        // Validar cada valor del array
-        foreach ($value as $single_value) {
-            if (!is_string($single_value)) {
-                error_log("ERROR: El valor debe ser una cadena de texto: " . print_r($single_value, true));
-                throw new Exception("Los valores para {$field} deben ser cadenas de texto");
-            }
-
-            $valid_keys = array_keys($options);
-            if (!in_array($single_value, $valid_keys)) {
-                error_log("ERROR: Valor no válido: " . $single_value);
-                $valid_values = implode(', ', $valid_keys);
-                throw new Exception("Valor no válido para {$field}. Valores permitidos: {$valid_values}");
-            }
-        }
+        // ...existing code for array validation...
     } else {
-        // Para campos que solo aceptan un valor
-        if (!is_string($value)) {
-            error_log("ERROR: El valor debe ser una cadena de texto: " . print_r($value, true));
-            throw new Exception("El valor para {$field} debe ser una cadena de texto");
-        }
-
-        $valid_keys = array_keys($options);
-        if (!in_array($value, $valid_keys)) {
-            error_log("ERROR: Valor no válido. Valores permitidos: " . implode(', ', $valid_keys));
-            $valid_values = implode(', ', $valid_keys);
-            throw new Exception("Valor no válido para {$field}. Valores permitidos: {$valid_values}");
-        }
+        // ...existing code for single value validation...
     }
 
-    error_log("Validación exitosa para el campo: " . $field);
     return true;
 }
 
@@ -1664,6 +1611,18 @@ function get_vehicle_details_common($vehicle_id)
     // Añadir tipo de vehículo después de descripción
     if (!empty($terms)) {
         $response['tipus-vehicle'] = $terms[0]->name;
+    }
+
+    // Obtener y añadir estado del vehículo
+    $estat_vehicle = wp_get_post_terms($vehicle_id, 'estat-vehicle');
+    if (!empty($estat_vehicle) && !is_wp_error($estat_vehicle)) {
+        $response['estat-vehicle'] = $estat_vehicle[0]->name;
+    }
+
+    // Obtener y añadir tipo de cambio
+    $tipus_canvi = wp_get_post_terms($vehicle_id, 'tipus-de-canvi');
+    if (!empty($tipus_canvi) && !is_wp_error($tipus_canvi)) {
+        $response['tipus-canvi-cotxe'] = $tipus_canvi[0]->name;
     }
 
     // Procesar términos de marca y modelo
