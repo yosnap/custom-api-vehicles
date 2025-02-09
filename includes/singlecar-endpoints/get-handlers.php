@@ -1,60 +1,187 @@
 <?php
 
 function get_singlecar($request) {
-    $params = $request->get_params();
-    $paged = isset($params['page']) ? (int) $params['page'] : 1;
-    $posts_per_page = isset($params['per_page']) ? (int) $params['per_page'] : 10;
-
-    $args = array(
-        'post_type' => 'singlecar',
-        'posts_per_page' => $posts_per_page,
-        'paged' => $paged,
-        'post_status' => 'publish'
-    );
-
-    if (!empty($params['search'])) {
-        $args['s'] = sanitize_text_field($params['search']);
-    }
-
-    if (isset($params['anunci-actiu'])) {
-        $anunci_actiu = filter_var($params['anunci-actiu'], FILTER_VALIDATE_BOOLEAN);
-        $args['meta_query'] = array(
-            array(
-                'key' => 'anunci-actiu',
-                'value' => $anunci_actiu ? 'true' : 'false',
-                'compare' => '='
-            )
-        );
-    }
-
-    $query = new WP_Query($args);
+    error_log('=== INICIO GET VEHICLES LIST ===');
     
+    // Limpiar caché transient
+    $cache_key = 'vehicles_list_' . md5(serialize($request->get_params()));
+    delete_transient($cache_key);
+
+    $params = $request->get_params();
+    error_log('Parámetros recibidos: ' . print_r($params, true));
+
+    // Construir argumentos de consulta
+    $args = build_query_args($params);
+    error_log('Argumentos de consulta: ' . print_r($args, true));
+
+    // Ejecutar consulta
+    $query = new WP_Query($args);
+    error_log('Total posts encontrados: ' . $query->found_posts);
+
+    // Si no hay resultados, devolver respuesta vacía
     if (!$query->have_posts()) {
-        return new WP_REST_Response(array(
-            'items' => array(),
+        error_log('No se encontraron vehículos');
+        return new WP_REST_Response([
+            'status' => 'success',
+            'items' => [],
             'total' => 0,
             'pages' => 0,
-            'page' => $paged
-        ), 200);
+            'page' => $args['paged']
+        ], 200);
     }
 
-    $vehicles = array();
+    // Procesar resultados
+    $vehicles = process_query_results($query);
+    wp_reset_postdata();
+
+    // Contar solo los posts que realmente se procesaron
+    $total_processed = count($vehicles);
+
+    $response = [
+        'status' => 'success',
+        'items' => $vehicles,
+        'total' => $total_processed,                    // Usar el contador real
+        'pages' => ceil($total_processed / $args['posts_per_page']), // Recalcular páginas
+        'page' => (int) $args['paged']
+    ];
+
+    error_log('Total posts encontrados en WP_Query: ' . $query->found_posts);
+    error_log('Total posts procesados realmente: ' . $total_processed);
+    error_log('=== FIN GET VEHICLES LIST ===');
+    
+    // Enviar headers para control de caché
+    return new WP_REST_Response($response, 200, [
+        'Cache-Control' => 'no-cache, must-revalidate, max-age=0',
+        'Pragma' => 'no-cache',
+        'Expires' => 'Wed, 11 Jan 1984 05:00:00 GMT'
+    ]);
+}
+
+function build_query_args($params) {
+    error_log('=== INICIO BUILD QUERY ARGS ===');
+    
+    $args = [
+        'post_type' => 'singlecar',
+        'posts_per_page' => isset($params['per_page']) ? (int) $params['per_page'] : 10,
+        'paged' => isset($params['page']) ? (int) $params['page'] : 1,
+        'post_status' => 'publish',
+        'orderby' => isset($params['orderby']) ? sanitize_text_field($params['orderby']) : 'date',
+        'order' => isset($params['order']) ? sanitize_text_field($params['order']) : 'DESC'
+    ];
+
+    // Meta queries con relación AND por defecto
+    $meta_query = ['relation' => 'AND'];
+
+    // Lógica de filtrado por usuario
+    if (!empty($params['user_id'])) {
+        // Si se especifica un user_id
+        $user_id = (int) $params['user_id'];
+        error_log("Filtrando por usuario específico ID: $user_id");
+        
+        // Verificar permisos
+        if (!current_user_can('administrator')) {
+            if (get_current_user_id() != $user_id) {
+                error_log("Usuario no autorizado para ver otros usuarios");
+                throw new Exception('No autorizado para ver vehículos de otros usuarios');
+            }
+        }
+        $args['author'] = $user_id;
+    } else {
+        // Si no se especifica user_id
+        if (!current_user_can('administrator')) {
+            // Usuario normal: solo ver sus propios vehículos
+            $current_user_id = get_current_user_id();
+            if ($current_user_id) {
+                error_log("Usuario normal: mostrando solo vehículos propios (ID: $current_user_id)");
+                $args['author'] = $current_user_id;
+            } else {
+                error_log("Usuario no autenticado: mostrando solo vehículos activos públicos");
+                add_active_status_query($meta_query, true);
+            }
+        } else {
+            // Administrador: ver todos los vehículos
+            error_log("Administrador: mostrando todos los vehículos");
+        }
+    }
+
+    // Estado del anuncio
+    if (isset($params['anunci-actiu'])) {
+        $is_active = filter_var($params['anunci-actiu'], FILTER_VALIDATE_BOOLEAN);
+        add_active_status_query($meta_query, $is_active);
+    }
+
+    // Aplicar meta queries si hay condiciones
+    if (count($meta_query) > 1) {
+        $args['meta_query'] = $meta_query;
+    }
+
+    error_log('Query final: ' . print_r($args, true));
+    error_log('=== FIN BUILD QUERY ARGS ===');
+    
+    return $args;
+}
+
+function add_active_status_query(&$meta_query, $is_active) {
+    error_log("Agregando filtro de estado activo: " . ($is_active ? 'true' : 'false'));
+    
+    if ($is_active) {
+        $meta_query[] = [
+            'relation' => 'AND',
+            [
+                'key' => 'anunci-actiu',
+                'value' => 'true',
+                'compare' => '='
+            ],
+            [
+                'key' => 'dies-caducitat',
+                'value' => 0,
+                'compare' => '>',
+                'type' => 'NUMERIC'
+            ]
+        ];
+    } else {
+        $meta_query[] = [
+            'relation' => 'OR',
+            [
+                'key' => 'anunci-actiu',
+                'value' => 'false',
+                'compare' => '='
+            ],
+            [
+                'key' => 'dies-caducitat',
+                'value' => 0,
+                'compare' => '<=',
+                'type' => 'NUMERIC'
+            ]
+        ];
+    }
+}
+
+function process_query_results($query) {
+    $vehicles = [];
+    
     while ($query->have_posts()) {
         $query->the_post();
         $vehicle_id = get_the_ID();
-        $vehicle_details = get_vehicle_details_common($vehicle_id);
-        if (!is_wp_error($vehicle_details)) {
-            $vehicles[] = $vehicle_details->get_data();
+        
+        // Solo procesar posts publicados y verificar estado activo
+        if (get_post_status($vehicle_id) === 'publish') {
+            try {
+                $vehicle_details = get_vehicle_details_common($vehicle_id);
+                if (!is_wp_error($vehicle_details)) {
+                    $response_data = $vehicle_details->get_data();
+                    // Verificación adicional de estado activo si es necesario
+                    $vehicles[] = $response_data;
+                }
+            } catch (Exception $e) {
+                error_log('Error procesando vehículo ' . $vehicle_id . ': ' . $e->getMessage());
+            }
+        } else {
+            error_log('Post ' . $vehicle_id . ' ignorado por no estar publicado');
         }
     }
-    wp_reset_postdata();
-
-    return new WP_REST_Response(array(
-        'items' => $vehicles,
-        'total' => (int) $query->found_posts,
-        'pages' => (int) $query->max_num_pages,
-        'page' => (int) $paged
-    ), 200);
+    
+    return $vehicles;
 }
 
 function get_vehicle_details($request) {
@@ -72,6 +199,33 @@ function get_vehicle_details_by_slug($request) {
 }
 
 function get_vehicle_details_common($vehicle_id) {
+    error_log('=== INICIO GET VEHICLE DETAILS ===');
+    error_log('Vehicle ID: ' . $vehicle_id);
+
+    // Verificar JetEngine
+    if (!function_exists('jet_engine')) {
+        error_log('JetEngine no está activo');
+        return new WP_Error('jet_engine_missing', 'JetEngine no está activo');
+    }
+
+    // Verificar post y permisos
+    $post = get_post($vehicle_id);
+    if (!$post || $post->post_type !== 'singlecar') {
+        error_log('Post no encontrado o tipo incorrecto');
+        return new WP_Error('no_vehicle', 'Vehicle not found', ['status' => 404]);
+    }
+
+    // Obtener meta campos
+    $meta = get_post_meta($vehicle_id);
+    error_log('Meta campos obtenidos: ' . print_r($meta, true));
+
+    // Obtener términos
+    $terms = wp_get_post_terms($vehicle_id, 'types-of-transport', ['fields' => 'all']);
+    $marques_terms = wp_get_post_terms($vehicle_id, 'marques-coches', ['fields' => 'all']);
+    
+    error_log('Términos types-of-transport: ' . print_r($terms, true));
+    error_log('Términos marques-coches: ' . print_r($marques_terms, true));
+
     if (!verify_post_ownership($vehicle_id)) {
         return new WP_Error('forbidden_access', 'No tienes permiso para ver este vehículo', ['status' => 403]);
     }
@@ -90,7 +244,9 @@ function get_vehicle_details_common($vehicle_id) {
         'slug' => $post->post_name,
         'titol-anunci' => get_the_title($vehicle_id),
         'anunci-actiu' => true,
-        'descripcio-anunci' => $post->post_content
+        'descripcio-anunci' => $post->post_content,
+        'data-creacio' => $post->post_date, // Agregar fecha de creación
+        'status' => $post->post_status // Agregar estado del post
     ];
 
     if (!empty($terms)) {
@@ -127,6 +283,10 @@ function get_vehicle_details_common($vehicle_id) {
     if (!current_user_can('administrator')) {
         unset($response['dies-caducitat']);
     }
+
+    // Log final response
+    error_log('Respuesta final: ' . print_r($response, true));
+    error_log('=== FIN GET VEHICLE DETAILS ===');
 
     return new WP_REST_Response($response, 200);
 }

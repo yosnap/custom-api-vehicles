@@ -1,12 +1,28 @@
 <?php
-add_action('rest_api_init', function () {
+function register_vehicle_routes() {
     register_rest_route('api-motor/v1', '/vehicles', [
         [
             'methods' => 'GET',
             'callback' => 'get_singlecar',
-            'permission_callback' => function () {
-                return is_user_logged_in();
-            },
+            'permission_callback' => '__return_true',
+            'args' => [
+                'page' => [
+                    'default' => 1,
+                    'sanitize_callback' => 'absint'
+                ],
+                'per_page' => [
+                    'default' => 10,
+                    'sanitize_callback' => 'absint'
+                ],
+                'orderby' => [
+                    'default' => 'date',
+                    'sanitize_callback' => 'sanitize_text_field'
+                ],
+                'order' => [
+                    'default' => 'DESC',
+                    'sanitize_callback' => 'sanitize_text_field'
+                ]
+            ]
         ],
         [
             'methods' => 'POST',
@@ -77,4 +93,29 @@ add_action('rest_api_init', function () {
             return current_user_can('administrator');
         }
     ]);
-});
+}
+
+add_action('rest_api_init', 'register_vehicle_routes');
+
+function register_diagnostic_endpoint() {
+    register_rest_route('api-motor/v1', '/diagnostic', [
+        'methods' => 'GET',
+        'callback' => function() {
+            if (!current_user_can('administrator')) {
+                return new WP_REST_Response(['error' => 'No autorizado'], 403);
+            }
+
+            return new WP_REST_Response([
+                'jet_engine_active' => function_exists('jet_engine'),
+                'taxonomies' => get_taxonomies(['_builtin' => false], 'names'),
+                'post_types' => get_post_types(['_builtin' => false], 'names'),
+                'meta_boxes' => jet_engine()->meta_boxes->get_registered_fields(),
+                'glossaries' => isset(jet_engine()->glossaries) ? jet_engine()->glossaries->get_glossaries_for_js() : [],
+                'php_version' => PHP_VERSION,
+                'wp_version' => get_bloginfo('version')
+            ]);
+        },
+        'permission_callback' => '__return_true'
+    ]);
+}
+add_action('rest_api_init', 'register_diagnostic_endpoint');

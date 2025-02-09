@@ -2,7 +2,7 @@
 /*
 Plugin Name: Custom API Vehicles for Motoraldia
 Description: API personalizada para gestionar vehículos de Motoraldia
-Version: 1.7.1
+Version: 1.7.2
 Author: Sn4p.dev
 */
 
@@ -21,6 +21,16 @@ require_once plugin_dir_path(__FILE__) . 'includes/taxonomy-endpoints.php';     
 require_once plugin_dir_path(__FILE__) . 'includes/singlecar-endpoint.php';
 require_once plugin_dir_path(__FILE__) . 'includes/author-endpoint.php';
 
+// Agregar verificación de dependencias
+function check_plugin_dependencies() {
+    if (!function_exists('jet_engine')) {
+        add_action('admin_notices', function() {
+            echo '<div class="error"><p>Custom API Vehicles requiere JetEngine para funcionar correctamente.</p></div>';
+        });
+    }
+}
+add_action('admin_init', 'check_plugin_dependencies');
+
 // Agregar función de activación del plugin
 function activate_vehicle_api_plugin()
 {
@@ -32,11 +42,17 @@ function activate_vehicle_api_plugin()
 }
 register_activation_hook(__FILE__, 'activate_vehicle_api_plugin');
 
-// Inicializar las clases
+// Modificar la inicialización de las clases
 add_action('plugins_loaded', function () {
-    Vehicle_Fields::get_instance();
-    Glossary_Fields::get_instance();
-});
+    if (function_exists('jet_engine')) {
+        error_log('Inicializando Custom API Vehicles...');
+        Vehicle_Fields::get_instance();
+        Glossary_Fields::get_instance();
+        error_log('Custom API Vehicles inicializado correctamente');
+    } else {
+        error_log('Error: JetEngine no está disponible');
+    }
+}, 20); // Prioridad 20 para asegurar que JetEngine ya está cargado
 
 // Inicializar el menú de administración
 if (is_admin()) {
