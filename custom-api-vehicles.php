@@ -16,6 +16,7 @@ require_once plugin_dir_path(__FILE__) . 'admin/class-admin-menu.php';          
 require_once plugin_dir_path(__FILE__) . 'includes/class-api-logger.php';       // Luego el logger
 require_once plugin_dir_path(__FILE__) . 'includes/class-vehicle-fields.php';   // Clases de campos
 require_once plugin_dir_path(__FILE__) . 'includes/class-glossary-fields.php';
+require_once plugin_dir_path(__FILE__) . 'admin/class-glossary-mappings.php';
 require_once plugin_dir_path(__FILE__) . 'includes/taxonomy-endpoints.php';      // Endpoints
 require_once plugin_dir_path(__FILE__) . 'includes/singlecar-endpoint.php';
 require_once plugin_dir_path(__FILE__) . 'includes/author-endpoint.php';

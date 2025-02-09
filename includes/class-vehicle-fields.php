@@ -69,7 +69,20 @@ class Vehicle_Fields
         'carroseria-caravana_tab',
         'carroseria-caravana',
         'api_item_id',
-        'sync_status'
+        'sync_status',
+        'data-vip',
+        '_thumbnail_id',
+        'ad_gallery',
+        '_edit_lock',
+        'sn4p_mad_api_id',
+        '_edit_last',
+        '_wp_trash_meta_status',
+        '_wp_trash_meta_time',
+        '_wp_desired_post_slug',
+        'imatge-destacada-id',
+        'tipus-de-vehicle',
+        'segment',
+        'venedor'
     ];
 
     /**
@@ -148,7 +161,6 @@ class Vehicle_Fields
             'any' => 'text',
             'versio' => 'text',
             'nombre-propietaris' => 'text',
-            'data-vip' => 'date',
             'traccio' => 'glossary',
             'roda-recanvi' => 'glossary',
             'color-exterior' => 'color',

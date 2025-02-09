@@ -9,17 +9,17 @@ class Vehicles_Admin_Menu
     public function add_admin_menu()
     {
         add_menu_page(
-            'Vehículos API',
-            'Vehículos API',
+            'API Motoraldia',
+            'API Motoraldia',
             'manage_options',
-            'vehicles-api',
+            'api-vehicles',
             array($this, 'display_main_page'),
             'dashicons-car',
             30
         );
 
         add_submenu_page(
-            'vehicles-api',
+            'api-vehicles',
             'Permisos de Imágenes',
             'Permisos',
             'manage_options',
@@ -28,7 +28,7 @@ class Vehicles_Admin_Menu
         );
 
         add_submenu_page(
-            'vehicles-api',
+            'api-vehicles',
             'Logs de Vehículos',
             'Logs',
             'manage_options',
