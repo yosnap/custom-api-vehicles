@@ -167,11 +167,68 @@ function add_image_data($vehicle_id, &$response) {
     }
 }
 
-function debug_vehicle_fields() {
-    $post_type = 'vehicle';
-    $meta_fields = jet_engine()->meta_boxes->get_meta_fields_for_object($post_type);
+function debug_vehicle_fields(WP_REST_Request $request) {
+    // Verificar si el usuario es administrador
+    if (!current_user_can('administrator')) {
+        return new WP_REST_Response([
+            'status' => 'error',
+            'message' => 'No tienes permisos para acceder a esta información'
+        ], 403);
+    }
 
-    return new WP_REST_Response([
-        'fields' => $meta_fields
-    ], 200);
+    try {
+        if (!function_exists('jet_engine')) {
+            throw new Exception('JetEngine no está activo');
+        }
+
+        // Obtener campos meta
+        $meta_fields = [];
+        $fields = Vehicle_Fields::get_meta_fields();
+        foreach ($fields as $field => $type) {
+            $meta_fields[] = [
+                'label' => ucfirst(str_replace('-', ' ', $field)),
+                'value' => $field,
+                'type' => $type
+            ];
+        }
+
+        // Obtener taxonomías
+        $taxonomies = get_object_taxonomies('singlecar', 'objects');
+        $taxonomy_fields = [];
+        foreach ($taxonomies as $tax_slug => $tax) {
+            $taxonomy_fields[] = [
+                'label' => $tax->label,
+                'value' => $tax_slug,
+                'type' => 'taxonomy'
+            ];
+        }
+
+        // Obtener glosarios
+        $glossary_fields = [];
+        if (isset(jet_engine()->glossaries)) {
+            $glossaries = jet_engine()->glossaries->get_glossaries_for_js();
+            foreach ($glossaries as $glossary) {
+                $glossary_fields[] = [
+                    'label' => $glossary['label'],
+                    'value' => $glossary['value'],
+                    'type' => 'glossary'
+                ];
+            }
+        }
+
+        // Combinar todos los campos
+        $all_fields = array_merge($meta_fields, $taxonomy_fields, $glossary_fields);
+
+        return new WP_REST_Response([
+            'status' => 'success',
+            'total' => count($all_fields),
+            'data' => $all_fields
+        ], 200);
+
+    } catch (Exception $e) {
+        return new WP_REST_Response([
+            'status' => 'error',
+            'message' => $e->getMessage()
+        ], 500);
+    }
 }

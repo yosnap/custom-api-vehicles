@@ -2,6 +2,33 @@
 class Vehicle_Fields
 {
     private static $instance = null;
+    private static $excluded_fields = [
+        'tab-info-general_tab',
+        'tab-info-general',
+        'equipament-essencials-vehicle_tab',
+        'equipament-essencials-vehicle',
+        'carroseria-caravana_tab',
+        'carroseria-caravana',
+        'api_item_id',
+        'sync_status',
+        'data-vip',
+        '_thumbnail_id',
+        'ad_gallery',
+        '_edit_lock',
+        'sn4p_mad_api_id',
+        '_edit_last',
+        '_wp_trash_meta_status',
+        '_wp_trash_meta_time',
+        'jet_engine_store_count_ads-views',
+        '_bricks_template_type',
+        '_bricks_page_content_2',
+        '_bricks_editor_mode',
+        '_wp_desired_post_slug',
+        'imatge-destacada-id',
+        'tipus-de-vehicle',
+        'segment',
+        'venedor'
+    ];
 
     /**
      * Obtiene la instancia única de la clase
@@ -59,41 +86,16 @@ class Vehicle_Fields
     }
 
     /**
-     * Lista de campos a excluir del procesamiento
+     * Obtiene la lista de campos excluidos
      */
-    private static $excluded_fields = [
-        'tab-info-general_tab',
-        'tab-info-general',
-        'equipament-essencials-vehicle_tab',
-        'equipament-essencials-vehicle',
-        'carroseria-caravana_tab',
-        'carroseria-caravana',
-        'api_item_id',
-        'sync_status',
-        'data-vip',
-        '_thumbnail_id',
-        'ad_gallery',
-        '_edit_lock',
-        'sn4p_mad_api_id',
-        '_edit_last',
-        '_wp_trash_meta_status',
-        '_wp_trash_meta_time',
-        'jet_engine_store_count_ads-views',
-        '_bricks_template_type',
-        '_bricks_page_content_2',
-        '_bricks_editor_mode',
-        '_wp_desired_post_slug',
-        'imatge-destacada-id',
-        'tipus-de-vehicle',
-        'segment',
-        'venedor'
-    ];
+    public static function get_excluded_fields() {
+        return self::$excluded_fields;
+    }
 
     /**
      * Verifica si un campo debe ser excluido
      */
-    public static function should_exclude_field($field_name)
-    {
+    public static function should_exclude_field($field_name) {
         return in_array($field_name, self::$excluded_fields);
     }
 
@@ -338,7 +340,11 @@ class Vehicle_Fields
             return new WP_REST_Response($options, $options->get_error_data()['status']);
         }
 
-        return new WP_REST_Response($options, 200);
+        return new WP_REST_Response([
+            'status' => 'success',
+            'total' => count($options),
+            'data' => $options
+        ], 200);
     }
 
     /**
@@ -496,33 +502,49 @@ class Vehicle_Fields
      */
     public static function get_glossary_options($field)
     {
+        $options = [];
         switch ($field) {
             case 'emissions-vehicle':
-                return self::get_emissions_vehicle_options();
+                $options = self::get_emissions_vehicle_options();
+                break;
             case 'segment':
             case 'carrosseria':
-                return self::get_carrosseria_options();
+                $options = self::get_carrosseria_options();
+                break;
             case 'roda-recanvi':
-                return self::get_roda_recanvi_options();
+                $options = self::get_roda_recanvi_options();
+                break;
             case 'traccio':
-                return self::get_traccio_options();
+                $options = self::get_traccio_options();
+                break;
             case 'color-vehicle':
-                return self::get_color_vehicle_options();
+                $options = self::get_color_vehicle_options();
+                break;
             case 'tipus-tapisseria':
-                return self::get_tipus_tapisseria_options();
+                $options = self::get_tipus_tapisseria_options();
+                break;
             case 'color-tapisseria':
-                return self::get_color_tapisseria_options();
+                $options = self::get_color_tapisseria_options();
+                break;
             case 'extres-cotxe':
-                return self::get_extres_cotxe_options();
+                $options = self::get_extres_cotxe_options();
+                break;
             case 'venedor':
-                return self::get_venedor_options();
+                $options = self::get_venedor_options();
+                break;
             case 'cables-recarrega':
-                return self::get_cables_recarrega_options();
+                $options = self::get_cables_recarrega_options();
+                break;
             case 'connectors':
-                return self::get_connectors_options();
-            default:
-                return [];
+                $options = self::get_connectors_options();
+                break;
         }
+
+        return [
+            'status' => 'success',
+            'total' => count($options),
+            'data' => $options
+        ];
     }
 
     /**

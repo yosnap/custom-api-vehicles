@@ -73,6 +73,8 @@ add_action('rest_api_init', function () {
     register_rest_route('api-motor/v1', '/debug-fields', [
         'methods' => 'GET',
         'callback' => 'debug_vehicle_fields',
-        'permission_callback' => '__return_true'
+        'permission_callback' => function() {
+            return current_user_can('administrator');
+        }
     ]);
 });
