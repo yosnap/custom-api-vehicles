@@ -105,26 +105,29 @@ require_once(ABSPATH . 'wp-admin/includes/file.php');
 require_once(ABSPATH . 'wp-admin/includes/image.php');
 
 function get_field_label($field_name, $value) {
-    // Si es el campo bateria, hacer log especial
-    if ($field_name === 'bateria') {
-        error_log("=== DEBUG CAMPO BATERIA ===");
-        error_log("Valor original: " . print_r($value, true));
-        
-        // Obtener y loguear el ID del glosario
-        $glossary_id = Vehicle_Glossary_Mappings::get_glossary_id($field_name);
-        error_log("ID del glosario mapeado: " . print_r($glossary_id, true));
-        
-        if ($glossary_id && function_exists('jet_engine') && isset(jet_engine()->glossaries)) {
-            $options = jet_engine()->glossaries->filters->get_glossary_options($glossary_id);
-            error_log("Opciones disponibles en el glosario:");
-            error_log(print_r($options, true));
-        }
-        error_log("=========================");
-    }
-
     // Si no hay valor, devolver string vacío
     if (empty($value) && $value !== '0' && $value !== 0) {
         return '';
+    }
+
+    // Obtener el ID del glosario desde los mapeos
+    $glossary_id = Vehicle_Glossary_Mappings::get_glossary_id($field_name);
+    if ($glossary_id && function_exists('jet_engine') && isset(jet_engine()->glossaries)) {
+        $options = jet_engine()->glossaries->filters->get_glossary_options($glossary_id);
+        
+        if (!empty($options)) {
+            // Para campos que son arrays
+            if (is_array($value)) {
+                // ...existing array processing code...
+            } else {
+                // Para valores individuales
+                if (isset($options[$value])) {
+                    return $options[$value];
+                } elseif (isset($options[trim($value)])) {
+                    return $options[trim($value)];
+                }
+            }
+        }
     }
 
     // Lista de campos que manejan arrays
@@ -200,7 +203,7 @@ function get_field_label($field_name, $value) {
         'emissions-vehicle',
         'carroseria-camions',
         'carroseria-vehicle-comercial',
-        'tipus-de-canvi',
+        'tipus-de-canvi-moto', // Añadimos el nuevo campo
         'bateria',
         'velocitat-recarrega',
         'extres-cotxe',
@@ -304,6 +307,19 @@ function get_singlecar($request) {
     // Aplicar filtros si existen
     if (!empty($params['search'])) {
         $args['s'] = sanitize_text_field($params['search']);
+    }
+
+    // Filtrar por estado activo/inactivo si se proporciona el parámetro
+    if (isset($params['anunci-actiu'])) {
+        $anunci_actiu = filter_var($params['anunci-actiu'], FILTER_VALIDATE_BOOLEAN);
+        
+        $args['meta_query'] = array(
+            array(
+                'key' => 'anunci-actiu',
+                'value' => $anunci_actiu ? 'true' : 'false',
+                'compare' => '='
+            )
+        );
     }
 
     // Realizar la consulta
@@ -1659,7 +1675,7 @@ function get_vehicle_details_common($vehicle_id)
         'emissions-vehicle',
         'carroseria-camions',
         'carroseria-vehicle-comercial',
-        'tipus-de-canvi',
+        'tipus-de-canvi-moto',
         'bateria',
         'velocitat-recarrega',
         'extres-cotxe',
