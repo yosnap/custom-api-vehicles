@@ -27,6 +27,8 @@ class Vehicle_Fields
         'jet_tax__marques-coches',
         'jet_tax__marques-de-moto',
         'jet_tax__tipus-de-canvi',
+        'rank_math_internal_links_processed',
+        'referencia_id',
         '_bricks_template_type',
         '_bricks_page_content_2',
         '_bricks_editor_mode',

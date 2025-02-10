@@ -95,13 +95,28 @@ function process_glossary_field($field_name, $value) {
 }
 
 function process_taxonomy_field($field_name, $value) {
+    error_log("=== DEBUG PROCESS TAXONOMY FIELD ===");
+    error_log("Procesando campo: $field_name");
+    error_log("Valor recibido: " . print_r($value, true));
+    
     $taxonomy = get_taxonomy_for_field($field_name);
+    error_log("Taxonomía mapeada: $taxonomy");
+    
     if (!$taxonomy) {
+        error_log("No se encontró taxonomía para el campo: $field_name");
         return $value;
     }
 
     $term = get_term_by('slug', $value, $taxonomy);
-    return ($term && !is_wp_error($term)) ? $term->name : $value;
+    error_log("Término encontrado: " . print_r($term, true));
+    
+    if ($term && !is_wp_error($term)) {
+        error_log("Retornando nombre del término: " . $term->name);
+        return $term->name;
+    } else {
+        error_log("No se encontró término, retornando valor original: $value");
+        return $value;
+    }
 }
 
 function process_standard_field($field_name, $value) {
@@ -210,19 +225,34 @@ function should_get_field_label($field_name) {
 }
 
 function is_taxonomy_field($field_name) {
-    return isset(get_taxonomy_map()[$field_name]);
+    $taxonomy_fields = [
+        'tipus-vehicle',
+        'tipus-combustible',
+        'tipus-propulsor',
+        'estat-vehicle',
+        'tipus-de-moto',
+        'tipus-canvi-cotxe',
+        'tipus-carroseria-caravana',
+        'marques-cotxe',
+        'models-cotxe'
+    ];
+    return in_array($field_name, $taxonomy_fields);
 }
 
 function get_taxonomy_map() {
-    return [
+    error_log("DEBUG - Obteniendo mapeo de taxonomías");
+    $map = [
         'tipus-vehicle' => 'types-of-transport',
         'tipus-combustible' => 'tipus-combustible',
         'tipus-propulsor' => 'tipus-de-propulsor',
         'estat-vehicle' => 'estat-vehicle',
-        'tipus-de-moto' => 'tipus-de-moto',
+        'tipus-de-moto' => 'marques-de-moto',
         'tipus-canvi-cotxe' => 'tipus-de-canvi',
-        'tipus-carroseria-caravana' => 'tipus-carroseria-caravana'
+        'tipus-carroseria-caravana' => 'tipus-carroseria-caravana',
+        'marques-cotxe' => 'marques-coches'
     ];
+    error_log("DEBUG - Mapeo de taxonomías: " . print_r($map, true));
+    return $map;
 }
 
 function get_taxonomy_for_field($field_name) {
