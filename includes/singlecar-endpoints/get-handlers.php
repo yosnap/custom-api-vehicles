@@ -7,6 +7,17 @@ function get_singlecar($request) {
     
     // Construir y ejecutar consulta
     $args = build_query_args($params);
+    
+    // Primero hacemos una consulta para obtener el total real
+    $count_args = array_merge($args, [
+        'posts_per_page' => -1,  // Obtener todos para contar
+        'fields' => 'ids',       // Solo obtener IDs para optimizar
+    ]);
+    $count_query = new WP_Query($count_args);
+    $total_items = $count_query->found_posts;
+    wp_reset_postdata();
+
+    // Ahora ejecutamos la consulta paginada
     $query = new WP_Query($args);
 
     if (!$query->have_posts()) {
@@ -15,7 +26,8 @@ function get_singlecar($request) {
             'items' => [],
             'total' => 0,
             'pages' => 0,
-            'page' => $args['paged']
+            'page' => $args['paged'],
+            'per_page' => $args['posts_per_page']
         ], 200);
     }
 
@@ -23,15 +35,13 @@ function get_singlecar($request) {
     $vehicles = process_query_results($query);
     wp_reset_postdata();
 
-    // Contar solo los posts que realmente se procesaron
-    $total_processed = count($vehicles);
-
     $response = [
         'status' => 'success',
         'items' => $vehicles,
-        'total' => $total_processed,                    // Usar el contador real
-        'pages' => ceil($total_processed / $args['posts_per_page']), // Recalcular páginas
-        'page' => (int) $args['paged']
+        'total' => $total_items,                    // Total real de items
+        'pages' => ceil($total_items / $args['posts_per_page']), // Total de páginas
+        'page' => (int) $args['paged'],
+        'per_page' => (int) $args['posts_per_page']
     ];
 
     // Enviar headers para control de caché
@@ -49,7 +59,10 @@ function build_query_args($params) {
         'paged' => isset($params['page']) ? (int) $params['page'] : 1,
         'post_status' => 'publish',
         'orderby' => isset($params['orderby']) ? sanitize_text_field($params['orderby']) : 'date',
-        'order' => isset($params['order']) ? sanitize_text_field($params['order']) : 'DESC'
+        'order' => isset($params['order']) ? sanitize_text_field($params['order']) : 'DESC',
+        'no_found_rows' => false,               // Importante: necesitamos el conteo total
+        'update_post_term_cache' => true,       // Optimización para términos
+        'update_post_meta_cache' => true        // Optimización para meta
     ];
 
     // Meta queries solo si hay filtros específicos
