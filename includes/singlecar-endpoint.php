@@ -13,6 +13,9 @@ require_once $base_path . 'media-handlers.php';
 require_once $base_path . 'validation.php';
 require_once $base_path . 'utils.php';
 
+// Cargar endpoints de vendedores desde la ubicación correcta
+require_once plugin_dir_path(__FILE__) . 'seller-endpoints/get-handlers.php';
+
 // Incluir dependencias de WordPress
 require_once(ABSPATH . 'wp-admin/includes/media.php');
 require_once(ABSPATH . 'wp-admin/includes/file.php');
