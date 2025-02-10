@@ -52,8 +52,9 @@ function build_query_args($params) {
         'order' => isset($params['order']) ? sanitize_text_field($params['order']) : 'DESC'
     ];
 
-    // Meta queries con relación AND por defecto
+    // Meta queries solo si hay filtros específicos
     $meta_query = ['relation' => 'AND'];
+    $apply_meta_query = false;
 
     // Lógica de filtrado por usuario
     if (!empty($params['user_id'])) {
@@ -74,22 +75,29 @@ function build_query_args($params) {
             $current_user_id = get_current_user_id();
             if ($current_user_id) {
                 $args['author'] = $current_user_id;
-            } else {
-                add_active_status_query($meta_query, true);
             }
-        } else {
-            // Administrador: ver todos los vehículos
         }
     }
 
-    // Estado del anuncio
+    // Aplicar filtros solo si se especifican en los parámetros
     if (isset($params['anunci-actiu'])) {
         $is_active = filter_var($params['anunci-actiu'], FILTER_VALIDATE_BOOLEAN);
         add_active_status_query($meta_query, $is_active);
+        $apply_meta_query = true;
     }
 
-    // Aplicar meta queries si hay condiciones
-    if (count($meta_query) > 1) {
+    if (isset($params['venut'])) {
+        $is_sold = filter_var($params['venut'], FILTER_VALIDATE_BOOLEAN);
+        $meta_query[] = [
+            'key' => 'venut',
+            'value' => $is_sold ? 'true' : 'false',
+            'compare' => '='
+        ];
+        $apply_meta_query = true;
+    }
+
+    // Aplicar meta queries solo si hay filtros
+    if ($apply_meta_query) {
         $args['meta_query'] = $meta_query;
     }
     

@@ -128,3 +128,6 @@ function register_diagnostic_endpoint() {
     ]);
 }
 add_action('rest_api_init', 'register_diagnostic_endpoint');
+
+
+

@@ -1,4 +1,6 @@
-# Custom API Vehicles para Motoraldia
+# Custom API Vehicles for Motoraldia
+
+Plugin WordPress para gestionar vehículos a través de una API REST personalizada.
 
 ## Endpoints Disponibles
 
