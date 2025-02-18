@@ -1,160 +1,121 @@
 <?php
-// Registrar la ruta REST API para /sellers
-add_action('rest_api_init', function () {
-    register_rest_route('api-motor/v1', '/sellers', [
-        'methods' => 'GET',
-        'callback' => 'get_author_details',
-        'permission_callback' => function ($request) {
+// Version: 2024-03-19-013
+// Sellers endpoint functionality
+
+if (!function_exists('get_seller_details')) {
+    function get_seller_details($request) {
+        try {
+            error_log('DEBUG: Iniciando get_seller_details');
+            
             $params = $request->get_params();
-            if (isset($params['user_id'])) {
-                return current_user_can('administrator') || get_current_user_id() == intval($params['user_id']);
-            }
-            return current_user_can('administrator');
-        },
-    ]);
-});
+            $user_id = isset($params['user_id']) ? intval($params['user_id']) : null;
+            $current_user_id = get_current_user_id();
+            $is_admin = current_user_can('administrator');
 
-// Registrar la ruta REST API para /owner
-add_action('rest_api_init', function () {
-    register_rest_route('custom-api/v1', '/owner', [
-        'methods' => 'GET',
-        'callback' => 'get_author_details',
-        'permission_callback' => '__return_true',
-    ]);
-});
+            error_log('DEBUG: Params: ' . print_r($params, true));
+            error_log('DEBUG: User ID: ' . $user_id);
+            error_log('DEBUG: Current User ID: ' . $current_user_id);
+            error_log('DEBUG: Is Admin: ' . ($is_admin ? 'true' : 'false'));
 
-function get_author_details($request)
-{
-    $params = $request->get_params();
-
-    // Definir los campos a eliminar
-    $fields_to_remove = [
-        'rich_editing',
-        'syntax_highlighting',
-        'comment_shortcuts',
-        'use_ssl',
-        'show_admin_bar_front',
-        'hgg_capabilities',
-        'hgg_user_level',
-        '_application_passwords',
-        'smack_uci_import',
-        'jwt_auth_pass',
-        'session_tokens',
-        'hgg_dashboard_quick_press_last_post_id',
-        'community-events-location',
-        'elementor_admin_notices',
-        'edit_singlecar_per_page',
-        'hgg_user-settings',
-        'hgg_user-settings-time',
-        'current_sns_tab',
-        'sendPassword',
-        'dismissed_wp_pointers',
-        'closedpostboxes_singlecar',
-        'metaboxhidden_singlecar',
-        'hgg_persisted_preferences',
-        'elementor_introduction',
-        'meta-box-order_singlecar',
-        'screen_layout_singlecar',
-        '_capability-manager-enhanced_wp_reviews_dismissed_triggers',
-        '_capability-manager-enhanced_wp_reviews_last_dismissed',
-        'thumbpress_notice_display_count_combined'
-    ];
-
-    if (isset($params['user_id'])) {
-        // Si se proporciona un user_id, devuelve los detalles del autor
-        $user_id = intval($params['user_id']);
-        $user_meta = get_user_meta($user_id);
-
-        // Obtener la fecha de registro del usuario
-        $user = get_userdata($user_id);
-        $user_registered = $user->user_registered;
-
-        // Procesar los campos "logo-empresa-home", "logo-empresa" y "galeria-professionals" para convertir los IDs en URLs
-        if (isset($user_meta['logo-empresa-home'][0])) {
-            $logo_home_id = $user_meta['logo-empresa-home'][0];
-            $user_meta['logo-empresa-home'] = wp_get_attachment_url($logo_home_id);
-        }
-        if (isset($user_meta['logo-empresa'][0])) {
-            $logo_empresa_id = $user_meta['logo-empresa'][0];
-            $user_meta['logo-empresa'] = wp_get_attachment_url($logo_empresa_id);
-        }
-        if (isset($user_meta['galeria-professionals'][0])) {
-            $galeria_ids = explode(',', $user_meta['galeria-professionals'][0]);
-            $galeria_urls = [];
-            foreach ($galeria_ids as $id) {
-                $url = wp_get_attachment_url(trim($id));
-                if ($url) {
-                    $galeria_urls[] = $url;
+            // Si no es admin, solo puede ver sus propios datos
+            if (!$is_admin) {
+                if (!$current_user_id) {
+                    return new WP_REST_Response([
+                        'status' => 'error',
+                        'message' => 'No autorizado'
+                    ], 401);
                 }
+                // Forzar user_id al ID del usuario actual
+                $user_id = $current_user_id;
             }
-            $user_meta['galeria-professionals'] = $galeria_urls;
-        }
 
-        foreach ($fields_to_remove as $field) {
-            if (isset($user_meta[$field])) {
-                unset($user_meta[$field]);
+            // Si es admin y no proporciona user_id, devolver lista de usuarios
+            if ($is_admin && !$user_id) {
+                error_log('DEBUG: Obteniendo lista de usuarios');
+                $users = get_users(['role__not_in' => ['administrator']]);
+                $authors = [];
+
+                foreach ($users as $user) {
+                    $authors[] = [
+                        'id' => $user->ID,
+                        'username' => $user->user_login,
+                        'email' => $user->user_email,
+                        'name' => $user->display_name,
+                        'registered_date' => $user->user_registered,
+                        'role' => $user->roles[0] ?? '',
+                        'total_vehicles' => 0,
+                        'active_vehicles' => 0
+                    ];
+                }
+
+                return new WP_REST_Response([
+                    'status' => 'success',
+                    'total' => count($authors),
+                    'data' => $authors
+                ], 200);
             }
-        }
 
-        // Reestructurar metadatos del autor
-        $user_data = [
-            'ID' => $user_id,
-            'display_name' => get_the_author_meta('display_name', $user_id),
-            'user_registered' => $user_registered, // Añadir la fecha de registro del usuario
-            'meta' => $user_meta // Devolver todos los metadatos restantes como un array
-        ];
+            error_log('DEBUG: Obteniendo datos del usuario ' . $user_id);
 
-        return new WP_REST_Response($user_data, 200);
-    } else {
-        // Si no se proporciona un user_id, devuelve un listado de autores
-        $users = get_users(['who' => 'authors']);
-        $authors = [];
+            // Obtener datos del usuario específico
+            $user = get_userdata($user_id);
+            if (!$user) {
+                return new WP_REST_Response([
+                    'status' => 'error',
+                    'message' => 'Usuario no encontrado'
+                ], 404);
+            }
 
-        foreach ($users as $user) {
-            $user_id = $user->ID;
+            // Obtener metadatos del usuario
             $user_meta = get_user_meta($user_id);
+            error_log('DEBUG: User meta: ' . print_r($user_meta, true));
 
-            // Obtener la fecha de registro del usuario
-            $user_registered = $user->user_registered;
-
-            // Procesar los campos "logo-empresa-home", "logo-empresa" y "galeria-professionals" para convertir los IDs en URLs
-            if (isset($user_meta['logo-empresa-home'][0])) {
-                $logo_home_id = $user_meta['logo-empresa-home'][0];
-                $user_meta['logo-empresa-home'] = wp_get_attachment_url($logo_home_id);
-            }
-            if (isset($user_meta['logo-empresa'][0])) {
-                $logo_empresa_id = $user_meta['logo-empresa'][0];
-                $user_meta['logo-empresa'] = wp_get_attachment_url($logo_empresa_id);
-            }
-            if (isset($user_meta['galeria-professionals'][0])) {
-                $galeria_ids = explode(',', $user_meta['galeria-professionals'][0]);
-                $galeria_urls = [];
-                foreach ($galeria_ids as $id) {
-                    $url = wp_get_attachment_url(trim($id));
-                    if ($url) {
-                        $galeria_urls[] = $url;
-                    }
-                }
-                $user_meta['galeria-professionals'] = $galeria_urls;
-            }
-
-            foreach ($fields_to_remove as $field) {
-                if (isset($user_meta[$field])) {
-                    unset($user_meta[$field]);
-                }
-            }
-
-            // Reestructurar metadatos del autor
-            $user_data = [
-                'ID' => $user_id,
-                'display_name' => $user->display_name,
-                'user_registered' => $user_registered, // Añadir la fecha de registro del usuario
-                'meta' => $user_meta // Devolver todos los metadatos restantes como un array
+            // Construir respuesta base
+            $response_data = [
+                'id' => $user_id,
+                'username' => $user->user_login,
+                'email' => $user->user_email,
+                'name' => $user->display_name,
+                'registered_date' => $user->user_registered,
+                'role' => $user->roles[0] ?? '',
+                'logo-empresa' => wp_get_attachment_url($user_meta['logo-empresa'][0] ?? ''),
+                'logo-empresa-home' => wp_get_attachment_url($user_meta['logo-empresa-home'][0] ?? ''),
+                'nom-empresa' => $user_meta['nom-empresa'][0] ?? '',
+                'telefon-mobile-professional' => $user_meta['telefon-mobile-professional'][0] ?? '',
+                'telefon-comercial' => $user_meta['telefon-comercial'][0] ?? '',
+                'telefon-whatsapp' => $user_meta['telefon-whatsapp'][0] ?? '',
+                'localitat-professional' => $user_meta['localitat-professional'][0] ?? '',
+                'adreca-professional' => $user_meta['adreca-professional'][0] ?? '',
+                'nom-contacte' => $user_meta['nom-contacte'][0] ?? '',
+                'cognoms-contacte' => $user_meta['cognoms-contacte'][0] ?? '',
+                'descripcio-empresa' => $user_meta['descripcio-empresa'][0] ?? '',
+                'pagina-web' => $user_meta['pagina-web'][0] ?? '',
+                'galeria-professionals' => [],
+                'total_vehicles' => 0,
+                'active_vehicles' => 0
             ];
 
-            $authors[] = $user_data;
-        }
+            // Procesar galería de imágenes
+            if (!empty($user_meta['galeria-professionals'][0])) {
+                $gallery_ids = explode(',', $user_meta['galeria-professionals'][0]);
+                $response_data['galeria-professionals'] = array_map('wp_get_attachment_url', $gallery_ids);
+            }
 
-        return new WP_REST_Response($authors, 200);
+            error_log('DEBUG: Respuesta final: ' . print_r($response_data, true));
+
+            return new WP_REST_Response([
+                'status' => 'success',
+                'data' => $response_data
+            ], 200);
+
+        } catch (Exception $e) {
+            error_log('ERROR en get_seller_details: ' . $e->getMessage());
+            error_log('Stack trace: ' . $e->getTraceAsString());
+            
+            return new WP_REST_Response([
+                'status' => 'error',
+                'message' => 'Error interno del servidor'
+            ], 500);
+        }
     }
 }

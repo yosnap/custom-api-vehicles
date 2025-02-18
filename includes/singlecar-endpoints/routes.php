@@ -98,7 +98,7 @@ function register_vehicle_routes() {
     register_rest_route('api-motor/v1', '/sellers', [
         [
             'methods' => 'GET',
-            'callback' => 'get_sellers',
+            'callback' => 'get_seller_details',
             'permission_callback' => '__return_true',
         ]
     ]);

@@ -2,7 +2,7 @@
 /*
 Plugin Name: Custom API Vehicles for Motoraldia
 Description: API personalizada para gestionar vehículos de Motoraldia
-Version: 1.7.4
+Version: 1.7.5
 Author: Sn4p.dev
 */
 
@@ -18,8 +18,8 @@ require_once plugin_dir_path(__FILE__) . 'includes/class-vehicle-fields.php';   
 require_once plugin_dir_path(__FILE__) . 'includes/class-glossary-fields.php';
 require_once plugin_dir_path(__FILE__) . 'admin/class-glossary-mappings.php';
 require_once plugin_dir_path(__FILE__) . 'includes/taxonomy-endpoints.php';      // Endpoints
-require_once plugin_dir_path(__FILE__) . 'includes/singlecar-endpoint.php';
 require_once plugin_dir_path(__FILE__) . 'includes/author-endpoint.php';
+require_once plugin_dir_path(__FILE__) . 'includes/singlecar-endpoints/routes.php';
 
 // Agregar verificación de dependencias
 function check_plugin_dependencies() {

@@ -137,6 +137,94 @@ Elimina (mueve a papelera) un vehículo.
 
 Endpoint de debug para ver campos disponibles.
 
+### Sellers
+
+#### GET /wp-json/api-motor/v1/sellers
+
+Obtiene información de vendedores profesionales.
+
+**Parámetros:**
+
+- `user_id`: ID del usuario (opcional para admin, ignorado para usuarios normales)
+
+**Comportamiento:**
+
+1. Como administrador:
+   - Sin `user_id`: Devuelve lista de todos los usuarios no administradores
+   - Con `user_id`: Devuelve detalles completos del usuario específico
+
+2. Como usuario normal:
+   - Siempre devuelve los detalles completos del usuario autenticado
+   - El parámetro `user_id` es ignorado
+
+**Respuestas:**
+
+1. Como administrador sin user_id:
+```json
+{
+    "status": "success",
+    "total": 8,
+    "data": [
+        {
+            "id": 126,
+            "username": "usuario@ejemplo.com",
+            "email": "usuario@ejemplo.com",
+            "name": "Nombre Usuario",
+            "registered_date": "2024-03-10 18:40:21",
+            "role": "professional",
+            "total_vehicles": 0,
+            "active_vehicles": 0
+        }
+        // ... más usuarios ...
+    ]
+}
+```
+
+2. Como administrador con user_id o como usuario normal:
+```json
+{
+    "status": "success",
+    "data": {
+        "id": 126,
+        "username": "usuario@ejemplo.com",
+        "email": "usuario@ejemplo.com",
+        "name": "Nombre Usuario",
+        "registered_date": "2024-03-10 18:40:21",
+        "role": "professional",
+        "logo-empresa": "URL_LOGO",
+        "logo-empresa-home": "URL_LOGO_HOME",
+        "nom-empresa": "Nombre Empresa",
+        "telefon-mobile-professional": "123456789",
+        "telefon-comercial": "987654321",
+        "telefon-whatsapp": "555555555",
+        "localitat-professional": "Localidad",
+        "adreca-professional": "Dirección",
+        "nom-contacte": "Nombre Contacto",
+        "cognoms-contacte": "Apellidos Contacto",
+        "galeria-professionals": ["URL1", "URL2"],
+        "descripcio-empresa": "Descripción",
+        "pagina-web": "https://ejemplo.com",
+        "total_vehicles": 0,
+        "active_vehicles": 0
+    }
+}
+```
+
+**Códigos de respuesta:**
+
+- 200: Éxito
+- 401: No autorizado (usuario no autenticado)
+- 404: Usuario no encontrado
+- 500: Error interno del servidor
+
+**Notas:**
+- Los administradores pueden ver todos los usuarios o un usuario específico
+- Los usuarios normales solo pueden ver sus propios datos
+- Si un usuario normal proporciona un user_id, será ignorado y verá sus propios datos
+- Los campos de imágenes (logo y galería) son URLs a los archivos
+- El campo `total_vehicles` indica el número total de vehículos del usuario
+- El campo `active_vehicles` indica el número de vehículos activos del usuario
+
 ## Autenticación
 
 La API utiliza autenticación mediante tokens JWT o cookies de WordPress.
