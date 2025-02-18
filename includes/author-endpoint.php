@@ -1,7 +1,17 @@
 <?php
-// Version: 2024-03-19-013
+// Version: 2024-03-19-015
 // Sellers endpoint functionality
 
+// Registrar la ruta de sellers
+add_action('rest_api_init', function () {
+    register_rest_route('api-motor/v1', '/sellers', [
+        'methods' => 'GET',
+        'callback' => 'get_seller_details',
+        'permission_callback' => '__return_true',
+    ]);
+});
+
+// Asegurarnos de que la función esté disponible globalmente
 if (!function_exists('get_seller_details')) {
     function get_seller_details($request) {
         try {

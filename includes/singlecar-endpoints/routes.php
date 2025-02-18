@@ -93,15 +93,6 @@ function register_vehicle_routes() {
             return current_user_can('administrator');
         }
     ]);
-
-    // Agregar ruta para vendedores
-    register_rest_route('api-motor/v1', '/sellers', [
-        [
-            'methods' => 'GET',
-            'callback' => 'get_seller_details',
-            'permission_callback' => '__return_true',
-        ]
-    ]);
 }
 
 add_action('rest_api_init', 'register_vehicle_routes');
