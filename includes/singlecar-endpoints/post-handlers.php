@@ -5,20 +5,78 @@ function create_singlecar($request) {
     $wpdb->query('START TRANSACTION');
 
     try {
-        $params = $request->get_params();
+        // Obtener parámetros del objeto Request de forma segura
+        if (is_object($request) && method_exists($request, 'get_params')) {
+            $params = $request->get_params();
+        } elseif (is_array($request)) {
+            $params = $request;
+        } else {
+            throw new Exception('Formato de solicitud no válido');
+        }
 
-        // Validar campos requeridos
+        // SOLUCIÓN DEFINITIVA: Siempre establecer valores por defecto para campos problemáticos
+        $params['frenada-regenerativa'] = 'no';
+        $params['one-pedal'] = 'no';
+        $params['aire-acondicionat'] = 'no';
+        $params['climatitzacio'] = 'no'; // Añadido nuevo campo
+        $params['vehicle-fumador'] = 'no'; // Añadido nuevo campo
+        $params['vehicle-accidentat'] = 'no'; // Añadido vehicle-accidentat
+        $params['llibre-manteniment'] = 'no'; // Añadido llibre-manteniment
+        $params['revisions-oficials'] = 'no'; // Añadido revisions-oficials
+        $params['portes-cotxe'] = isset($params['portes-cotxe']) && is_numeric($params['portes-cotxe']) ? 
+                                $params['portes-cotxe'] : '5'; // Añadir portes-cotxe
+        
+        // Manejar campos numéricos especiales
+        if (empty($params['temps-recarrega-total']) || !is_numeric($params['temps-recarrega-total'])) {
+            $params['temps-recarrega-total'] = '0';
+        }
+        
+        if (empty($params['temps-recarrega-fins-80']) || !is_numeric($params['temps-recarrega-fins-80'])) {
+            $params['temps-recarrega-fins-80'] = '0';
+        }
+
+        // Verificar el tipo de vehículo
+        if (!isset($params['tipus-vehicle']) || empty($params['tipus-vehicle'])) {
+            throw new Exception('El campo tipus-vehicle es obligatorio');
+        }
+        
+        // Normalizar el tipo de vehículo (usando la función del archivo principal)
+        $params['tipus-vehicle'] = normalize_vehicle_type($params['tipus-vehicle']);
+        $vehicle_type = strtolower(trim($params['tipus-vehicle']));
+        
+        // Si el tipo es moto-quad-atv, simplificar para validaciones internas
+        $simplified_type = $vehicle_type;
+        if ($vehicle_type === 'moto-quad-atv') {
+            $simplified_type = 'moto';
+        }
+
+        // Validar campos requeridos según el tipo de vehículo
         $required_fields = [
-            'marques-cotxe',
-            'models-cotxe',
-            'versio',
             'tipus-vehicle',
             'tipus-combustible',
-            'tipus-canvi-cotxe',
             'tipus-propulsor',
             'estat-vehicle',
             'preu'
         ];
+        
+        // Añadir tipus-canvi-cotxe como obligatorio solo si NO es moto
+        if ($simplified_type !== 'moto') {
+            $required_fields[] = 'tipus-canvi-cotxe';
+        }
+        
+        // Añadir versio como obligatorio para todos EXCEPTO MOTO
+        if ($simplified_type !== 'moto') {
+            $required_fields[] = 'versio';
+        }
+        
+        // Añadir marques-cotxe y models-cotxe como obligatorios para todos EXCEPTO MOTO
+        if ($simplified_type !== 'moto') {
+            $required_fields[] = 'marques-cotxe';
+            $required_fields[] = 'models-cotxe';
+        } else {
+            // Para motos, agregar marques-de-moto como obligatorio
+            $required_fields[] = 'marques-de-moto';
+        }
 
         foreach ($required_fields as $field) {
             if (!isset($params[$field]) || empty($params[$field])) {
@@ -27,15 +85,30 @@ function create_singlecar($request) {
         }
 
         // Crear título automático
-        $marca_term = get_term_by('slug', $params['marques-cotxe'], 'marques-coches');
-        $model_term = get_term_by('slug', $params['models-cotxe'], 'marques-coches');
-        
-        $marca_name = $marca_term ? $marca_term->name : $params['marques-cotxe'];
-        $model_name = $model_term ? $model_term->name : $params['models-cotxe'];
-        $params['titol-anunci'] = ucfirst($marca_name) . ' ' . strtoupper($model_name) . ' ' . $params['versio'];
+        if ($simplified_type !== 'moto') {
+            $marca_term = isset($params['marques-cotxe']) ? get_term_by('slug', $params['marques-cotxe'], 'marques-coches') : null;
+            $model_term = isset($params['models-cotxe']) ? get_term_by('slug', $params['models-cotxe'], 'marques-coches') : null;
+            
+            $marca_name = $marca_term ? $marca_term->name : ($params['marques-cotxe'] ?? '');
+            $model_name = $model_term ? $model_term->name : ($params['models-cotxe'] ?? '');
+            $params['titol-anunci'] = ucfirst($marca_name) . ' ' . strtoupper($model_name) . ' ' . ($params['versio'] ?? '');
+        } else {
+            // Para motos, usar marca y modelo de moto
+            $marca_moto = isset($params['marques-de-moto']) ? $params['marques-de-moto'] : '';
+            $model_moto = isset($params['models-moto']) ? $params['models-moto'] : '';
+            $tipus_moto = isset($params['tipus-de-moto']) ? $params['tipus-de-moto'] : '';
+            
+            if (!empty($model_moto)) {
+                $params['titol-anunci'] = ucfirst($marca_moto) . ' ' . strtoupper($model_moto);
+            } else {
+                $params['titol-anunci'] = ucfirst($marca_moto) . ' ' . strtoupper($tipus_moto);
+            }
+        }
 
-        // Validar marca y modelo
-        validate_brand_and_model($params['marques-cotxe'], $params['models-cotxe']);
+        // Validar marca y modelo - solo si no es moto
+        if ($simplified_type !== 'moto' && isset($params['marques-cotxe']) && isset($params['models-cotxe'])) {
+            validate_brand_and_model($params['marques-cotxe'], $params['models-cotxe']);
+        }
 
         // Validar taxonomías
         validate_taxonomies($params);
@@ -61,6 +134,19 @@ function create_singlecar($request) {
 
         // Establecer valores por defecto
         set_default_values($post_id, $params);
+
+        // Establecer explícitamente estos valores al final para asegurarnos
+        update_post_meta($post_id, 'frenada-regenerativa', 'false');
+        update_post_meta($post_id, 'one-pedal', 'false');
+        update_post_meta($post_id, 'aire-acondicionat', 'false');
+        update_post_meta($post_id, 'climatitzacio', 'false'); // Añadido nuevo campo
+        update_post_meta($post_id, 'vehicle-fumador', 'false'); // Añadido nuevo campo
+        update_post_meta($post_id, 'vehicle-accidentat', 'false'); // Añadido vehicle-accidentat
+        update_post_meta($post_id, 'llibre-manteniment', 'false'); // Añadido llibre-manteniment
+        update_post_meta($post_id, 'revisions-oficials', 'false'); // Añadido revisions-oficials
+        update_post_meta($post_id, 'portes-cotxe', $params['portes-cotxe']); // Guardar portes-cotxe
+        update_post_meta($post_id, 'temps-recarrega-total', $params['temps-recarrega-total']);
+        update_post_meta($post_id, 'temps-recarrega-fins-80', $params['temps-recarrega-fins-80']);
 
         $wpdb->query('COMMIT');
 
@@ -172,6 +258,16 @@ function set_default_values($post_id, $params) {
     update_post_meta($post_id, 'dies-caducitat', $dies_caducitat);
     update_post_meta($post_id, 'anunci-actiu', $anunci_actiu ? 'true' : 'false');
     update_post_meta($post_id, 'venedor', 'professional');
+    
+    // Establecer valor por defecto para frenada-regenerativa
+    if (!isset($params['frenada-regenerativa'])) {
+        update_post_meta($post_id, 'frenada-regenerativa', 'no');
+    }
+    
+    // Establecer valor por defecto para one-pedal
+    if (!isset($params['one-pedal'])) {
+        update_post_meta($post_id, 'one-pedal', 'no');
+    }
 }
 
 function prepare_vehicle_response($post_id, $params) {

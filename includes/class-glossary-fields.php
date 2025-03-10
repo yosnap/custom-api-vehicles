@@ -1,31 +1,197 @@
 <?php
 /**
- * Clase para manejar los glosarios de JetEngine
+ * Class Glossary_Fields
+ * 
+ * Maneja los campos de glosario para vehículos
  */
-class Glossary_Fields
-{
-    /**
-     * Instance
-     */
+
+// Evitar acceso directo
+if (!defined('ABSPATH')) {
+    exit;
+}
+
+class Glossary_Fields {
     private static $instance = null;
-
+    
     /**
-     * Constructor
+     * Obtiene o crea la instancia única de la clase (patrón Singleton)
      */
-    private function __construct()
-    {
-        add_action('rest_api_init', [$this, 'register_routes']);
-    }
-
-    /**
-     * Singleton
-     */
-    public static function get_instance()
-    {
-        if (self::$instance === null) {
+    public static function get_instance() {
+        if (null === self::$instance) {
             self::$instance = new self();
         }
         return self::$instance;
+    }
+    
+    /**
+     * Constructor
+     */
+    private function __construct() {
+        // Inicializar los campos de glosario
+        add_action('init', array($this, 'register_glossary_fields'), 20);
+        
+        // Agregar validación para los campos de glosario en la API
+        add_filter('rest_pre_insert_singlecar', array($this, 'validate_glossary_fields_api'), 10, 2);
+        
+        // Registrar endpoints de API para glosarios
+        add_action('rest_api_init', array($this, 'register_routes'));
+    }
+    
+    /**
+     * Registra los campos de glosario
+     */
+    public function register_glossary_fields() {
+        // Si JetEngine no está disponible, no hacer nada
+        if (!function_exists('jet_engine')) {
+            return;
+        }
+        
+        // Definir los campos de glosario y sus opciones
+        $glossaries = array(
+            'tipus-de-moto' => array(
+                'label' => 'Tipo de Moto',
+                'options' => array('Scooter', 'Custom', 'Deportiva', 'Naked', 'Trail'),
+            ),
+            'tipus-de-canvi-moto' => array(
+                'label' => 'Tipo de Cambio (Moto)',
+                'options' => array('Manual', 'Automático', 'Semiautomático'),
+            ),
+            'extres-moto' => array(
+                'label' => 'Extras para Moto',
+                'options' => array('ABS', 'Control de tracción', 'Maletas', 'Navegador', 'Calefacción'),
+            ),
+            'carroseria-vehicle-comercial' => array(
+                'label' => 'Carrocería de Vehículo Comercial',
+                'options' => array('Furgoneta', 'Camión', 'Pickup', 'Van'),
+            ),
+            'tipus-carroseria-caravana' => array(
+                'label' => 'Tipo de Carrocería (Autocaravana)',
+                'options' => array('Perfilada', 'Capuchina', 'Integral', 'Camper'),
+            ),
+            'extres-autocaravana' => array(
+                'label' => 'Extras para Autocaravana',
+                'options' => array('Calefacción', 'Energía solar', 'TV', 'Nevera'),
+            ),
+            'extres-habitacle' => array(
+                'label' => 'Extras para Habitáculo',
+                'options' => array('Ducha', 'Cocina', 'Baño', 'Cama doble'),
+            ),
+        );
+        
+        // No intentar registrar estos campos - ya están en JetEngine
+        $skip_fields = [
+            'extres-moto',
+            'carroseria-vehicle-comercial',
+            'tipus-carroseria-caravana',
+            'extres-autocaravana',
+            'extres-habitacle'
+        ];
+        
+        // Registrar cada glosario como un campo personalizado
+        foreach ($glossaries as $key => $glossary) {
+            // Saltarse los campos que ya están en JetEngine
+            if (in_array($key, $skip_fields)) {
+                continue;
+            }
+            
+            // Aquí iría la lógica para registrar el campo con JetEngine o ACF
+            if (function_exists('jet_engine')) {
+                // Registrar el campo si aún no existe
+                $this->maybe_register_meta_field($key, $glossary['label'], 'select', $glossary['options']);
+            }
+        }
+    }
+    
+    /**
+     * Registra un campo de metadatos si aún no existe
+     */
+    private function maybe_register_meta_field($key, $label, $type, $options = array()) {
+        // Verificar si el campo ya existe como meta registrado
+        $existing_meta = get_registered_meta_keys('post', 'singlecar');
+        
+        if (!isset($existing_meta[$key])) {
+            // Registrar el campo como meta para la API REST
+            register_meta('post', $key, array(
+                'show_in_rest' => true,
+                'single' => true,
+                'type' => 'string',
+                'description' => $label,
+            ));
+            
+            // Solo registrar con JetEngine si explícitamente se necesita
+            // No intentamos registrar campos que ya existen en JetEngine
+            // Las siguientes líneas son comentadas o eliminadas para evitar logs innecesarios
+            /*
+            if (function_exists('jet_engine')) {
+                try {
+                    // ... código para registrar con JetEngine ...
+                } catch (Exception $e) {
+                    error_log("Error al registrar campo con JetEngine: " . $e->getMessage());
+                }
+            }
+            */
+        }
+    }
+    
+    /**
+     * Valida los campos de glosario en la API REST
+     */
+    public function validate_glossary_fields_api($prepared_post, $request) {
+        $glossary_fields = array(
+            'tipus-de-moto',
+            'tipus-de-canvi-moto',
+            'extres-moto',
+            'carroseria-vehicle-comercial',
+            'tipus-carroseria-caravana',
+            'extres-autocaravana',
+            'extres-habitacle',
+        );
+        
+        foreach ($glossary_fields as $field) {
+            if (isset($_POST[$field])) {
+                $value = sanitize_text_field($_POST[$field]);
+                
+                // Obtener opciones válidas para este glosario
+                $options = $this->get_glossary_field_options($field);
+                
+                // Si hay opciones definidas y el valor no está en ellas, devolver error
+                if (!empty($options) && !empty($value) && !in_array($value, $options)) {
+                    return new WP_Error(
+                        'invalid_glossary_value',
+                        sprintf(
+                            __('El valor "%s" no es válido para el campo "%s". Valores permitidos: %s', 'custom-api-vehicles'),
+                            $value,
+                            $field,
+                            implode(', ', $options)
+                        ),
+                        array('status' => 400)
+                    );
+                }
+            }
+        }
+        
+        return $prepared_post;
+    }
+    
+    /**
+     * Obtiene las opciones válidas para un campo de glosario estático
+     * 
+     * @param string $field_name Nombre del campo de glosario
+     * @return array Lista de opciones válidas
+     */
+    private function get_glossary_field_options($field_name) {
+        // Definición de glosarios
+        $glossaries = array(
+            'tipus-de-moto' => array('Scooter', 'Custom', 'Deportiva', 'Naked', 'Trail'),
+            'tipus-de-canvi-moto' => array('Manual', 'Automático', 'Semiautomático'),
+            'extres-moto' => array('ABS', 'Control de tracción', 'Maletas', 'Navegador', 'Calefacción'),
+            'carroseria-vehicle-comercial' => array('Furgoneta', 'Camión', 'Pickup', 'Van'),
+            'tipus-carroseria-caravana' => array('Perfilada', 'Capuchina', 'Integral', 'Camper'),
+            'extres-autocaravana' => array('Calefacción', 'Energía solar', 'TV', 'Nevera'),
+            'extres-habitacle' => array('Ducha', 'Cocina', 'Baño', 'Cama doble'),
+        );
+        
+        return isset($glossaries[$field_name]) ? $glossaries[$field_name] : array();
     }
 
     /**
@@ -327,7 +493,10 @@ class Glossary_Fields
     }
 
     /**
-     * Obtiene las opciones de un glosario específico
+     * Obtiene las opciones de un glosario dinámico de JetEngine por ID
+     * 
+     * @param int $glossary_id ID del glosario en JetEngine
+     * @return array|WP_Error Opciones del glosario o error
      */
     private function get_glossary_options($glossary_id)
     {

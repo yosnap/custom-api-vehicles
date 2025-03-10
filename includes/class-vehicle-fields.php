@@ -56,6 +56,7 @@ class Vehicle_Fields
     private function __construct()
     {
         add_action('rest_api_init', [$this, 'register_routes']);
+        $this->register_conditional_validation();
     }
 
     /**
@@ -132,9 +133,9 @@ class Vehicle_Fields
             'capacitat-total-l' => 'number', // Nuevo campo
             'dies-caducitat' => 'number',
             'preu' => 'number',
-            'preu-mensual' => 'number',
-            'preu-diari' => 'number',
-            'preu-antic' => 'number',
+            'preu-mensual' => 'text', // Cambiado de 'number' a 'text'
+            'preu-diari' => 'text', // Cambiado de 'number' a 'text'
+            'preu-antic' => 'text', // Cambiado de 'number' a 'text'
             'quilometratge' => 'number',
             'cilindrada' => 'number',
             'potencia-cv' => 'number',
@@ -148,10 +149,10 @@ class Vehicle_Fields
             'maleters' => 'number',
 
             // Campos eléctricos
-            'autonomia-wltp' => 'number',
-            'autonomia-urbana-wltp' => 'number',
-            'autonomia-extraurbana-wltp' => 'number',
-            'autonomia-electrica' => 'number',
+            'autonomia-wltp' => 'text',          // Cambiado de 'number' a 'text'
+            'autonomia-urbana-wltp' => 'text',   // Cambiado de 'number' a 'text'
+            'autonomia-extraurbana-wltp' => 'text', // Cambiado de 'number' a 'text'
+            'autonomia-electrica' => 'text',     // Cambiado de 'number' a 'text'
             'bateria' => 'radio',
             'cables-recarrega' => 'glossary',
             'connectors' => 'glossary',
@@ -159,17 +160,17 @@ class Vehicle_Fields
             'temps-recarrega-total' => 'number',
             'temps-recarrega-fins-80' => 'number',
             'n-motors' => 'number',
-            'potencia-combinada' => 'number',
+            'potencia-combinada' => 'text',  // Cambiado de 'number' a 'text'
             'frenada-regenerativa' => 'switch',
             'one-pedal' => 'switch',
-            'kw-motor-davant' => 'number',
-            'cv-motor-davant' => 'number',
-            'kw-motor-darrere' => 'number',
-            'cv-motor-darrere' => 'number',
-            'kw-motor-3' => 'number',
-            'cv-motor-3' => 'number',
-            'kw-motor-4' => 'number',
-            'cv-motor-4' => 'number',
+            'kw-motor-davant' => 'text',  // Cambiado de 'number' a 'text'
+            'cv-motor-davant' => 'text',  // Cambiado de 'number' a 'text'
+            'kw-motor-darrere' => 'text', // Cambiado de 'number' a 'text'
+            'cv-motor-darrere' => 'text', // Cambiado de 'number' a 'text'
+            'kw-motor-3' => 'text',       // Cambiado de 'number' a 'text'
+            'cv-motor-3' => 'text',       // Cambiado de 'number' a 'text'
+            'kw-motor-4' => 'text',       // Cambiado de 'number' a 'text'
+            'cv-motor-4' => 'text',       // Cambiado de 'number' a 'text'
 
             // Campos de texto/selección
             'venedor' => 'glossary',
@@ -547,6 +548,9 @@ class Vehicle_Fields
             case 'connectors':
                 $options = self::get_connectors_options();
                 break;
+            case 'tipus-de-moto':
+                $options = self::get_tipus_de_moto_options();
+                break;
         }
 
         return [
@@ -588,10 +592,10 @@ class Vehicle_Fields
     public static function get_traccio_options()
     {
         return [
-            'darrere' => 't_darrere',
-            'davant' => 't_davant',
-            'integral-connectable' => 't_integral_connectable',
-            'integral' => 't_integral'
+            'darrere' => 't_darrere',             // Cambiado a minúsculas (value)
+            'davant' => 't_davant',               // Cambiado a minúsculas (value)
+            'integral' => 't_integral',           // Cambiado a minúsculas (value)
+            'integral-connectable' => 't_integral_connectable'  // Cambiado a minúsculas (value)
         ];
     }
 
@@ -612,25 +616,44 @@ class Vehicle_Fields
     public static function get_color_vehicle_options()
     {
         return [
-            'bicolor' => 'bicolor',
+            'bicolor' => 'bicolor',       // Mantener en minúsculas para value
+            'Bicolor' => 'bicolor',       // Agregar versión con mayúscula inicial
             'blanc' => 'blanc',
+            'Blanc' => 'blanc',           // Agregar versión con mayúscula inicial
             'negre' => 'negre',
+            'Negre' => 'negre',           // Agregar versión con mayúscula inicial
             'gris' => 'gris',
+            'Gris' => 'gris',             // Agregar versión con mayúscula inicial
             'antracita' => 'antracita',
+            'Antracita' => 'antracita',   // Agregar versión con mayúscula inicial
             'beige' => 'beige',
+            'Beige' => 'beige',           // Agregar versión con mayúscula inicial
             'camel' => 'camel',
+            'Camel' => 'camel',           // Agregar versión con mayúscula inicial
             'marro' => 'marro',
+            'Marro' => 'marro',           // Agregar versión con mayúscula inicial
             'blau' => 'blau',
+            'Blau' => 'blau',             // Agregar versión con mayúscula inicial
             'bordeus' => 'bordeus',
+            'Bordeus' => 'bordeus',       // Agregar versión con mayúscula inicial
             'granat' => 'granat',
+            'Granat' => 'granat',         // Agregar versión con mayúscula inicial
             'lila' => 'lila',
+            'Lila' => 'lila',             // Agregar versión con mayúscula inicial
             'vermell' => 'vermell',
+            'Vermell' => 'vermell',       // Agregar versión con mayúscula inicial
             'taronja' => 'taronja',
+            'Taronja' => 'taronja',       // Agregar versión con mayúscula inicial
             'groc' => 'groc',
+            'Groc' => 'groc',             // Agregar versión con mayúscula inicial
             'verd' => 'verd',
+            'Verd' => 'verd',             // Agregar versión con mayúscula inicial
             'altres' => 'altres-exterior',
+            'Altres' => 'altres-exterior',// Agregar versión con mayúscula inicial
             'rosa' => 'rosa',
-            'daurat' => 'daurat'
+            'Rosa' => 'rosa',             // Agregar versión con mayúscula inicial
+            'daurat' => 'daurat',
+            'Daurat' => 'daurat'          // Agregar versión con mayúscula inicial
         ];
     }
 
@@ -734,6 +757,211 @@ class Vehicle_Fields
             'tipus-1' => 'tipus-1',
             'tipus-2' => 'tipus-2',
             'tipus-3' => 'tipus-3'
+        ];
+    }
+
+    /**
+     * Obtiene las opciones para el campo tipus-de-moto
+     */
+    public static function get_tipus_de_moto_options()
+    {
+        try {
+            if (!function_exists('jet_engine')) {
+                return []; // Si JetEngine no está disponible, devolver array vacío
+            }
+
+            $jet_engine = jet_engine();
+
+            if (!isset($jet_engine->glossaries) || !isset($jet_engine->glossaries->filters)) {
+                return []; // Si no hay glosarios, devolver array vacío
+            }
+
+            // Obtener las opciones del glosario de tipus-de-moto (usando el ID correcto)
+            $glossary_id = Vehicle_Glossary_Mappings::get_glossary_id('tipus-de-moto');
+            
+            if (!$glossary_id) {
+                // Valor por defecto si no hay ID de glosario
+                return [
+                    'scooter' => 'Scooter',
+                    'custom' => 'Custom',
+                    'deportiva' => 'Deportiva',
+                    'naked' => 'Naked',
+                    'trail' => 'Trail',
+                    'sr1' => 'SR1'
+                ];
+            }
+            
+            $options = $jet_engine->glossaries->filters->get_glossary_options($glossary_id);
+
+            if (empty($options)) {
+                // Valor por defecto si no hay opciones en el glosario
+                return [
+                    'scooter' => 'Scooter',
+                    'custom' => 'Custom',
+                    'deportiva' => 'Deportiva',
+                    'naked' => 'Naked',
+                    'trail' => 'Trail',
+                    'sr1' => 'SR1'
+                ];
+            }
+
+            return $options;
+
+        } catch (Exception $e) {
+            error_log("Error al obtener opciones de tipus-de-moto: " . $e->getMessage());
+            return [];
+        }
+    }
+
+    /**
+     * Obtiene las opciones para el campo extres-moto
+     */
+    public static function get_extres_moto_options()
+    {
+        try {
+            if (!function_exists('jet_engine')) {
+                return [];
+            }
+
+            $jet_engine = jet_engine();
+
+            if (!isset($jet_engine->glossaries) || !isset($jet_engine->glossaries->filters)) {
+                return [];
+            }
+
+            // Obtener las opciones del glosario de extras moto (ID: 55)
+            $options = $jet_engine->glossaries->filters->get_glossary_options(55);
+
+            if (empty($options)) {
+                // Valores por defecto si el glosario está vacío
+                return [
+                    'abs' => 'ABS',
+                    'control-traccion' => 'Control de tracción',
+                    'maletas' => 'Maletas',
+                    'navegador' => 'Navegador',
+                    'calefaccion' => 'Calefacción'
+                ];
+            }
+
+            // Convertir el array de opciones al formato esperado
+            $formatted_options = [];
+            foreach ($options as $value => $label) {
+                $formatted_options[$value] = $label;
+            }
+
+            return $formatted_options;
+
+        } catch (Exception $e) {
+            error_log("Error al obtener extres-moto: " . $e->getMessage());
+            return [];
+        }
+    }
+
+    /**
+     * Valida los campos obligatorios según el tipo de vehículo
+     */
+    public function validate_required_fields($prepared_post, $request) {
+        // Obtener el tipo de vehículo del request
+        $vehicle_type = '';
+        if (isset($_POST['tipus-vehicle'])) {
+            $vehicle_type = strtolower(trim(sanitize_text_field($_POST['tipus-vehicle'])));
+        }
+        
+        // Definir campos obligatorios básicos para todos los vehículos
+        $required_fields = [
+            'vehicle_title',
+            'vehicle_price'
+            // otros campos comunes a todos los tipos
+        ];
+        
+        // Agregar campos obligatorios específicos según el tipo de vehículo
+        if ($vehicle_type === 'cotxe' || $vehicle_type === 'autocaravana' || $vehicle_type === 'vehicle-comercial') {
+            // Para todos los tipos excepto moto, marques-cotxe y models-cotxe son obligatorios
+            $required_fields = array_merge($required_fields, [
+                'marques-cotxe',
+                'models-cotxe'
+            ]);
+        } else if ($vehicle_type === 'moto') {
+            // Para motos, estos campos no son obligatorios
+            $required_fields = array_merge($required_fields, [
+                'marques-de-moto',
+                'models-moto'
+            ]);
+        }
+        
+        // Validar que todos los campos requeridos estén presentes
+        foreach ($required_fields as $field) {
+            if (empty($_POST[$field])) {
+                return new WP_Error(
+                    'required_field_missing',
+                    sprintf(__('El campo %s es obligatorio', 'custom-api-vehicles'), $field),
+                    array('status' => 400)
+                );
+            }
+        }
+        
+        return $prepared_post;
+    }
+    
+    /**
+     * Registra filtro para validación condicional en REST API
+     */
+    public function register_conditional_validation() {
+        // Filtro para validar campos antes de insertar el post
+        add_filter('rest_pre_insert_singlecar', [$this, 'validate_required_fields'], 10, 2);
+    }
+
+    /**
+     * Obtiene los campos que deben ser tratados como numéricos
+     */
+    public static function get_numeric_fields() {
+        return [
+            'places-moto',
+            'capacitat-total-l',
+            'dies-caducitat',
+            'preu',
+            'preu-mensual',
+            'preu-diari',
+            'preu-antic',
+            'quilometratge',
+            'cilindrada',
+            'potencia-cv',
+            'potencia-kw',
+            'portes-cotxe',
+            'places-cotxe',
+            'velocitat-maxima',
+            'acceleracio-0-100',
+            'capacitat-total',
+            'maleters',
+            'temps-recarrega-total',
+            'temps-recarrega-fins-80',
+            'n-motors'
+        ];
+    }
+
+    /**
+     * Obtiene los campos que pueden contener valores especiales no numéricos
+     */
+    public static function get_special_numeric_fields() {
+        return [
+            'kw-motor-davant',
+            'cv-motor-davant',
+            'kw-motor-darrere',
+            'cv-motor-darrere',
+            'kw-motor-3',
+            'cv-motor-3',
+            'kw-motor-4',
+            'cv-motor-4',
+            'potencia-combinada',
+            'autonomia-wltp',
+            'autonomia-urbana-wltp',
+            'autonomia-extraurbana-wltp',
+            'autonomia-electrica',
+            'preu-mensual', // Añadido preu-mensual a los campos especiales
+            'cv-motor-davant-moto',
+            'kw-motor-davant-moto',
+            'cv-motor-darrere-moto',
+            'kw-motor-darrere-moto'
         ];
     }
 }

@@ -26,10 +26,17 @@ function register_vehicle_routes() {
         ],
         [
             'methods' => 'POST',
-            'callback' => 'create_singlecar',
-            'permission_callback' => function () {
-                return is_user_logged_in();
+            'callback' => function($request) {
+                // Obtener parámetros y aplicar valores por defecto
+                $params = $request->get_params();
+                $params = apply_default_values($params);
+                
+                // Pasar el objeto Request original
+                return create_singlecar($request);
             },
+            'permission_callback' => function() {
+                return current_user_can('edit_posts');
+            }
         ]
     ]);
 
@@ -119,6 +126,59 @@ function register_diagnostic_endpoint() {
     ]);
 }
 add_action('rest_api_init', 'register_diagnostic_endpoint');
+
+/**
+ * Función para aplicar valores por defecto a los parámetros de la solicitud
+ */
+function apply_default_values($params) {
+    // Asegurarse de que los campos booleanos importantes tengan valores por defecto
+    if (!isset($params['frenada-regenerativa']) || $params['frenada-regenerativa'] === '') {
+        $params['frenada-regenerativa'] = 'no';
+    }
+    
+    if (!isset($params['one-pedal']) || $params['one-pedal'] === '') {
+        $params['one-pedal'] = 'no';
+    }
+    
+    if (!isset($params['aire-acondicionat']) || $params['aire-acondicionat'] === '') {
+        $params['aire-acondicionat'] = 'no';
+    }
+    
+    if (!isset($params['climatitzacio']) || $params['climatitzacio'] === '') {
+        $params['climatitzacio'] = 'no';
+    }
+    
+    if (!isset($params['vehicle-fumador']) || $params['vehicle-fumador'] === '') {
+        $params['vehicle-fumador'] = 'no';
+    }
+    
+    if (!isset($params['vehicle-accidentat']) || $params['vehicle-accidentat'] === '') {
+        $params['vehicle-accidentat'] = 'no';
+    }
+    
+    if (!isset($params['llibre-manteniment']) || $params['llibre-manteniment'] === '') {
+        $params['llibre-manteniment'] = 'no';
+    }
+    
+    if (!isset($params['revisions-oficials']) || $params['revisions-oficials'] === '') {
+        $params['revisions-oficials'] = 'no'; // Añadido revisions-oficials
+    }
+    
+    if (!isset($params['impostos-deduibles']) || $params['impostos-deduibles'] === '') {
+        $params['impostos-deduibles'] = 'no'; // Añadido impostos-deduibles
+    }
+    
+    if (!isset($params['vehicle-a-canvi']) || $params['vehicle-a-canvi'] === '') {
+        $params['vehicle-a-canvi'] = 'no'; // Añadido vehicle-a-canvi
+    }
+    
+    // Añadir valor por defecto para portes-cotxe
+    if (!isset($params['portes-cotxe']) || $params['portes-cotxe'] === '' || !is_numeric($params['portes-cotxe'])) {
+        $params['portes-cotxe'] = '5'; // Valor típico para coches
+    }
+    
+    return $params;
+}
 
 
 
