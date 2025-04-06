@@ -283,11 +283,32 @@ function handle_image_url($url, $post_id) {
         throw new Exception('Error descargando imagen: ' . $temp_file->get_error_message());
     }
 
-    // Obtener extensión del archivo
-    $file_info = wp_check_filetype(basename($url));
+    // Obtener información del archivo
+    $file_info = wp_check_filetype(basename(parse_url($url, PHP_URL_PATH)));
+    
+    // Si no se puede determinar la extensión desde la URL, intentar detectarla del archivo
     if (empty($file_info['ext'])) {
-        @unlink($temp_file);
-        throw new Exception('Tipo de archivo no válido');
+        // Intentar determinar el tipo de archivo usando mime_content_type
+        $mime_type = mime_content_type($temp_file);
+        error_log('MIME detectado: ' . $mime_type);
+        
+        // Mapeo de MIME types comunes a extensiones
+        $mime_to_ext = [
+            'image/jpeg' => 'jpg',
+            'image/jpg' => 'jpg',
+            'image/png' => 'png',
+            'image/gif' => 'gif',
+            'image/webp' => 'webp',
+            'image/bmp' => 'bmp'
+        ];
+        
+        if (isset($mime_to_ext[$mime_type])) {
+            $file_info['ext'] = $mime_to_ext[$mime_type];
+            $file_info['type'] = $mime_type;
+        } else {
+            @unlink($temp_file);
+            throw new Exception('Tipo de archivo no válido o no soportado: ' . $mime_type);
+        }
     }
 
     $file_array = [
@@ -298,6 +319,9 @@ function handle_image_url($url, $post_id) {
         'tmp_name' => $temp_file,
         'type' => $file_info['type']
     ];
+
+    // Registrar información para depuración
+    error_log('Procesando archivo desde URL: ' . print_r($file_array, true));
 
     // Manejar el sideload
     $attach_id = media_handle_sideload($file_array, $post_id);
