@@ -53,25 +53,8 @@ function validate_vehicle_data($data) {
     // Definir campos obligatorios según el tipo de vehículo
     $required_fields = [
         'tipus-vehicle',
-        'tipus-combustible',
-        'tipus-propulsor',
         'estat-vehicle',
-        'preu'
     ];
-    
-    // Añadir tipus-canvi-cotxe como obligatorio solo si NO es moto
-    if ($simplified_type !== 'moto') {
-        $required_fields[] = 'tipus-canvi-cotxe';
-    }
-    
-    // Validar versio para todos excepto MOTO
-    if ($simplified_type !== 'moto' && empty($data['versio'])) {
-        return new WP_Error(
-            'missing_required_field',
-            'El campo versio es obligatorio para vehículos que no son motos',
-            array('status' => 400)
-        );
-    }
     
     // Validar marques-cotxe y models-cotxe para todos excepto MOTO
     if ($simplified_type !== 'moto') {

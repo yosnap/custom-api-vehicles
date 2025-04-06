@@ -4,12 +4,192 @@ function process_vehicle_images($post_id, $params) {
     // Procesar imagen destacada
     if (isset($params['imatge-destacada-id'])) {
         process_featured_image($post_id, $params['imatge-destacada-id']);
+    } elseif (isset($_FILES['imatge-destacada']) && !empty($_FILES['imatge-destacada']['tmp_name'])) {
+        // Procesar archivo subido directamente
+        process_uploaded_featured_image($post_id, $_FILES['imatge-destacada']);
+    } elseif (isset($params['imatge-destacada-url']) && !empty($params['imatge-destacada-url'])) {
+        // Procesar URL de imagen
+        process_featured_image_url($post_id, $params['imatge-destacada-url']);
+    } elseif (isset($params['imatge-destacada']) && !empty($params['imatge-destacada'])) {
+        // Procesar valor directo (podría ser base64 o ID)
+        process_featured_image($post_id, $params['imatge-destacada']);
     }
 
     // Procesar galería
-    if (isset($params['galeria-vehicle'])) {
+    if (isset($params['galeria-vehicle']) && !empty($params['galeria-vehicle'])) {
+        // Procesar galería de imágenes (URLs, IDs o base64)
         process_gallery_images($post_id, $params['galeria-vehicle']);
+    } elseif (isset($params['galeria-vehicle-urls']) && !empty($params['galeria-vehicle-urls'])) {
+        // Procesar galería de URLs (incluyendo rutas locales)
+        process_gallery_urls($post_id, $params['galeria-vehicle-urls']);
+    } elseif (isset($_FILES['galeria-vehicle']) && !empty($_FILES['galeria-vehicle']['tmp_name'])) {
+        // Procesar archivos de galería subidos directamente
+        process_uploaded_gallery_images($post_id, $_FILES['galeria-vehicle']);
     }
+}
+
+/**
+ * Procesa una URL de imagen destacada, incluso si es una ruta local
+ */
+function process_featured_image_url($post_id, $image_url) {
+    try {
+        error_log('Procesando URL de imagen destacada: ' . $image_url);
+        
+        // Verificar si es una URL web o una ruta local
+        if (filter_var($image_url, FILTER_VALIDATE_URL)) {
+            // Es una URL web
+            $attach_id = handle_image_url($image_url, $post_id);
+        } else {
+            // Es una ruta local, verificar si el archivo existe
+            if (file_exists($image_url)) {
+                $attach_id = handle_local_file($image_url, $post_id);
+            } else {
+                throw new Exception('El archivo local no existe: ' . $image_url);
+            }
+        }
+        
+        if ($attach_id && wp_attachment_is_image($attach_id)) {
+            set_post_thumbnail($post_id, $attach_id);
+            error_log('Imagen destacada establecida correctamente con ID: ' . $attach_id);
+        } else {
+            throw new Exception('ID de imagen destacada no válido');
+        }
+    } catch (Exception $e) {
+        error_log("Error procesando URL de imagen destacada: " . $e->getMessage());
+        throw $e;
+    }
+}
+
+/**
+ * Maneja un archivo local y lo importa a la biblioteca de medios
+ */
+function handle_local_file($file_path, $post_id) {
+    // Obtener información del archivo
+    $file_name = basename($file_path);
+    $file_info = wp_check_filetype($file_name);
+    
+    if (empty($file_info['ext'])) {
+        throw new Exception('Tipo de archivo no válido');
+    }
+    
+    // Copiar el archivo a un directorio temporal
+    $temp_file = wp_tempnam($file_name);
+    if (!copy($file_path, $temp_file)) {
+        throw new Exception('No se pudo copiar el archivo local');
+    }
+    
+    $file_array = [
+        'name' => wp_unique_filename(
+            wp_upload_dir()['path'], 
+            'vehicle-image-' . time() . '.' . $file_info['ext']
+        ),
+        'tmp_name' => $temp_file,
+        'type' => $file_info['type']
+    ];
+    
+    // Manejar el sideload
+    $attach_id = media_handle_sideload($file_array, $post_id);
+    @unlink($temp_file); // Limpiar archivo temporal
+    
+    if (is_wp_error($attach_id)) {
+        throw new Exception('Error procesando imagen local: ' . $attach_id->get_error_message());
+    }
+    
+    return $attach_id;
+}
+
+function process_uploaded_featured_image($post_id, $image_file) {
+    try {
+        error_log('Procesando imagen destacada subida: ' . print_r($image_file, true));
+        $attach_id = handle_uploaded_image($image_file, $post_id);
+        if ($attach_id && wp_attachment_is_image($attach_id)) {
+            set_post_thumbnail($post_id, $attach_id);
+            error_log('Imagen destacada establecida correctamente con ID: ' . $attach_id);
+        } else {
+            throw new Exception('ID de imagen destacada no válido');
+        }
+    } catch (Exception $e) {
+        error_log("Error procesando imagen destacada subida: " . $e->getMessage());
+        throw $e;
+    }
+}
+
+function process_uploaded_gallery_images($post_id, $gallery_files) {
+    try {
+        error_log('=== INICIO PROCESAMIENTO GALERÍA SUBIDA ===');
+        error_log('Post ID: ' . $post_id);
+        error_log('Archivos de galería recibidos: ' . print_r($gallery_files, true));
+
+        $gallery_ids = [];
+        foreach ($gallery_files['tmp_name'] as $index => $tmp_name) {
+            if (empty($tmp_name)) {
+                error_log('Archivo vacío, continuando con el siguiente');
+                continue;
+            }
+
+            error_log('Procesando archivo de galería: ' . $gallery_files['name'][$index]);
+
+            try {
+                $attach_id = handle_uploaded_image($gallery_files, $post_id, $index);
+                if ($attach_id) {
+                    error_log('Archivo de galería procesado, ID: ' . $attach_id);
+                    $gallery_ids[] = $attach_id;
+                }
+            } catch (Exception $e) {
+                error_log('Error procesando archivo de galería: ' . $e->getMessage());
+                continue;
+            }
+        }
+
+        error_log('IDs de galería recolectados: ' . print_r($gallery_ids, true));
+
+        if (!empty($gallery_ids)) {
+            save_gallery_meta($post_id, $gallery_ids);
+            error_log('Galería guardada exitosamente');
+        } else {
+            error_log('No se encontraron IDs válidos para guardar en la galería');
+        }
+
+        error_log('=== FIN PROCESAMIENTO GALERÍA SUBIDA ===');
+    } catch (Exception $e) {
+        error_log('ERROR CRÍTICO en proceso de galería subida: ' . $e->getMessage());
+        throw $e;
+    }
+}
+
+function handle_uploaded_image($image_file, $post_id, $index = null) {
+    // Determinar si estamos manejando un solo archivo o un array de archivos
+    $is_multiple = isset($index) && is_array($image_file['name']);
+    
+    // Obtener nombre del archivo
+    $file_name = $is_multiple ? $image_file['name'][$index] : $image_file['name'];
+    
+    // Obtener extensión del archivo
+    $file_info = wp_check_filetype($file_name);
+    if (empty($file_info['ext'])) {
+        throw new Exception('Tipo de archivo no válido');
+    }
+
+    $file_array = [
+        'name' => wp_unique_filename(
+            wp_upload_dir()['path'], 
+            'vehicle-image-' . time() . '.' . $file_info['ext']
+        ),
+        'tmp_name' => $is_multiple ? $image_file['tmp_name'][$index] : $image_file['tmp_name'],
+        'type' => $file_info['type']
+    ];
+
+    // Registrar información para depuración
+    error_log('Procesando archivo: ' . print_r($file_array, true));
+
+    // Manejar el sideload
+    $attach_id = media_handle_sideload($file_array, $post_id);
+
+    if (is_wp_error($attach_id)) {
+        throw new Exception('Error procesando imagen: ' . $attach_id->get_error_message());
+    }
+
+    return $attach_id;
 }
 
 function process_featured_image($post_id, $image_data) {
@@ -251,4 +431,70 @@ function get_vehicle_images($post_id) {
     }
 
     return $response;
+}
+
+/**
+ * Procesa una lista de URLs para la galería
+ */
+function process_gallery_urls($post_id, $gallery_urls) {
+    try {
+        error_log('=== INICIO PROCESAMIENTO GALERÍA URLS ===');
+        error_log('Post ID: ' . $post_id);
+        
+        // Asegurarse de que tenemos un array
+        if (!is_array($gallery_urls)) {
+            $gallery_urls = explode(',', $gallery_urls);
+        }
+        
+        error_log('URLs de galería recibidas: ' . print_r($gallery_urls, true));
+        
+        $gallery_ids = [];
+        
+        foreach ($gallery_urls as $url) {
+            if (empty($url)) {
+                error_log('URL vacía, continuando con la siguiente');
+                continue;
+            }
+            
+            error_log('Procesando URL de galería: ' . $url);
+            
+            try {
+                // Verificar si es una URL web o una ruta local
+                if (filter_var($url, FILTER_VALIDATE_URL)) {
+                    // Es una URL web
+                    $attach_id = handle_image_url($url, $post_id);
+                } else {
+                    // Es una ruta local, verificar si el archivo existe
+                    if (file_exists($url)) {
+                        $attach_id = handle_local_file($url, $post_id);
+                    } else {
+                        error_log('El archivo local no existe: ' . $url);
+                        continue;
+                    }
+                }
+                
+                if ($attach_id) {
+                    error_log('Imagen de galería procesada, ID: ' . $attach_id);
+                    $gallery_ids[] = $attach_id;
+                }
+            } catch (Exception $e) {
+                error_log('Error procesando URL de galería: ' . $e->getMessage());
+                continue;
+            }
+        }
+        
+        error_log('IDs de galería recolectados: ' . print_r($gallery_ids, true));
+        
+        if (!empty($gallery_ids)) {
+            save_gallery_meta($post_id, $gallery_ids);
+            error_log('Galería guardada exitosamente');
+        } else {
+            error_log('No se encontraron IDs válidos para guardar en la galería');
+        }
+        
+        error_log('=== FIN PROCESAMIENTO GALERÍA URLS ===');
+    } catch (Exception $e) {
+        error_log('ERROR CRÍTICO en proceso de galería URLs: ' . $e->getMessage());
+        throw $e;
+    }
 }

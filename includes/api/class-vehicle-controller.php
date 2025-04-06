@@ -10,6 +10,9 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
+// Incluir funciones de manejo de medios
+require_once plugin_dir_path(dirname(dirname(__FILE__))) . 'includes/singlecar-endpoints/media-handlers.php';
+
 class Vehicle_Controller {
     
     /**
@@ -71,7 +74,9 @@ class Vehicle_Controller {
             'methods' => WP_REST_Server::CREATABLE,
             'callback' => array($this, 'create_vehicle'),
             'permission_callback' => array($this, 'create_item_permissions_check'),
-            'args' => $this->get_create_item_args(), // Reemplazado por un método que sí existe
+            'args' => $this->get_create_item_args(),
+            // Habilitar subida de archivos
+            'upload_files' => true,
         ));
         
         // Endpoint para actualizar un vehículo
@@ -79,7 +84,9 @@ class Vehicle_Controller {
             'methods' => WP_REST_Server::EDITABLE,
             'callback' => array($this, 'update_vehicle'),
             'permission_callback' => array($this, 'update_item_permissions_check'),
-            'args' => $this->get_update_item_args(), // Reemplazado por un método que sí existe
+            'args' => $this->get_update_item_args(),
+            // Habilitar subida de archivos
+            'upload_files' => true,
         ));
     }
     
@@ -408,6 +415,46 @@ class Vehicle_Controller {
             );
         }
         
+        // Verificar que se ha proporcionado una imagen destacada
+        $has_image = false;
+        
+        // Registrar para depuración
+        error_log('Validando imagen destacada...');
+        error_log('$_FILES: ' . print_r($_FILES, true));
+        error_log('$request params: ' . print_r($request->get_params(), true));
+        
+        // Verificar si se ha proporcionado una imagen destacada como archivo
+        if (isset($_FILES['imatge-destacada']) && !empty($_FILES['imatge-destacada']['tmp_name'])) {
+            error_log('Imagen destacada encontrada en $_FILES[imatge-destacada]');
+            $has_image = true;
+        }
+        // Verificar si se ha proporcionado una imagen destacada como ID
+        elseif ($request->get_param('imatge-destacada-id') && !empty($request->get_param('imatge-destacada-id'))) {
+            error_log('Imagen destacada encontrada en imatge-destacada-id: ' . $request->get_param('imatge-destacada-id'));
+            $has_image = true;
+        }
+        // Verificar si se ha proporcionado una imagen destacada como URL
+        elseif ($request->get_param('imatge-destacada-url') && !empty($request->get_param('imatge-destacada-url'))) {
+            error_log('Imagen destacada encontrada en imatge-destacada-url: ' . $request->get_param('imatge-destacada-url'));
+            $has_image = true;
+        }
+        // Verificar si se ha proporcionado una imagen destacada directamente
+        elseif ($request->get_param('imatge-destacada') && !empty($request->get_param('imatge-destacada'))) {
+            error_log('Imagen destacada encontrada en imatge-destacada: ' . $request->get_param('imatge-destacada'));
+            $has_image = true;
+        }
+        
+        if (!$has_image) {
+            error_log('No se encontró ninguna imagen destacada');
+            return new WP_Error(
+                'missing_featured_image',
+                __('La imagen destacada es obligatoria. Debe proporcionar una imagen a través del campo "imatge-destacada"', 'custom-api-vehicles'),
+                array('status' => 400)
+            );
+        } else {
+            error_log('Imagen destacada validada correctamente');
+        }
+        
         // Normalizar el tipo de vehículo a minúsculas
         $vehicle_type = strtolower(trim($vehicle_type));
         
@@ -501,6 +548,10 @@ class Vehicle_Controller {
                 'required' => true,
                 'enum' => ['cotxe', 'moto', 'autocaravana', 'vehicle-comercial'],
             ],
+            'imatge-destacada' => [
+                'description' => __('Imagen destacada del vehículo', 'custom-api-vehicles'),
+                'required' => true,
+            ],
             // Campos opcionales
             'content' => [
                 'description' => __('Contenido/descripción del vehículo', 'custom-api-vehicles'),
@@ -538,6 +589,12 @@ class Vehicle_Controller {
      * @return WP_REST_Response|WP_Error
      */
     public function create_vehicle($request) {
+        // Validar campos obligatorios
+        $validation = $this->validate_vehicle_fields($request);
+        if (is_wp_error($validation)) {
+            return $validation;
+        }
+        
         // Implementar la creación del vehículo
         $params = $request->get_params();
         
@@ -568,6 +625,13 @@ class Vehicle_Controller {
             update_post_meta($post_id, 'quilometratge', floatval($params['quilometratge']));
         }
         
+        // Procesar imágenes (imagen destacada y galería)
+        if (function_exists('process_vehicle_images')) {
+            process_vehicle_images($post_id, $params);
+        } else {
+            error_log('La función process_vehicle_images no está disponible');
+        }
+        
         // Devolver el vehículo creado
         $vehicle = get_post($post_id);
         $data = $this->prepare_item_for_response($vehicle, $request);
@@ -582,6 +646,12 @@ class Vehicle_Controller {
      * @return WP_REST_Response|WP_Error
      */
     public function update_vehicle($request) {
+        // Validar campos obligatorios
+        $validation = $this->validate_vehicle_fields($request);
+        if (is_wp_error($validation)) {
+            return $validation;
+        }
+        
         $id = (int) $request['id'];
         $params = $request->get_params();
         
@@ -624,6 +694,13 @@ class Vehicle_Controller {
         
         if (isset($params['quilometratge'])) {
             update_post_meta($id, 'quilometratge', floatval($params['quilometratge']));
+        }
+        
+        // Procesar imágenes (imagen destacada y galería)
+        if (function_exists('process_vehicle_images')) {
+            process_vehicle_images($id, $params);
+        } else {
+            error_log('La función process_vehicle_images no está disponible');
         }
         
         // Devolver el vehículo actualizado

@@ -210,21 +210,13 @@ function validate_required_fields($params, $is_update = false) {
     // Definir campos obligatorios según el tipo de vehículo
     $required_fields = [
         'tipus-vehicle',
-        'tipus-combustible',
-        'tipus-propulsor',
         'estat-vehicle',
-        'preu'
     ];
     
-    // Añadir tipus-canvi-cotxe como obligatorio solo si NO es moto
-    if ($simplified_type !== 'moto') {
-        $required_fields[] = 'tipus-canvi-cotxe';
-    }
-    
-    // Añadir versio como obligatorio para todos EXCEPTO MOTO
-    if ($simplified_type !== 'moto') {
-        $required_fields[] = 'versio';
-    }
+    // Ya no añadimos versio como obligatorio
+    // if ($simplified_type !== 'moto') {
+    //     $required_fields[] = 'versio';
+    // }
     
     // Añadir marques-cotxe y models-cotxe como obligatorios para todos EXCEPTO MOTO
     if ($simplified_type !== 'moto') {
@@ -235,7 +227,7 @@ function validate_required_fields($params, $is_update = false) {
         $required_fields[] = 'marques-de-moto';
     }
 
-    // Si es una actualización, solo validar los campos requeridos que se están modificando
+// Si es una actualización, solo validar los campos requeridos que se están modificando
     if ($is_update) {
         $fields_to_validate = array_intersect(array_keys($params), $required_fields);
         
