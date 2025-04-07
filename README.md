@@ -2,9 +2,28 @@
 
 Plugin WordPress para gestionar vehículos a través de una API REST personalizada.
 
+**Versión actual:** 1.7.7  
+**Namespace:** `api-motor/v1`  
+**Tipo de contenido:** `singlecar`
+
 ## Endpoints Disponibles
 
 ### Vehículos
+
+#### GET /wp-json/api-motor/v1/vehicles/tipus-vehicle
+
+Obtiene los tipos de vehículos disponibles.
+
+**Respuesta:**
+```json
+[
+  {"id": 1, "name": "Coche"},
+  {"id": 2, "name": "Moto"},
+  {"id": 3, "name": "Furgoneta"},
+  {"id": 4, "name": "Autocaravana"},
+  {"id": 5, "name": "Camión"}
+]
+```
 
 #### GET /wp-json/api-motor/v1/vehicles
 
@@ -12,8 +31,9 @@ Obtiene una lista de vehículos.
 
 **Parámetros:**
 
-- `page`: Número de página (opcional)
-- `per_page`: Items por página (opcional)
+- `page`: Número de página (opcional, por defecto: 1)
+- `per_page`: Items por página (opcional, por defecto: 10)
+- `brand`: ID de la marca para filtrar (opcional)
 - `user_id`: Filtrar por ID de usuario (admins pueden ver todos, usuarios solo pueden ver los suyos)
 - `post_id`: Filtrar por ID específico
 - `post_name`: Filtrar por slug
@@ -21,13 +41,34 @@ Obtiene una lista de vehículos.
 **Respuesta:**
 
 ```json
-{
-    "vehicles": [...],
-    "total_posts": 100,
-    "total_pages": 10,
-    "current_page": 1
-}
+[
+  {
+    "id": 123,
+    "data-creacio": "2025-04-01 10:00:00",
+    "status": "publish",
+    "slug": "ejemplo-vehiculo",
+    "titol-anunci": "Título del anuncio",
+    "descripcio-anunci": "Descripción del anuncio",
+    "tipus-vehicle": "cotxe",
+    "marca": "Marca del vehículo",
+    "model": "Modelo del vehículo",
+    "preu": "25000",
+    "quilometres": "50000",
+    "any": "2020",
+    "combustible": "gasolina",
+    "potencia": "150",
+    "canvi": "manual",
+    "color-vehicle": "Blanco",
+    "extres-cotxe": ["Extra 1", "Extra 2"]
+    // ... otros campos según el tipo de vehículo
+  },
+  // ... más vehículos
+]
 ```
+
+**Headers de respuesta:**
+- `X-WP-Total`: Total de vehículos encontrados
+- `X-WP-TotalPages`: Total de páginas disponibles
 
 #### POST /wp-json/api-motor/v1/vehicles
 
@@ -40,31 +81,39 @@ Crea un nuevo vehículo.
 
 **Campos requeridos:**
 
-- marques-cotxe
-- models-cotxe
-- versio
-- tipus-vehicle
-- tipus-combustible
-- tipus-canvi-cotxe
-- tipus-propulsor
-- estat-vehicle
-- preu
+- `title`: Título del anuncio
+- `tipus-vehicle`: Tipo de vehículo (cotxe, moto, autocaravana, vehicle-comercial)
+- `marca`: Marca del vehículo
+- `model`: Modelo del vehículo
+- `preu`: Precio del vehículo
+- `quilometres`: Kilometraje
+- `any`: Año de fabricación
+- `combustible`: Tipo de combustible
+- `potencia`: Potencia en CV
+
+**Campos específicos por tipo de vehículo:**
+
+- **Coches (cotxe)**: extres-cotxe, tipus-tapisseria, color-tapisseria
+- **Motos (moto)**: extres-moto, tipus-de-moto
+- **Autocaravanas (autocaravana)**: extres-autocaravana, carrosseria-caravana, extres-habitacle
+- **Vehículos Comerciales (vehicle-comercial)**: carroseria-vehicle-comercial
 
 **Campos de imágenes:**
 
-- imatge-destacada-id: Acepta URL o ID de media
-- galeria-vehicle: Array de URLs para la galería de imágenes
+- `featured_image`: Acepta URL o ID de media
+- `gallery`: Array de URLs para la galería de imágenes
 
 **Respuesta:**
 
 ```json
 {
-  "status": "success",
-  "message": "Vehículo creado exitosamente",
-  "post_id": 123,
-  "titol-anunci": "...",
-  "descripcio-anunci": "...",
-  "status": "publish"
+  "id": 123,
+  "data-creacio": "2025-04-01 10:00:00",
+  "status": "publish",
+  "slug": "ejemplo-vehiculo",
+  "titol-anunci": "Título del anuncio",
+  "descripcio-anunci": "Descripción del anuncio",
+  // ... todos los campos del vehículo
 }
 ```
 
@@ -72,13 +121,22 @@ Crea un nuevo vehículo.
 
 Obtiene detalles de un vehículo específico.
 
-**Requiere autenticación y ser propietario**
+**Parámetros:**
+- `id`: ID del vehículo (requerido)
+
+**Respuesta:**
+Misma estructura que un elemento individual de la lista de vehículos, pero con todos los campos disponibles.
 
 #### PUT /wp-json/api-motor/v1/vehicles/{id}
 
 Actualiza un vehículo existente.
 
-**Requiere autenticación y ser propietario**
+**Parámetros:**
+- `id`: ID del vehículo a actualizar (requerido)
+- Campos a actualizar (similar a la creación, pero opcionales)
+
+**Respuesta:**
+Objeto completo del vehículo actualizado.
 
 #### DELETE /wp-json/api-motor/v1/vehicles/{id}
 
@@ -129,8 +187,6 @@ Elimina (mueve a papelera) un vehículo.
 - `GET /wp-json/api-motor/v1/debug-fields`: Información detallada de campos (solo admin)
 - `GET /wp-json/api-motor/v1/authors`: Lista de autores (admin) o información del autor actual (usuario autenticado)
 
-**Ejemplo de respuesta para taxonomías:**
-
 ### Debug
 
 #### GET /wp-json/api-motor/v1/debug-fields
@@ -157,110 +213,161 @@ Obtiene información de vendedores profesionales.
    - Siempre devuelve los detalles completos del usuario autenticado
    - El parámetro `user_id` es ignorado
 
-**Respuestas:**
+## Campos por Tipo de Vehículo
 
-1. Como administrador sin user_id:
+### Campos Comunes (Todos los vehículos)
+
+| Campo | Tipo | Descripción | Requerido |
+|-------|------|-------------|-----------|
+| `title` | string | Título del anuncio | Sí |
+| `content` | string | Descripción del anuncio | No |
+| `tipus-vehicle` | string | Tipo de vehículo | Sí |
+| `marca` | string | Marca del vehículo | Sí |
+| `model` | string | Modelo del vehículo | Sí |
+| `preu` | string | Precio del vehículo | Sí |
+| `quilometres` | string | Kilometraje | Sí |
+| `any` | string | Año de fabricación | Sí |
+| `combustible` | string | Tipo de combustible | Sí |
+| `potencia` | string | Potencia en CV | Sí |
+| `color-vehicle` | string | Color del vehículo | No |
+
+### Campos Específicos para Coches (`tipus-vehicle` = "cotxe")
+
+| Campo | Tipo | Descripción | Valores válidos |
+|-------|------|-------------|----------------|
+| `extres-cotxe` | array | Extras del coche | Valores del glosario ID 54 |
+| `tipus-tapisseria` | string | Tipo de tapicería | Valores del glosario ID 52 |
+| `color-tapisseria` | string | Color de tapicería | Valores del glosario ID 53 |
+| `portes-cotxe` | string | Número de puertas | Por defecto: "5" |
+| `canvi` | string | Tipo de cambio | "manual", "automatic" |
+
+### Campos Específicos para Motos (`tipus-vehicle` = "moto")
+
+| Campo | Tipo | Descripción | Valores válidos |
+|-------|------|-------------|----------------|
+| `extres-moto` | array | Extras de la moto | Valores del glosario ID 55 |
+| `tipus-de-moto` | string | Tipo de moto | Valores del glosario ID 42 |
+| `tipus-canvi-moto` | string | Tipo de cambio | Valores del glosario ID 62 |
+
+### Campos Específicos para Autocaravanas (`tipus-vehicle` = "autocaravana")
+
+| Campo | Tipo | Descripción | Valores válidos |
+|-------|------|-------------|----------------|
+| `extres-autocaravana` | array | Extras de la autocaravana | Valores del glosario ID 56 |
+| `carrosseria-caravana` | string | Tipo de carrocería | Valores del glosario ID 43 ("c-perfilada", "c-capuchina", "c-integral", "c-camper") |
+| `extres-habitacle` | array | Extras del habitáculo | Valores del glosario ID 57 |
+
+### Campos Específicos para Vehículos Comerciales (`tipus-vehicle` = "vehicle-comercial")
+
+| Campo | Tipo | Descripción | Valores válidos |
+|-------|------|-------------|----------------|
+| `carroseria-vehicle-comercial` | string | Tipo de carrocería | Valores del glosario ID 44 ("c-furgon-industrial", "c-furgo-industrial") |
+| `extres-cotxe` | array | Extras del vehículo | Valores del glosario ID 54 |
+
+## Glosarios Disponibles
+
+La API utiliza glosarios para validar ciertos campos. Cada glosario tiene un ID único y contiene valores válidos para campos específicos.
+
+| ID Glosario | Campo Asociado | Descripción |
+|-------------|----------------|-------------|
+| 41 | `segment` | Segmento del vehículo |
+| 42 | `tipus-de-moto` | Tipos de motos |
+| 43 | `carrosseria-caravana` | Tipos de carrocería para autocaravanas |
+| 44 | `carroseria-vehicle-comercial` | Tipos de carrocería para vehículos comerciales |
+| 49 | `connectors` | Tipos de conectores |
+| 50 | `cables-recarrega` | Cables de recarga |
+| 51 | `color-vehicle` | Colores de vehículos |
+| 52 | `tipus-tapisseria` | Tipos de tapicería |
+| 53 | `color-tapisseria` | Colores de tapicería |
+| 54 | `extres-cotxe` | Extras para coches |
+| 55 | `extres-moto` | Extras para motos |
+| 56 | `extres-autocaravana` | Extras para autocaravanas |
+| 57 | `extres-habitacle` | Extras para habitáculos |
+| 58 | `emissions-vehicle` | Emisiones del vehículo |
+| 59 | `traccio` | Tipos de tracción |
+| 60 | `roda-recanvi` | Rueda de recambio |
+| 62 | `tipus-canvi-moto` | Tipos de cambio para motos |
+| 63 | `tipus-canvi-electric` | Tipos de cambio para vehículos eléctricos |
+
+## Validación de Campos
+
+La API implementa validación estricta para los campos, especialmente para aquellos asociados a glosarios. Si se intenta guardar un valor no válido para un campo de glosario, la API devolverá un error con los valores válidos disponibles.
+
+### Ejemplo de Error de Validación
+
 ```json
 {
-    "status": "success",
-    "total": 8,
-    "data": [
-        {
-            "id": 126,
-            "username": "usuario@ejemplo.com",
-            "email": "usuario@ejemplo.com",
-            "name": "Nombre Usuario",
-            "registered_date": "2024-03-10 18:40:21",
-            "role": "professional",
-            "total_vehicles": 0,
-            "active_vehicles": 0
-        }
-        // ... más usuarios ...
-    ]
+  "code": "invalid_glossary_values",
+  "message": "Valores de glosario inválidos: Campo carroseria-vehicle-comercial: valores inválidos (valor-invalido). Valores válidos: c-furgon-industrial, c-furgo-industrial",
+  "data": {
+    "status": 400
+  }
 }
 ```
 
-2. Como administrador con user_id o como usuario normal:
-```json
+## Campos con Valores por Defecto
+
+Los siguientes campos se establecen automáticamente con valores por defecto si no se proporcionan:
+
+| Campo | Valor por defecto |
+|-------|------------------|
+| `frenada-regenerativa` | "no" |
+| `one-pedal` | "no" |
+| `aire-acondicionat` | "no" |
+| `portes-cotxe` | "5" |
+| `climatitzacio` | "no" |
+| `vehicle-fumador` | "no" |
+| `vehicle-accidentat` | "no" |
+| `llibre-manteniment` | "no" |
+| `revisions-oficials` | "no" |
+| `impostos-deduibles` | "no" |
+| `vehicle-a-canvi` | "no" |
+
+## Ejemplos de Uso
+
+### Crear un Coche
+
+```http
+POST /wp-json/api-motor/v1/vehicles
+Content-Type: application/json
+Authorization: Bearer YOUR_TOKEN
+
 {
-    "status": "success",
-    "data": {
-        "id": 126,
-        "username": "usuario@ejemplo.com",
-        "email": "usuario@ejemplo.com",
-        "name": "Nombre Usuario",
-        "registered_date": "2024-03-10 18:40:21",
-        "role": "professional",
-        "logo-empresa": "URL_LOGO",
-        "logo-empresa-home": "URL_LOGO_HOME",
-        "nom-empresa": "Nombre Empresa",
-        "telefon-mobile-professional": "123456789",
-        "telefon-comercial": "987654321",
-        "telefon-whatsapp": "555555555",
-        "localitat-professional": "Localidad",
-        "adreca-professional": "Dirección",
-        "nom-contacte": "Nombre Contacto",
-        "cognoms-contacte": "Apellidos Contacto",
-        "galeria-professionals": ["URL1", "URL2"],
-        "descripcio-empresa": "Descripción",
-        "pagina-web": "https://ejemplo.com",
-        "total_vehicles": 0,
-        "active_vehicles": 0
-    }
+  "title": "Coche de ejemplo",
+  "content": "Descripción detallada del coche",
+  "tipus-vehicle": "cotxe",
+  "marca": "Toyota",
+  "model": "Corolla",
+  "preu": "25000",
+  "quilometres": "50000",
+  "any": "2020",
+  "combustible": "gasolina",
+  "potencia": "150",
+  "canvi": "manual",
+  "color-vehicle": "Blanco",
+  "extres-cotxe": ["Bluetooth", "Climatizador"]
 }
 ```
 
-**Códigos de respuesta:**
+### Crear un Vehículo Comercial
 
-- 200: Éxito
-- 401: No autorizado (usuario no autenticado)
-- 404: Usuario no encontrado
-- 500: Error interno del servidor
+```http
+POST /wp-json/api-motor/v1/vehicles
+Content-Type: application/json
+Authorization: Bearer YOUR_TOKEN
 
-**Notas:**
-- Los administradores pueden ver todos los usuarios o un usuario específico
-- Los usuarios normales solo pueden ver sus propios datos
-- Si un usuario normal proporciona un user_id, será ignorado y verá sus propios datos
-- Los campos de imágenes (logo y galería) son URLs a los archivos
-- El campo `total_vehicles` indica el número total de vehículos del usuario
-- El campo `active_vehicles` indica el número de vehículos activos del usuario
-
-## Autenticación
-
-La API utiliza autenticación mediante tokens JWT o cookies de WordPress.
-
-## Códigos de Estado
-
-- 200: Éxito
-- 201: Creado
-- 400: Error en la petición
-- 403: No autorizado
-- 404: No encontrado
-
-## Campos de Vehículos
-
-### Campos Básicos
-
-- titol-anunci: Título del anuncio
-- descripcio-anunci: Descripción
-- tipus-de-vehicle: Tipo de vehículo
-- marques-cotxe: Marca
-- models-cotxe: Modelo
-- anunci-actiu: Estado activo del anuncio
-
-### Imágenes
-
-- imatge-destacada-id: ID de imagen destacada
-- imatge-destacada-url: URL de imagen destacada
-- galeria-vehicle-urls: URLs de la galería
-
-### Campos de Control
-
-- dies-caducitat: Días hasta caducidad (solo admin)
-- anunci-actiu: Estado activo del anuncio
-
-## Notas Adicionales
-
-- Los campos de imágenes aceptan: IDs, URLs o imágenes en base64
-- Algunos campos son específicos para administradores
-- Los registros eliminados se mueven a la papelera en lugar de eliminarse permanentemente
+{
+  "title": "Furgoneta comercial",
+  "content": "Descripción detallada de la furgoneta",
+  "tipus-vehicle": "vehicle-comercial",
+  "marca": "Mercedes",
+  "model": "Sprinter",
+  "preu": "35000",
+  "quilometres": "80000",
+  "any": "2019",
+  "combustible": "diesel",
+  "potencia": "170",
+  "carroseria-vehicle-comercial": "c-furgo-industrial",
+  "extres-cotxe": ["Bluetooth", "Aire acondicionado"]
+}
+```
