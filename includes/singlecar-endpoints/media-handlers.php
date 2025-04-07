@@ -1,30 +1,56 @@
 <?php
 
 function process_vehicle_images($post_id, $params) {
-    // Procesar imagen destacada
-    if (isset($params['imatge-destacada-id'])) {
-        process_featured_image($post_id, $params['imatge-destacada-id']);
-    } elseif (isset($_FILES['imatge-destacada']) && !empty($_FILES['imatge-destacada']['tmp_name'])) {
-        // Procesar archivo subido directamente
-        process_uploaded_featured_image($post_id, $_FILES['imatge-destacada']);
-    } elseif (isset($params['imatge-destacada-url']) && !empty($params['imatge-destacada-url'])) {
-        // Procesar URL de imagen
-        process_featured_image_url($post_id, $params['imatge-destacada-url']);
-    } elseif (isset($params['imatge-destacada']) && !empty($params['imatge-destacada'])) {
-        // Procesar valor directo (podría ser base64 o ID)
-        process_featured_image($post_id, $params['imatge-destacada']);
-    }
+    error_log('=== INICIO PROCESAMIENTO DE IMÁGENES ===');
+    error_log('Post ID: ' . $post_id);
+    error_log('Parámetros recibidos: ' . print_r($params, true));
 
-    // Procesar galería
-    if (isset($params['galeria-vehicle']) && !empty($params['galeria-vehicle'])) {
-        // Procesar galería de imágenes (URLs, IDs o base64)
-        process_gallery_images($post_id, $params['galeria-vehicle']);
-    } elseif (isset($params['galeria-vehicle-urls']) && !empty($params['galeria-vehicle-urls'])) {
-        // Procesar galería de URLs (incluyendo rutas locales)
-        process_gallery_urls($post_id, $params['galeria-vehicle-urls']);
-    } elseif (isset($_FILES['galeria-vehicle']) && !empty($_FILES['galeria-vehicle']['tmp_name'])) {
-        // Procesar archivos de galería subidos directamente
-        process_uploaded_gallery_images($post_id, $_FILES['galeria-vehicle']);
+    try {
+        // Procesar imagen destacada
+        if (isset($params['imatge-destacada-id']) || 
+            isset($params['imatge-destacada-url']) || 
+            isset($params['imatge-destacada']) || 
+            (isset($_FILES['imatge-destacada']) && !empty($_FILES['imatge-destacada']['tmp_name']))) {
+            
+            // Eliminar imagen destacada existente si hay una nueva
+            delete_post_thumbnail($post_id);
+            error_log('Imagen destacada anterior eliminada');
+
+            // Procesar nueva imagen destacada
+            if (isset($params['imatge-destacada-id'])) {
+                process_featured_image($post_id, $params['imatge-destacada-id']);
+            } elseif (isset($_FILES['imatge-destacada']) && !empty($_FILES['imatge-destacada']['tmp_name'])) {
+                process_uploaded_featured_image($post_id, $_FILES['imatge-destacada']);
+            } elseif (isset($params['imatge-destacada-url']) && !empty($params['imatge-destacada-url'])) {
+                process_featured_image_url($post_id, $params['imatge-destacada-url']);
+            } elseif (isset($params['imatge-destacada']) && !empty($params['imatge-destacada'])) {
+                process_featured_image($post_id, $params['imatge-destacada']);
+            }
+        }
+
+        // Procesar galería
+        if (isset($params['galeria-vehicle']) || 
+            isset($params['galeria-vehicle-urls']) || 
+            (isset($_FILES['galeria-vehicle']) && !empty($_FILES['galeria-vehicle']['tmp_name']))) {
+            
+            // Eliminar galería existente
+            delete_post_meta($post_id, 'ad_gallery');
+            error_log('Galería anterior eliminada');
+
+            // Procesar nueva galería
+            if (isset($params['galeria-vehicle']) && !empty($params['galeria-vehicle'])) {
+                process_gallery_images($post_id, $params['galeria-vehicle']);
+            } elseif (isset($params['galeria-vehicle-urls']) && !empty($params['galeria-vehicle-urls'])) {
+                process_gallery_urls($post_id, $params['galeria-vehicle-urls']);
+            } elseif (isset($_FILES['galeria-vehicle']) && !empty($_FILES['galeria-vehicle']['tmp_name'])) {
+                process_uploaded_gallery_images($post_id, $_FILES['galeria-vehicle']);
+            }
+        }
+
+        error_log('=== FIN PROCESAMIENTO DE IMÁGENES ===');
+    } catch (Exception $e) {
+        error_log('ERROR en procesamiento de imágenes: ' . $e->getMessage());
+        throw $e;
     }
 }
 
@@ -376,26 +402,34 @@ function handle_base64_image($base64_string, $post_id) {
 }
 
 function save_gallery_meta($post_id, $gallery_ids) {
-    error_log('Iniciando guardado de galería para post ' . $post_id);
-    
-    // Asegurarse de que estamos usando la clave correcta 'ad_gallery'
-    delete_post_meta($post_id, 'ad_gallery');
-    
-    if (!empty($gallery_ids)) {
-        $gallery_string = implode(',', array_filter($gallery_ids));
-        error_log('Intentando guardar galería con IDs: ' . $gallery_string);
+    error_log('Guardando galería para post ' . $post_id);
+    error_log('IDs de galería a guardar: ' . print_r($gallery_ids, true));
+
+    try {
+        // Asegurarse de que los IDs son válidos
+        $valid_ids = array_filter($gallery_ids, function($id) {
+            return is_numeric($id) && wp_attachment_is_image($id);
+        });
+
+        if (empty($valid_ids)) {
+            error_log('No se encontraron IDs válidos para guardar en la galería');
+            return;
+        }
+
+        // Convertir los IDs a string si es necesario
+        $gallery_ids_string = is_array($valid_ids) ? implode(',', $valid_ids) : $valid_ids;
         
-        // Guardar usando la clave correcta 'ad_gallery'
-        $result = add_post_meta($post_id, 'ad_gallery', $gallery_string);
+        // Actualizar el meta
+        $result = update_post_meta($post_id, 'ad_gallery', $gallery_ids_string);
         
         if ($result === false) {
-            error_log('Error al guardar la galería');
-        } else {
-            error_log('Galería guardada exitosamente');
-            // Verificar el guardado
-            $saved_gallery = get_post_meta($post_id, 'ad_gallery', true);
-            error_log('Galería recuperada después de guardar: ' . $saved_gallery);
+            throw new Exception('Error al guardar la galería en la base de datos');
         }
+
+        error_log('Galería guardada exitosamente: ' . $gallery_ids_string);
+    } catch (Exception $e) {
+        error_log('ERROR guardando galería: ' . $e->getMessage());
+        throw $e;
     }
 }
 

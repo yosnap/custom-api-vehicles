@@ -861,45 +861,31 @@ class Vehicle_Fields
      * Valida los campos obligatorios según el tipo de vehículo
      */
     public function validate_required_fields($prepared_post, $request) {
-        // Obtener el tipo de vehículo del request
-        $vehicle_type = '';
-        if (isset($_POST['tipus-vehicle'])) {
-            $vehicle_type = strtolower(trim(sanitize_text_field($_POST['tipus-vehicle'])));
+        // Solo validar si es una petición a la API
+        if (!defined('REST_REQUEST') || !REST_REQUEST) {
+            return $prepared_post;
         }
+
+        // Obtener la ruta de la petición
+        $route = $request->get_route();
         
-        // Definir campos obligatorios básicos para todos los vehículos
-        $required_fields = [
-            'vehicle_title',
-            'vehicle_price'
-            // otros campos comunes a todos los tipos
-        ];
-        
-        // Agregar campos obligatorios específicos según el tipo de vehículo
-        if ($vehicle_type === 'cotxe' || $vehicle_type === 'autocaravana' || $vehicle_type === 'vehicle-comercial') {
-            // Para todos los tipos excepto moto, marques-cotxe y models-cotxe son obligatorios
-            $required_fields = array_merge($required_fields, [
-                'marques-cotxe',
-                'models-cotxe'
-            ]);
-        } else if ($vehicle_type === 'moto') {
-            // Para motos, estos campos no son obligatorios
-            $required_fields = array_merge($required_fields, [
-                'marques-de-moto',
-                'models-moto'
-            ]);
+        // Solo validar si es una petición a nuestra API
+        if (strpos($route, '/api-motor/v1') === false) {
+            return $prepared_post;
         }
+
+        // Obtener los datos del post
+        $post_data = $request->get_params();
         
-        // Validar que todos los campos requeridos estén presentes
-        foreach ($required_fields as $field) {
-            if (empty($_POST[$field])) {
-                return new WP_Error(
-                    'required_field_missing',
-                    sprintf(__('El campo %s es obligatorio', 'custom-api-vehicles'), $field),
-                    array('status' => 400)
-                );
-            }
+        // Validar el título del vehículo
+        if (empty($post_data['titol-anunci']) && empty($prepared_post->post_title)) {
+            return new WP_Error(
+                'rest_invalid_field',
+                'El campo vehicle_title es obligatorio',
+                array('status' => 400)
+            );
         }
-        
+
         return $prepared_post;
     }
     
@@ -907,7 +893,7 @@ class Vehicle_Fields
      * Registra filtro para validación condicional en REST API
      */
     public function register_conditional_validation() {
-        // Filtro para validar campos antes de insertar el post
+        // Registrar la validación solo para peticiones a la API REST
         add_filter('rest_pre_insert_singlecar', [$this, 'validate_required_fields'], 10, 2);
     }
 

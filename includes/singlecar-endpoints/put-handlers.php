@@ -11,8 +11,16 @@ function update_singlecar($request) {
         // Verificar existencia y propiedad del vehículo
         validate_vehicle_ownership($post_id);
 
-        // Validar todos los campos con flag is_update = true
-        validate_all_fields($params, true);
+        // Verificar si hay campos obligatorios vacíos en el vehículo existente
+        $empty_required_fields = check_empty_required_fields($post_id);
+        
+        if (!empty($empty_required_fields)) {
+            // Solo validar los campos obligatorios que estén vacíos usando la función del archivo validation.php
+            $validation_result = validate_required_fields($params, $empty_required_fields, true);
+            if (is_wp_error($validation_result)) {
+                throw new Exception($validation_result->get_error_message());
+            }
+        }
 
         // Actualizar el post
         update_vehicle_base_data($post_id, $params);
@@ -142,7 +150,29 @@ function update_brand_and_model($post_id, $params) {
 }
 
 function has_image_updates($params) {
-    return isset($params['imatge-destacada-id']) || isset($params['galeria-vehicle']);
+    $image_fields = [
+        'imatge-destacada-id',
+        'imatge-destacada-url',
+        'imatge-destacada',
+        'galeria-vehicle',
+        'galeria-vehicle-urls'
+    ];
+
+    foreach ($image_fields as $field) {
+        if (isset($params[$field]) && !empty($params[$field])) {
+            return true;
+        }
+    }
+
+    // Verificar si hay archivos subidos
+    if (isset($_FILES['imatge-destacada']) && !empty($_FILES['imatge-destacada']['tmp_name'])) {
+        return true;
+    }
+    if (isset($_FILES['galeria-vehicle']) && !empty($_FILES['galeria-vehicle']['tmp_name'])) {
+        return true;
+    }
+
+    return false;
 }
 
 function update_vehicle_status($post_id, $params) {
@@ -198,4 +228,50 @@ function prepare_update_response($post_id) {
     $response['anunci-actiu'] = get_post_meta($post_id, 'anunci-actiu', true);
 
     return new WP_REST_Response($response, 200);
+}
+
+/**
+ * Verifica si hay campos obligatorios vacíos en el vehículo existente
+ */
+function check_empty_required_fields($post_id) {
+    $empty_fields = [];
+    $post = get_post($post_id);
+    
+    // Obtener el tipo de vehículo actual
+    $tipus_vehicle = '';
+    $terms = wp_get_object_terms($post_id, 'tipus-vehicle');
+    if (!empty($terms)) {
+        $tipus_vehicle = $terms[0]->slug;
+    }
+
+    // Verificar campos básicos obligatorios
+    if (empty($tipus_vehicle)) {
+        $empty_fields[] = 'tipus-vehicle';
+    }
+
+    // Verificar estado del vehículo
+    $estat_terms = wp_get_object_terms($post_id, 'estat-vehicle');
+    if (empty($estat_terms)) {
+        $empty_fields[] = 'estat-vehicle';
+    }
+
+    // Verificar marca y modelo según el tipo de vehículo
+    if ($tipus_vehicle && $tipus_vehicle !== 'moto-quad-atv') {
+        $marques_terms = wp_get_object_terms($post_id, 'marques-cotxe');
+        if (empty($marques_terms)) {
+            $empty_fields[] = 'marques-cotxe';
+        }
+        
+        $models_terms = wp_get_object_terms($post_id, 'models-cotxe');
+        if (empty($models_terms)) {
+            $empty_fields[] = 'models-cotxe';
+        }
+    } elseif ($tipus_vehicle === 'moto-quad-atv') {
+        $marques_moto_terms = wp_get_object_terms($post_id, 'marques-de-moto');
+        if (empty($marques_moto_terms)) {
+            $empty_fields[] = 'marques-de-moto';
+        }
+    }
+
+    return $empty_fields;
 }
