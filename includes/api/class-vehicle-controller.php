@@ -51,7 +51,7 @@ class Vehicle_Controller {
         register_rest_route($this->namespace, '/' . $this->route, array(
             'methods' => WP_REST_Server::READABLE,
             'callback' => array($this, 'get_vehicles'),
-            'permission_callback' => '__return_true', // Modificado para garantizar acceso público
+            'permission_callback' => array($this, 'get_items_permissions_check'), // Modificado para permitir acceso durante pruebas
             'args' => $this->get_collection_params(),
         ));
         
@@ -59,7 +59,7 @@ class Vehicle_Controller {
         register_rest_route($this->namespace, '/' . $this->route . '/(?P<id>[\d]+)', array(
             'methods' => WP_REST_Server::READABLE,
             'callback' => array($this, 'get_vehicle'),
-            'permission_callback' => '__return_true', // Modificado para garantizar acceso público
+            'permission_callback' => array($this, 'get_item_permissions_check'),
             'args' => array(
                 'id' => array(
                     'description' => __('ID único del vehículo', 'custom-api-vehicles'),
@@ -96,8 +96,38 @@ class Vehicle_Controller {
      * @return bool
      */
     public function get_items_permissions_check($request) {
-        // Simplificamos para garantizar acceso público siempre
+        // Temporalmente permitir todas las solicitudes para pruebas
         return true;
+    }
+    
+    /**
+     * Verifica permisos para obtener un elemento
+     * 
+     * @return bool
+     */
+    public function get_item_permissions_check($request) {
+        // Temporalmente permitir todas las solicitudes para pruebas
+        return true;
+        
+        // Código original (descomentar cuando las pruebas estén completas)
+        /*
+        $post_id = (int) $request['id'];
+        $post = get_post($post_id);
+        
+        if (!$post || $post->post_type !== 'singlecar') {
+            return new WP_Error(
+                'rest_post_invalid_id',
+                __('ID de vehículo inválido.', 'custom-api-vehicles'),
+                array('status' => 404)
+            );
+        }
+        
+        if ($post && $post->post_status === 'publish') {
+            return true;
+        }
+        
+        return current_user_can('read_post', $post_id);
+        */
     }
     
     /**
@@ -182,116 +212,145 @@ class Vehicle_Controller {
     }
     
     /**
-     * Prepara un vehículo para la respuesta
-     * 
-     * @param WP_Post $post Objeto post
-     * @param WP_REST_Request $request Objeto de solicitud
-     * @return WP_REST_Response
+     * Prepare a single item for response.
+     *
+     * @param WP_Post         $post    Post object.
+     * @param WP_REST_Request $request Request object.
+     * @return WP_REST_Response Response object.
      */
     public function prepare_item_for_response($post, $request) {
-        // Obtener metadatos necesarios
-        $price = get_post_meta($post->ID, 'vehicle_price', true);
-        $brand = wp_get_post_terms($post->ID, 'brand', array('fields' => 'names'));
-        $model = wp_get_post_terms($post->ID, 'model', array('fields' => 'names'));
+        // Obtener todos los campos personalizados
+        $meta_fields = get_post_meta($post->ID);
         
-        // Obtener URL de imagen destacada
-        $featured_img_url = get_the_post_thumbnail_url($post->ID, 'full');
-        
-        // Determinar el tipo de vehículo (moto, autocaravana o vehículo comercial)
-        $vehicle_type = get_post_meta($post->ID, 'vehicle_type', true);
-        
-        // Construir array de datos básicos
+        // Añadir ID y título
         $data = array(
-            'id'           => $post->ID,
-            'date'         => $post->post_date,
-            'title'        => $post->post_title,
-            'content'      => $post->post_content,
-            'excerpt'      => $post->post_excerpt,
-            'featured_img' => $featured_img_url ? $featured_img_url : '',
-            'price'        => $price ? floatval($price) : 0,
-            'brand'        => !empty($brand) ? $brand[0] : '',
-            'model'        => !empty($model) ? $model[0] : '',
-            'slug'         => $post->post_name,
-            'link'         => get_permalink($post->ID),
-            'vehicle_type' => $vehicle_type,
+            'id' => $post->ID,
+            'data-creacio' => $post->post_date,
+            'status' => $post->post_status,
+            'slug' => $post->post_name,
+            'titol-anunci' => $post->post_title,
+            'descripcio-anunci' => $post->post_content,
         );
-
-        // Agregar campos comunes específicos que siempre queremos incluir
-        $common_fields = [
-            'color-vehicle' => 'string',
-            'emissions-vehicle' => 'string',
-        ];
-
-        foreach ($common_fields as $field => $type) {
-            $value = get_post_meta($post->ID, $field, true);
-            if ($type === 'number' && $value !== '') {
-                $data[$field] = floatval($value);
-            } else {
-                $data[$field] = $value;
-            }
+        
+        // Verificar si existe el campo extres-autocaravana o extras-autocaravana
+        $has_extres_autocaravana = isset($meta_fields['extres-autocaravana']);
+        $has_extras_autocaravana = isset($meta_fields['extras-autocaravana']);
+        
+        if ($has_extras_autocaravana && !$has_extres_autocaravana) {
+            // Si solo existe extras-autocaravana, copiarlo a extres-autocaravana
+            $meta_fields['extres-autocaravana'] = $meta_fields['extras-autocaravana'];
+            $has_extres_autocaravana = true;
         }
         
-        // Agregar campos específicos según el tipo de vehículo
-        if ($vehicle_type === 'moto') {
-            // Campos específicos para motos
-            $moto_fields = [
-                'tipus-de-moto' => 'string',
-                'tipus-de-canvi-moto' => 'string',
-                'places-moto' => 'number',
-                'extres-moto' => 'string',
-            ];
+        // Procesar cada campo personalizado
+        foreach ($meta_fields as $field_name => $field_values) {
+            // Ignorar campos internos de WordPress
+            if (substr($field_name, 0, 1) === '_') {
+                continue;
+            }
             
-            foreach ($moto_fields as $field => $type) {
-                $value = get_post_meta($post->ID, $field, true);
-                if ($type === 'number' && $value !== '') {
-                    $data[$field] = floatval($value);
+            // Procesamiento específico para tipus-carroseria-caravana
+            if ($field_name === 'tipus-carroseria-caravana') {
+                // Mapeo directo para valores específicos de tipus-carroseria-caravana
+                $direct_mappings = [
+                    'c-perfilada' => 'Perfilada',
+                    'c-caputxina' => 'Caputxina',
+                    'c-integral' => 'Integral',
+                    'c-camper' => 'Camper'
+                ];
+                
+                // Verificar si hay un mapeo directo
+                if (isset($direct_mappings[$field_values[0]])) {
+                    $label = $direct_mappings[$field_values[0]];
+                    $data[$field_name] = $label;
+                    continue; // Importante: salir del bucle para este campo
+                }
+                
+                // Si no hay mapeo directo, intentar obtener del glosario
+                $glossary_id = 43; // ID conocido del glosario de tipus-carroseria-caravana
+                
+                if (function_exists('jet_engine') && isset(jet_engine()->glossaries)) {
+                    // Intentar obtener por ID conocido
+                    $glossary_data = jet_engine()->glossaries->data->get_item_for_edit($glossary_id);
+                    if ($glossary_data && !empty($glossary_data['fields'])) {
+                        foreach ($glossary_data['fields'] as $glossary_field) {
+                            $field_value = isset($glossary_field['value']) ? $glossary_field['value'] : '';
+                            $field_label = isset($glossary_field['label']) ? $glossary_field['label'] : '';
+                            
+                            if ($field_value === $field_values[0]) {
+                                $data[$field_name] = $field_label;
+                                continue 2; // Importante: salir de ambos bucles
+                            }
+                        }
+                    }
+                }
+                
+                // Si no se encuentra ninguna coincidencia, devolver el valor original
+                $data[$field_name] = $field_values[0];
+                continue; // Importante: salir del bucle para este campo
+            }
+            
+            // Procesamiento específico para extres-autocaravana
+            if ($field_name === 'extres-autocaravana' || $field_name === 'extras-autocaravana') {
+                // Si estamos procesando extras-autocaravana pero ya procesamos extres-autocaravana, saltar
+                if ($field_name === 'extras-autocaravana' && isset($data['extres-autocaravana'])) {
+                    continue;
+                }
+                
+                // Usar siempre extres-autocaravana como nombre de campo en la respuesta
+                $api_field_name = 'extres-autocaravana';
+                
+                // Verificar si es un campo de glosario
+                if (function_exists('is_glossary_field') && is_glossary_field($api_field_name)) {
+                    // Obtener el ID del glosario
+                    $glossary_id = Vehicle_Glossary_Mappings::get_glossary_id($api_field_name);
+                    
+                    // Obtener las opciones del glosario
+                    $options = $this->get_glossary_options($api_field_name);
+                    
+                    // Intentar deserializar el valor si es una cadena serializada
+                    $field_values_unserialized = $field_values[0];
+                    if (is_string($field_values[0]) && is_serialized($field_values[0])) {
+                        $field_values_unserialized = unserialize($field_values[0]);
+                    }
+                    
+                    // Asegurarse de que estamos trabajando con un array
+                    if (!is_array($field_values_unserialized)) {
+                        $field_values_unserialized = array($field_values_unserialized);
+                    }
+                    
+                    // Procesar cada valor del array
+                    $labels = array();
+                    foreach ($field_values_unserialized as $single_value) {
+                        // Buscar etiqueta en las opciones del glosario
+                        if (isset($options[$single_value])) {
+                            $labels[] = $options[$single_value];
+                        } else {
+                            $labels[] = $single_value; // Si no hay etiqueta, usar el valor original
+                        }
+                    }
+                    
+                    $data[$api_field_name] = $labels;
+                    continue; // Importante: salir del bucle para este campo
                 } else {
-                    $data[$field] = $value;
+                    $data[$api_field_name] = $field_values; // Usar todos los valores
+                    continue;
                 }
             }
             
-            // Añadir taxonomías específicas para motos
-            $marques_moto = wp_get_post_terms($post->ID, 'marques-de-moto', array('fields' => 'names'));
-            $models_moto = wp_get_post_terms($post->ID, 'models-moto', array('fields' => 'names'));
-            
-            $data['marques-de-moto'] = !empty($marques_moto) ? $marques_moto[0] : '';
-            $data['models-moto'] = !empty($models_moto) ? $models_moto[0] : '';
-            
-        } elseif ($vehicle_type === 'vehicle-comercial') {
-            // Campos específicos para vehículos comerciales
-            $comercial_fields = [
-                'carroseria-vehicle-comercial' => 'string',
-            ];
-            
-            foreach ($comercial_fields as $field => $type) {
-                $value = get_post_meta($post->ID, $field, true);
-                if ($type === 'number' && $value !== '') {
-                    $data[$field] = floatval($value);
-                } else {
-                    $data[$field] = $value;
-                }
-            }
-            
-        } elseif ($vehicle_type === 'autocaravana') {
-            // Campos específicos para autocaravanas
-            $caravana_fields = [
-                'tipus-carroseria-caravana' => 'string',
-                'extres-autocaravana' => 'string',
-                'extres-habitacle' => 'string',
-            ];
-            
-            foreach ($caravana_fields as $field => $type) {
-                $value = get_post_meta($post->ID, $field, true);
-                if ($type === 'number' && $value !== '') {
-                    $data[$field] = floatval($value);
-                } else {
-                    $data[$field] = $value;
-                }
-            }
+            // Para el resto de campos, simplemente añadirlos al array de datos
+            $data[$field_name] = maybe_unserialize($field_values[0]);
+        }
+        
+        // Añadir URL de imagen destacada si existe
+        $featured_image_id = get_post_thumbnail_id($post->ID);
+        if ($featured_image_id) {
+            $featured_image_url = wp_get_attachment_url($featured_image_id);
+            $data['imatge-destacada-url'] = $featured_image_url;
         }
         
         return rest_ensure_response($data);
-    }
+    } // Cierre del método prepare_item_for_response
     
     /**
      * Prepara un elemento para la colección
@@ -377,26 +436,39 @@ class Vehicle_Controller {
      * @return array Lista de opciones válidas
      */
     private function get_glossary_options($field_name) {
-        // Esta función debería consultar la base de datos o una configuración
-        // para obtener las opciones válidas de un glosario específico
+        // Obtener el ID del glosario desde la configuración de mapeos
+        $glossary_id = Vehicle_Glossary_Mappings::get_glossary_id($field_name);
         
-        // Ejemplo de implementación con opciones de prueba
-        $glossaries = [
-            'tipus-de-moto' => ['Scooter', 'Custom', 'Deportiva', 'Naked', 'Trail'],
-            'tipus-de-canvi-moto' => ['Manual', 'Automático', 'Semiautomático'],
-            'extres-moto' => ['ABS', 'Control de tracción', 'Maletas', 'Navegador', 'Calefacción'],
-            'carroseria-vehicle-comercial' => ['Furgoneta', 'Camión', 'Pickup', 'Van'],
-            'tipus-carroseria-caravana' => ['Perfilada', 'Capuchina', 'Integral', 'Camper'],
-            'extres-autocaravana' => ['Calefacción', 'Energía solar', 'TV', 'Nevera'],
-            'extres-habitacle' => ['Ducha', 'Cocina', 'Baño', 'Cama doble'],
-        ];
+        if (!$glossary_id) {
+            return [];
+        }
         
-        // Registrar consulta en el log para depuración
-        error_log("Opciones del glosario para $field_name: " . print_r(isset($glossaries[$field_name]) ? $glossaries[$field_name] : [], true));
+        // Verificar si existe la función get_glossary_options en field-processors.php
+        if (function_exists('get_glossary_options')) {
+            $options = get_glossary_options($field_name);
+            return $options;
+        }
         
-        return isset($glossaries[$field_name]) ? $glossaries[$field_name] : [];
+        // Alternativa: obtener directamente del glosario de JetEngine
+        if (function_exists('jet_engine') && isset(jet_engine()->glossaries)) {
+            $glossary_data = jet_engine()->glossaries->data->get_item_for_edit($glossary_id);
+            
+            if ($glossary_data && !empty($glossary_data['fields'])) {
+                $options = [];
+                
+                foreach ($glossary_data['fields'] as $item) {
+                    if (isset($item['value']) && isset($item['label'])) {
+                        $options[$item['value']] = $item['label'];
+                    }
+                }
+                
+                return $options;
+            }
+        }
+        
+        return [];
     }
-
+    
     /**
      * Verifica que los campos obligatorios estén presentes según el tipo de vehículo
      * 
@@ -418,41 +490,29 @@ class Vehicle_Controller {
         // Verificar que se ha proporcionado una imagen destacada
         $has_image = false;
         
-        // Registrar para depuración
-        error_log('Validando imagen destacada...');
-        error_log('$_FILES: ' . print_r($_FILES, true));
-        error_log('$request params: ' . print_r($request->get_params(), true));
-        
         // Verificar si se ha proporcionado una imagen destacada como archivo
         if (isset($_FILES['imatge-destacada']) && !empty($_FILES['imatge-destacada']['tmp_name'])) {
-            error_log('Imagen destacada encontrada en $_FILES[imatge-destacada]');
             $has_image = true;
         }
         // Verificar si se ha proporcionado una imagen destacada como ID
         elseif ($request->get_param('imatge-destacada-id') && !empty($request->get_param('imatge-destacada-id'))) {
-            error_log('Imagen destacada encontrada en imatge-destacada-id: ' . $request->get_param('imatge-destacada-id'));
             $has_image = true;
         }
         // Verificar si se ha proporcionado una imagen destacada como URL
         elseif ($request->get_param('imatge-destacada-url') && !empty($request->get_param('imatge-destacada-url'))) {
-            error_log('Imagen destacada encontrada en imatge-destacada-url: ' . $request->get_param('imatge-destacada-url'));
             $has_image = true;
         }
         // Verificar si se ha proporcionado una imagen destacada directamente
         elseif ($request->get_param('imatge-destacada') && !empty($request->get_param('imatge-destacada'))) {
-            error_log('Imagen destacada encontrada en imatge-destacada: ' . $request->get_param('imatge-destacada'));
             $has_image = true;
         }
         
         if (!$has_image) {
-            error_log('No se encontró ninguna imagen destacada');
             return new WP_Error(
                 'missing_featured_image',
                 __('La imagen destacada es obligatoria. Debe proporcionar una imagen a través del campo "imatge-destacada"', 'custom-api-vehicles'),
                 array('status' => 400)
             );
-        } else {
-            error_log('Imagen destacada validada correctamente');
         }
         
         // Normalizar el tipo de vehículo a minúsculas
@@ -612,24 +672,29 @@ class Vehicle_Controller {
             return $post_id;
         }
         
-        // Guardar metadatos
-        if (isset($params['preu'])) {
-            update_post_meta($post_id, 'preu', floatval($params['preu']));
-        }
-        
-        if (isset($params['tipus-vehicle'])) {
-            update_post_meta($post_id, 'tipus-vehicle', sanitize_text_field($params['tipus-vehicle']));
-        }
-        
-        if (isset($params['quilometratge'])) {
-            update_post_meta($post_id, 'quilometratge', floatval($params['quilometratge']));
+        // Procesar todos los campos personalizados
+        foreach ($params as $key => $value) {
+            // Excluir campos que ya se han procesado o que no son metadatos
+            if (in_array($key, ['title', 'content'])) {
+                continue;
+            }
+            
+            // Guardar el campo como metadato
+            if (is_array($value)) {
+                // Para campos de tipo array (como extres-autocaravana)
+                delete_post_meta($post_id, $key); // Eliminar valores anteriores
+                foreach ($value as $single_value) {
+                    add_post_meta($post_id, $key, $single_value);
+                }
+            } else {
+                // Para campos de tipo escalar
+                update_post_meta($post_id, $key, $value);
+            }
         }
         
         // Procesar imágenes (imagen destacada y galería)
         if (function_exists('process_vehicle_images')) {
             process_vehicle_images($post_id, $params);
-        } else {
-            error_log('La función process_vehicle_images no está disponible');
         }
         
         // Devolver el vehículo creado
@@ -683,24 +748,29 @@ class Vehicle_Controller {
             wp_update_post($post_data);
         }
         
-        // Actualizar metadatos
-        if (isset($params['preu'])) {
-            update_post_meta($id, 'preu', floatval($params['preu']));
-        }
-        
-        if (isset($params['tipus-vehicle'])) {
-            update_post_meta($id, 'tipus-vehicle', sanitize_text_field($params['tipus-vehicle']));
-        }
-        
-        if (isset($params['quilometratge'])) {
-            update_post_meta($id, 'quilometratge', floatval($params['quilometratge']));
+        // Procesar todos los campos personalizados
+        foreach ($params as $key => $value) {
+            // Excluir campos que ya se han procesado o que no son metadatos
+            if (in_array($key, ['id', 'title', 'content'])) {
+                continue;
+            }
+            
+            // Guardar el campo como metadato
+            if (is_array($value)) {
+                // Para campos de tipo array (como extres-autocaravana)
+                delete_post_meta($id, $key); // Eliminar valores anteriores
+                foreach ($value as $single_value) {
+                    add_post_meta($id, $key, $single_value);
+                }
+            } else {
+                // Para campos de tipo escalar
+                update_post_meta($id, $key, $value);
+            }
         }
         
         // Procesar imágenes (imagen destacada y galería)
         if (function_exists('process_vehicle_images')) {
             process_vehicle_images($id, $params);
-        } else {
-            error_log('La función process_vehicle_images no está disponible');
         }
         
         // Devolver el vehículo actualizado

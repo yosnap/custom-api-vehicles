@@ -72,6 +72,8 @@ class Vehicle_Glossary_Mappings {
             'emissions-vehicle' => 'Emissions Vehicle',
             'carroseria-camions' => 'Carroseria Camions',
             'carroseria-vehicle-comercial' => 'Carroseria Vehicle Comercial',
+            'carrosseria-caravana' => 'Carrosseria Caravana',
+            'tipus-carroseria-caravana' => 'Tipus Carrosseria Caravana', // Añadido para soportar el tipo de carrocería de caravanas
             'extres-cotxe' => 'Extras Cotxe',
             'extres-moto' => 'Extras Moto',
             'extres-autocaravana' => 'Extras Autocaravana',

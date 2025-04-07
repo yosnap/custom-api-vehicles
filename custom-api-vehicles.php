@@ -36,11 +36,18 @@ class Custom_API_Vehicles {
      */
     public function fix_rest_api_permissions($errors) {
         // Durante la depuración, permite todas las solicitudes a nuestra API
+        error_log("REST API Debug - Endpoint solicitado: " . (isset($_SERVER['REQUEST_URI']) ? $_SERVER['REQUEST_URI'] : 'no definido'));
+        
+        // Permitir todas las solicitudes durante las pruebas
+        return null;
+        
+        /* Código original (descomentar cuando las pruebas estén completas)
         $current_route = isset($_SERVER['REQUEST_URI']) ? $_SERVER['REQUEST_URI'] : '';
         if (strpos($current_route, $this->get_api_namespace()) !== false) {
             return null; // Permitir todas las solicitudes a nuestro namespace
         }
         return $errors;
+        */
     }
     
     /**

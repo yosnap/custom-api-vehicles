@@ -35,7 +35,8 @@ class Vehicle_Glossary_Mappings {
             'emissions-vehicle' => 61,
             'segment' => 63,
             'tipus-de-moto' => 64, // Añadir mapeo para tipus-de-moto
-            'color-vehicle' => 51
+            'color-vehicle' => 51,
+            'carrosseria-caravana' => 43 // Añadir mapeo para carrosseria-caravana
         ];
     }
 }

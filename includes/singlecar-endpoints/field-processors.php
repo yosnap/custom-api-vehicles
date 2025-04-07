@@ -219,7 +219,8 @@ function is_glossary_field($field_name) {
         'extres-autocaravana',
         'extres-habitacle',
         'cables-recarrega',
-        'connectors'
+        'connectors',
+        'tipus-carroseria-caravana' // Añadido para soportar el tipo de carrocería de caravanas
     ]);
 }
 
@@ -228,6 +229,7 @@ function should_get_field_label($field_name) {
 }
 
 function is_taxonomy_field($field_name) {
+    error_log("Verificando si el campo '$field_name' es un campo de taxonomía");
     $taxonomy_fields = [
         'tipus-vehicle',
         'tipus-combustible',
@@ -235,11 +237,13 @@ function is_taxonomy_field($field_name) {
         'estat-vehicle',
         'tipus-de-moto',
         'tipus-canvi-cotxe',
-        'tipus-carroseria-caravana',
+        // 'tipus-carroseria-caravana', // Removido porque es un campo meta, no taxonomía
         'marques-cotxe',
         'models-cotxe'
     ];
-    return in_array($field_name, $taxonomy_fields);
+    $result = in_array($field_name, $taxonomy_fields);
+    error_log("Resultado para '$field_name': " . ($result ? 'SÍ es taxonomía' : 'NO es taxonomía'));
+    return $result;
 }
 
 function get_taxonomy_map() {
@@ -251,10 +255,11 @@ function get_taxonomy_map() {
         'estat-vehicle' => 'estat-vehicle',
         'tipus-de-moto' => 'marques-de-moto',
         'tipus-canvi-cotxe' => 'tipus-de-canvi',
-        'tipus-carroseria-caravana' => 'tipus-carroseria-caravana',
+        // 'tipus-carroseria-caravana' => 'tipus-carroseria-caravana', // Removido porque es un campo meta, no taxonomía
         'marques-cotxe' => 'marques-coches'
     ];
-    error_log("DEBUG - Mapeo de taxonomías: " . print_r($map, true));
+    error_log("DEBUG - Mapeo de taxonomías completo: " . print_r($map, true));
+    error_log("DEBUG - Verificando que 'tipus-carroseria-caravana' no esté en el mapeo: " . (!isset($map['tipus-carroseria-caravana']) ? 'NO está incluido' : 'SÍ está incluido'));
     return $map;
 }
 
@@ -352,6 +357,9 @@ function process_and_save_meta_fields($post_id, $params) {
     update_post_meta($post_id, 'temps-recarrega-total', $params['temps-recarrega-total']);
     update_post_meta($post_id, 'temps-recarrega-fins-80', $params['temps-recarrega-fins-80']);
     
+    // Procesar campos específicos para autocaravanas
+    process_autocaravana_fields($post_id, $params);
+    
     // Procesar todos los campos de glosario para convertir label a value si es necesario
     foreach ($params as $field => $value) {
         if (is_glossary_field($field) && !empty($value)) {
@@ -412,7 +420,124 @@ function process_and_save_meta_fields($post_id, $params) {
 }
 
 /**
- * Convierte un label de glosario al valor correspondiente
+ * Procesa los campos específicos para autocaravanas
+ */
+function process_autocaravana_fields($post_id, $params) {
+    // Mapeo de campos a campos meta
+    $autocaravana_fields = [
+        'extres-autocaravana' => ['field' => 'extres-autocaravana', 'type' => 'array'],
+        'carrosseria-caravana' => ['field' => 'tipus-carroseria-caravana', 'type' => 'single'],
+        'extres-habitacle' => ['field' => 'extres-habitacle', 'type' => 'array']
+    ];
+
+    $invalid_fields = [];
+
+    foreach ($autocaravana_fields as $input_field => $config) {
+        $meta_field = $config['field'];
+        $field_type = $config['type'];
+        
+        if (isset($params[$input_field])) {
+            $values = $params[$input_field];
+            
+            // Si es un campo de tipo single y viene como array, tomar solo el primer valor
+            if ($field_type === 'single' && is_array($values)) {
+                $values = !empty($values) ? $values[0] : '';
+                error_log("Campo $input_field es de tipo single, usando solo el primer valor: $values");
+            }
+            // Si es un campo de tipo array y no viene como array, convertirlo en array
+            else if ($field_type === 'array' && !is_array($values)) {
+                $values = [$values];
+            }
+            
+            // Validar que los valores existan en el glosario correspondiente
+            if (function_exists('validate_glossary_values')) {
+                $validation_values = is_array($values) ? $values : [$values];
+                $validation = validate_glossary_values($input_field, $validation_values);
+                
+                if (!$validation['valid']) {
+                    // Recopilar información de valores inválidos
+                    $invalid_fields[$input_field] = [
+                        'invalid_values' => $validation['invalid_values']
+                    ];
+                    
+                    // Obtener valores válidos para mostrarlos en el mensaje de error
+                    $glossary_id = get_glossary_id_for_field($input_field);
+                    if ($glossary_id) {
+                        $valid_values = get_valid_glossary_values($glossary_id);
+                        $invalid_fields[$input_field]['valid_values'] = $valid_values;
+                    }
+                    
+                    // Continuar con el siguiente campo, no guardar valores inválidos
+                    continue;
+                }
+            }
+            
+            error_log("Procesando campo de glosario $input_field -> $meta_field con valores: " . print_r($values, true));
+            
+            // Guardar como campo meta (serializado para arrays, valor simple para single)
+            update_post_meta($post_id, $meta_field, $values);
+            error_log("Campo $meta_field guardado correctamente con valor: " . print_r($values, true));
+            
+            // Verificación adicional para extres-autocaravana
+            if ($input_field === 'extres-autocaravana') {
+                error_log("DEBUG SAVE - Verificación adicional para extres-autocaravana");
+                $saved_value = get_post_meta($post_id, $meta_field, true);
+                error_log("DEBUG SAVE - Valor guardado de extres-autocaravana: " . print_r($saved_value, true));
+                
+                // Verificar el tipo de datos
+                error_log("DEBUG SAVE - Tipo de datos de values: " . gettype($values));
+                if (is_array($values)) {
+                    error_log("DEBUG SAVE - Es un array con " . count($values) . " elementos");
+                } else {
+                    error_log("DEBUG SAVE - No es un array, es: " . gettype($values));
+                }
+                
+                // Asegurarse de que se guarde correctamente
+                if (empty($saved_value) && !empty($values)) {
+                    error_log("DEBUG SAVE - Intentando guardar extres-autocaravana nuevamente");
+                    
+                    // Eliminar cualquier valor existente
+                    delete_post_meta($post_id, $meta_field);
+                    
+                    // Guardar cada valor individualmente si es un array
+                    if (is_array($values)) {
+                        foreach ($values as $single_value) {
+                            add_post_meta($post_id, $meta_field, $single_value);
+                            error_log("DEBUG SAVE - Añadido valor individual: " . $single_value);
+                        }
+                    } else {
+                        // Si no es un array, guardar como un solo valor
+                        add_post_meta($post_id, $meta_field, $values);
+                        error_log("DEBUG SAVE - Añadido valor único: " . $values);
+                    }
+                    
+                    // Verificar nuevamente
+                    $saved_values = get_post_meta($post_id, $meta_field);
+                    error_log("DEBUG SAVE - Valores guardados después del segundo intento: " . print_r($saved_values, true));
+                }
+            }
+        }
+    }
+    
+    // Si hay campos inválidos, lanzar una excepción con información detallada
+    if (!empty($invalid_fields)) {
+        $error_message = "Valores inválidos en campos de glosario:\n";
+        
+        foreach ($invalid_fields as $field => $info) {
+            $error_message .= "- Campo '$field':\n";
+            $error_message .= "  - Valores inválidos: " . implode(', ', $info['invalid_values']) . "\n";
+            
+            if (isset($info['valid_values']) && !empty($info['valid_values'])) {
+                $error_message .= "  - Valores válidos: " . implode(', ', $info['valid_values']) . "\n";
+            }
+        }
+        
+        throw new Exception($error_message);
+    }
+}
+
+/**
+ * Procesa y guarda los campos meta
  */
 function convert_glossary_label_to_value($field, $value) {
     // Si el valor es un array, procesamos cada elemento individualmente
