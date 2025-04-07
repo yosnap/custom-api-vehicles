@@ -371,3 +371,116 @@ Authorization: Bearer YOUR_TOKEN
   "extres-cotxe": ["Bluetooth", "Aire acondicionado"]
 }
 ```
+
+## Endpoint: /vehicles
+
+Este endpoint permite obtener un listado de vehículos con soporte para múltiples filtros, ordenamiento y paginación.
+
+### Parámetros de filtrado
+
+#### Paginación
+- `page`: Número de página (default: 1)
+- `per_page`: Resultados por página (default: 10)
+
+#### Taxonomías
+- `tipus-vehicle`: Tipo de vehículo
+- `tipus-combustible`: Tipo de combustible
+- `tipus-canvi`: Tipo de cambio
+- `tipus-propulsor`: Tipo de propulsor
+- `estat-vehicle`: Estado del vehículo
+- `marques-cotxe`: Marca del coche
+- `marques-de-moto`: Marca de la moto
+- `models-cotxe`: Modelo del coche (funciona en conjunto con marques-cotxe o independientemente)
+- `models-moto`: Modelo de la moto (funciona en conjunto con marques-de-moto o independientemente)
+
+#### Rangos numéricos
+- Precio:
+  - `preu_min`: Precio mínimo
+  - `preu_max`: Precio máximo
+- Kilómetros:
+  - `km_min`: Kilómetros mínimos
+  - `km_max`: Kilómetros máximos
+- Año:
+  - `any_min`: Año mínimo
+  - `any_max`: Año máximo
+- Potencia:
+  - `potencia_cv_min`: Potencia mínima en CV
+  - `potencia_cv_max`: Potencia máxima en CV
+
+#### Filtros booleanos
+- `anunci-destacat`: Anuncio destacado (utiliza el meta field 'is-vip')
+- `venut`: Vehículo vendido
+- `llibre-manteniment`: Libro de mantenimiento
+- `revisions-oficials`: Revisiones oficiales
+- `impostos-deduibles`: Impuestos deducibles
+- `vehicle-a-canvi`: Acepta vehículo a cambio
+- `garantia`: Con garantía
+- `vehicle-accidentat`: Vehículo accidentado
+- `aire-acondicionat`: Aire acondicionado
+- `climatitzacio`: Climatización
+- `vehicle-fumador`: Vehículo de fumador
+
+#### Filtros de glosario
+- `venedor`: Vendedor
+- `traccio`: Tracción
+- `roda-recanvi`: Rueda de recambio
+- `segment`: Segmento
+- `color-vehicle`: Color del vehículo
+- `tipus-tapisseria`: Tipo de tapicería
+- `color-tapisseria`: Color de tapicería
+- `emissions-vehicle`: Emisiones del vehículo
+- `extres-cotxe`: Extras del coche
+- `cables-recarrega`: Cables de recarga
+- `connectors`: Conectores
+
+#### Búsqueda y ordenamiento
+- `search`: Búsqueda por texto
+- `orderby`: Campo por el que ordenar
+  - `date`: Fecha
+  - `price`: Precio
+  - `km`: Kilómetros
+  - `year`: Año
+- `order`: Dirección del ordenamiento
+  - `ASC`: Ascendente
+  - `DESC`: Descendente (default)
+
+#### Otros filtros
+- `user_id`: ID del usuario (requiere permisos)
+- `anunci-actiu`: Estado activo del anuncio
+
+### Ejemplos de uso
+
+1. Filtrar coches por marca y modelo:
+```
+/wp-json/api-motor/v1/vehicles?marques-cotxe=bmw&models-cotxe=serie-3
+```
+
+2. Filtrar por rango de precio y kilómetros:
+```
+/wp-json/api-motor/v1/vehicles?preu_min=10000&preu_max=20000&km_min=0&km_max=100000
+```
+
+3. Búsqueda con múltiples filtros:
+```
+/wp-json/api-motor/v1/vehicles?tipus-vehicle=cotxe&estat-vehicle=nou&orderby=price&order=ASC&page=1&per_page=20
+```
+
+4. Filtrar motos por marca y modelo:
+```
+/wp-json/api-motor/v1/vehicles?marques-de-moto=honda&models-moto=cbr
+```
+
+5. Filtrar anuncios destacados:
+```
+/wp-json/api-motor/v1/vehicles?anunci-destacat=true&orderby=date&order=DESC
+```
+
+### Respuesta
+
+La respuesta incluye:
+- `status`: Estado de la respuesta
+- `items`: Array de vehículos
+- `total`: Total de items encontrados
+- `pages`: Número total de páginas
+- `page`: Página actual
+- `per_page`: Items por página

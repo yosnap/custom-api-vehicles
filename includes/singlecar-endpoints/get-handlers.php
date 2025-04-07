@@ -58,60 +58,248 @@ function build_query_args($params) {
         'posts_per_page' => isset($params['per_page']) ? (int) $params['per_page'] : 10,
         'paged' => isset($params['page']) ? (int) $params['page'] : 1,
         'post_status' => 'publish',
-        'orderby' => isset($params['orderby']) ? sanitize_text_field($params['orderby']) : 'date',
-        'order' => isset($params['order']) ? sanitize_text_field($params['order']) : 'DESC',
-        'no_found_rows' => false,               // Importante: necesitamos el conteo total
-        'update_post_term_cache' => true,       // Optimización para términos
-        'update_post_meta_cache' => true        // Optimización para meta
+        'no_found_rows' => false,
+        'update_post_term_cache' => true,
+        'update_post_meta_cache' => true
     ];
 
-    // Meta queries solo si hay filtros específicos
+    // Meta queries y Tax queries
     $meta_query = ['relation' => 'AND'];
+    $tax_query = ['relation' => 'AND'];
     $apply_meta_query = false;
+    $apply_tax_query = false;
 
     // Lógica de filtrado por usuario
     if (!empty($params['user_id'])) {
-        // Si se especifica un user_id
         $user_id = (int) $params['user_id'];
-        
-        // Verificar permisos
-        if (!current_user_can('administrator')) {
-            if (get_current_user_id() != $user_id) {
+        if (!current_user_can('administrator') && get_current_user_id() != $user_id) {
                 throw new Exception('No autorizado para ver vehículos de otros usuarios');
-            }
         }
         $args['author'] = $user_id;
-    } else {
-        // Si no se especifica user_id
-        if (!current_user_can('administrator')) {
-            // Usuario normal: solo ver sus propios vehículos
+    } elseif (!current_user_can('administrator')) {
             $current_user_id = get_current_user_id();
             if ($current_user_id) {
                 $args['author'] = $current_user_id;
             }
         }
+
+    // Filtros de taxonomías
+    $taxonomy_filters = [
+        'tipus-vehicle' => 'types-of-transport',
+        'tipus-combustible' => 'tipus-combustible',
+        'tipus-canvi' => 'tipus-de-canvi',
+        'tipus-propulsor' => 'tipus-de-propulsor',
+        'estat-vehicle' => 'estat-vehicle',
+        'marques-cotxe' => 'marques-coches',
+        'marques-de-moto' => 'marques-de-moto'
+    ];
+
+    foreach ($taxonomy_filters as $param => $taxonomy) {
+        if (isset($params[$param]) && !empty($params[$param])) {
+            $tax_query[] = [
+                'taxonomy' => $taxonomy,
+                'field' => 'slug',
+                'terms' => $params[$param]
+            ];
+            $apply_tax_query = true;
+        }
     }
 
-    // Aplicar filtros solo si se especifican en los parámetros
+    // Filtro específico para modelos de coches
+    if (isset($params['models-cotxe']) && !empty($params['models-cotxe'])) {
+        // Si también se especificó una marca, usamos una relación AND
+        if (isset($params['marques-cotxe']) && !empty($params['marques-cotxe'])) {
+            $tax_query[] = [
+                'relation' => 'AND',
+                [
+                    'taxonomy' => 'marques-coches',
+                    'field' => 'slug',
+                    'terms' => $params['marques-cotxe']
+                ],
+                [
+                    'taxonomy' => 'marques-coches',
+                    'field' => 'slug',
+                    'terms' => $params['models-cotxe']
+                ]
+            ];
+        } else {
+            // Si no se especificó marca, solo filtramos por modelo
+            $tax_query[] = [
+                'taxonomy' => 'marques-coches',
+                'field' => 'slug',
+                'terms' => $params['models-cotxe']
+            ];
+        }
+        $apply_tax_query = true;
+    }
+
+    // Filtro específico para modelos de motos
+    if (isset($params['models-moto']) && !empty($params['models-moto'])) {
+        // Si también se especificó una marca de moto, usamos una relación AND
+        if (isset($params['marques-de-moto']) && !empty($params['marques-de-moto'])) {
+            $tax_query[] = [
+                'relation' => 'AND',
+                [
+                    'taxonomy' => 'marques-de-moto',
+                    'field' => 'slug',
+                    'terms' => $params['marques-de-moto']
+                ],
+                [
+                    'taxonomy' => 'marques-de-moto',
+                    'field' => 'slug',
+                    'terms' => $params['models-moto']
+                ]
+            ];
+        } else {
+            // Si no se especificó marca, solo filtramos por modelo
+            $tax_query[] = [
+                'taxonomy' => 'marques-de-moto',
+                'field' => 'slug',
+                'terms' => $params['models-moto']
+            ];
+        }
+        $apply_tax_query = true;
+    }
+
+    // Filtros de rango numéricos
+    $range_filters = [
+        'preu' => ['min' => 'preu_min', 'max' => 'preu_max'],
+        'quilometratge' => ['min' => 'km_min', 'max' => 'km_max'],
+        'any' => ['min' => 'any_min', 'max' => 'any_max'],
+        'potencia-cv' => ['min' => 'potencia_cv_min', 'max' => 'potencia_cv_max']
+    ];
+
+    foreach ($range_filters as $field => $range_params) {
+        if (isset($params[$range_params['min']]) || isset($params[$range_params['max']])) {
+            $range_query = [
+                'key' => $field,
+                'type' => 'NUMERIC'
+            ];
+
+            if (isset($params[$range_params['min']]) && isset($params[$range_params['max']])) {
+                $range_query['compare'] = 'BETWEEN';
+                $range_query['value'] = [
+                    floatval($params[$range_params['min']]),
+                    floatval($params[$range_params['max']])
+                ];
+            } elseif (isset($params[$range_params['min']])) {
+                $range_query['compare'] = '>=';
+                $range_query['value'] = floatval($params[$range_params['min']]);
+            } else {
+                $range_query['compare'] = '<=';
+                $range_query['value'] = floatval($params[$range_params['max']]);
+            }
+
+            $meta_query[] = $range_query;
+            $apply_meta_query = true;
+        }
+    }
+
+    // Filtros booleanos
+    $boolean_filters = [
+        'venut',
+        'llibre-manteniment',
+        'revisions-oficials',
+        'impostos-deduibles',
+        'vehicle-a-canvi',
+        'garantia',
+        'vehicle-accidentat',
+        'aire-acondicionat',
+        'climatitzacio',
+        'vehicle-fumador'
+    ];
+
+    foreach ($boolean_filters as $filter) {
+        if (isset($params[$filter])) {
+            $meta_query[] = [
+                'key' => $filter,
+                'value' => filter_var($params[$filter], FILTER_VALIDATE_BOOLEAN) ? 'true' : 'false',
+                'compare' => '='
+            ];
+            $apply_meta_query = true;
+        }
+    }
+
+    // Filtro especial para anunci-destacat (is-vip)
+    if (isset($params['anunci-destacat'])) {
+        $meta_query[] = [
+            'key' => 'is-vip',
+            'value' => filter_var($params['anunci-destacat'], FILTER_VALIDATE_BOOLEAN) ? 'true' : 'false',
+            'compare' => '='
+        ];
+        $apply_meta_query = true;
+    }
+
+    // Filtros de glosario
+    $glossary_filters = [
+        'venedor',
+        'traccio',
+        'roda-recanvi',
+        'segment',
+        'color-vehicle',
+        'tipus-tapisseria',
+        'color-tapisseria',
+        'emissions-vehicle',
+        'extres-cotxe',
+        'cables-recarrega',
+        'connectors'
+    ];
+
+    foreach ($glossary_filters as $filter) {
+        if (isset($params[$filter]) && !empty($params[$filter])) {
+            $meta_query[] = [
+                'key' => $filter,
+                'value' => $params[$filter],
+                'compare' => 'LIKE'
+            ];
+            $apply_meta_query = true;
+        }
+    }
+
+    // Búsqueda por texto
+    if (isset($params['search']) && !empty($params['search'])) {
+        $args['s'] = sanitize_text_field($params['search']);
+    }
+
+    // Ordenamiento
+    if (isset($params['orderby'])) {
+        switch ($params['orderby']) {
+            case 'date':
+                $args['orderby'] = 'date';
+                break;
+            case 'price':
+                $args['orderby'] = 'meta_value_num';
+                $args['meta_key'] = 'preu';
+                break;
+            case 'km':
+                $args['orderby'] = 'meta_value_num';
+                $args['meta_key'] = 'quilometratge';
+                break;
+            case 'year':
+                $args['orderby'] = 'meta_value_num';
+                $args['meta_key'] = 'any';
+                break;
+            default:
+                $args['orderby'] = 'date';
+        }
+        $args['order'] = isset($params['order']) && in_array(strtoupper($params['order']), ['ASC', 'DESC']) 
+            ? strtoupper($params['order']) 
+            : 'DESC';
+    }
+
+    // Estado activo del anuncio
     if (isset($params['anunci-actiu'])) {
         $is_active = filter_var($params['anunci-actiu'], FILTER_VALIDATE_BOOLEAN);
         add_active_status_query($meta_query, $is_active);
         $apply_meta_query = true;
     }
 
-    if (isset($params['venut'])) {
-        $is_sold = filter_var($params['venut'], FILTER_VALIDATE_BOOLEAN);
-        $meta_query[] = [
-            'key' => 'venut',
-            'value' => $is_sold ? 'true' : 'false',
-            'compare' => '='
-        ];
-        $apply_meta_query = true;
-    }
-
-    // Aplicar meta queries solo si hay filtros
+    // Aplicar queries
     if ($apply_meta_query) {
         $args['meta_query'] = $meta_query;
+    }
+    if ($apply_tax_query) {
+        $args['tax_query'] = $tax_query;
     }
     
     return $args;
