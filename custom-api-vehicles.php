@@ -122,8 +122,8 @@ if (is_admin()) {
 // Scripts y estilos
 function enqueue_custom_scripts() {
     if (!is_admin()) {
-        wp_register_script('react-js', plugins_url('js/react.js', __FILE__), array(), '1.0.0', true);
-        wp_register_script('react-product-js', plugins_url('js/react-product.js', __FILE__), array('react-js'), '1.0.0', true);
+        wp_enqueue_script('react-js', plugins_url('js/react.js', __FILE__), array(), '1.0.0', true);
+        wp_enqueue_script('react-product-js', plugins_url('js/react-product.js', __FILE__), array('react-js'), '1.0.0', true);
         wp_enqueue_script('my-react-app', plugins_url('js/my-react-app.js', __FILE__), array('react-product-js'), '1.0.0', true);
         wp_enqueue_style('my-product-css', plugins_url('css/my-product.css', __FILE__), array(), '1.0.0', 'all');
     }
@@ -132,8 +132,8 @@ add_action('wp_enqueue_scripts', 'enqueue_custom_scripts');
 
 // Scripts del admin
 function enqueue_admin_scripts() {
-    wp_register_script('react-js', plugins_url('js/react.js', __FILE__), array(), '1.0.0', true);
-    wp_register_script('react-product-js', plugins_url('js/react-product.js', __FILE__), array('react-js'), '1.0.0', true);
+    wp_enqueue_script('react-js', plugins_url('js/react.js', __FILE__), array(), '1.0.0', true);
+    wp_enqueue_script('react-product-js', plugins_url('js/react-product.js', __FILE__), array('react-js'), '1.0.0', true);
     wp_enqueue_script('my-react-app', plugins_url('js/my-react-app.js', __FILE__), array('react-product-js'), '1.0.0', true);
     wp_enqueue_style('my-product-css', plugins_url('css/my-product.css', __FILE__), array(), '1.0.0', 'all');
 }

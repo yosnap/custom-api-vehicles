@@ -778,38 +778,40 @@ function get_glossary_label_from_value($glossary_id, $value) {
  * @return string|null ID del glosario o null si no hay mapeo
  */
 function get_glossary_id_for_field($field_name) {
-    $mappings = get_option('vehicle_glossary_mappings', []);
-    
-    // Registrar para depuración
-    error_log("Buscando mapeo para el campo: $field_name");
-    error_log("Mapeos disponibles: " . print_r($mappings, true));
+    // Usar la clase Vehicle_Glossary_Mappings para obtener el ID del glosario
+    if (class_exists('Vehicle_Glossary_Mappings')) {
+        $glossary_id = Vehicle_Glossary_Mappings::get_glossary_id($field_name);
+        
+        // Registrar para depuración
+        error_log("Buscando mapeo para el campo: $field_name");
+        
+        if ($glossary_id) {
+            error_log("Mapeo encontrado para $field_name: " . $glossary_id);
+            return $glossary_id;
+        }
+    }
     
     // Mapeos directos para campos específicos (fallback)
     $direct_mappings = [
-        'extres-autocaravana' => 'extres-autocaravana',
-        'carrosseria-caravana' => 'tipus-carroseria-caravana',
-        'extres-habitacle' => 'extres-habitacle'
+        'extres-cotxe' => 54,
+        'extres-autocaravana' => 56,
+        'carrosseria-caravana' => 43,
+        'extres-habitacle' => 57,
+        'tipus-tapisseria' => 52,
+        'color-tapisseria' => 53,
+        'extres-moto' => 55,
+        'cables-recarrega' => 58,
+        'connectors' => 59,
+        'traccio' => 60,
+        'emissions-vehicle' => 61,
+        'segment' => 63,
+        'tipus-de-moto' => 64,
+        'color-vehicle' => 51
     ];
     
-    if (!empty($mappings) && isset($mappings[$field_name])) {
-        error_log("Mapeo encontrado para $field_name: " . $mappings[$field_name]);
-        return $mappings[$field_name];
-    } else if (isset($direct_mappings[$field_name])) {
-        // Intentar obtener el ID del glosario directamente
-        if (function_exists('jet_engine') && isset(jet_engine()->glossaries)) {
-            $glossaries = jet_engine()->glossaries->data->get_items();
-            error_log("Glosarios disponibles: " . print_r(array_keys($glossaries), true));
-            
-            foreach ($glossaries as $id => $glossary) {
-                $slug = isset($glossary['slug']) ? $glossary['slug'] : '';
-                error_log("Comparando glosario $id (slug: $slug) con $field_name");
-                
-                if ($slug === $field_name || $slug === $direct_mappings[$field_name]) {
-                    error_log("Mapeo directo encontrado para $field_name: $id");
-                    return $id;
-                }
-            }
-        }
+    if (isset($direct_mappings[$field_name])) {
+        error_log("Usando mapeo directo para $field_name: " . $direct_mappings[$field_name]);
+        return $direct_mappings[$field_name];
     }
     
     error_log("No se encontró mapeo para el campo: $field_name");

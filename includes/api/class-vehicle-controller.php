@@ -114,7 +114,7 @@ class Vehicle_Controller {
         $post_id = (int) $request['id'];
         $post = get_post($post_id);
         
-        if (!$post || $post->post_type !== 'singlecar') {
+        if (!$post || $post->post_type !== 'singlecar') { // Ajustar según el post type real
             return new WP_Error(
                 'rest_post_invalid_id',
                 __('ID de vehículo inválido.', 'custom-api-vehicles'),
@@ -308,32 +308,82 @@ class Vehicle_Controller {
                     // Obtener las opciones del glosario
                     $options = $this->get_glossary_options($api_field_name);
                     
-                    // Intentar deserializar el valor si es una cadena serializada
-                    $field_values_unserialized = $field_values[0];
-                    if (is_string($field_values[0]) && is_serialized($field_values[0])) {
-                        $field_values_unserialized = unserialize($field_values[0]);
-                    }
+                    // Obtener el valor como array simple
+                    $values = get_post_meta($post->ID, $api_field_name, true);
+                    error_log("Valor recuperado para extres-cotxe: " . print_r($values, true));
                     
-                    // Asegurarse de que estamos trabajando con un array
-                    if (!is_array($field_values_unserialized)) {
-                        $field_values_unserialized = array($field_values_unserialized);
+                    // Asegurarse de que values sea un array
+                    if (!is_array($values)) {
+                        $values = [$values];
                     }
                     
                     // Procesar cada valor del array
                     $labels = array();
-                    foreach ($field_values_unserialized as $single_value) {
+                    foreach ($values as $single_value) {
                         // Buscar etiqueta en las opciones del glosario
                         if (isset($options[$single_value])) {
                             $labels[] = $options[$single_value];
+                            error_log("Label encontrado para extres-cotxe: " . $options[$single_value]);
                         } else {
                             $labels[] = $single_value; // Si no hay etiqueta, usar el valor original
+                            error_log("No se encontró label para extres-cotxe: " . $single_value);
                         }
                     }
                     
                     $data[$api_field_name] = $labels;
                     continue; // Importante: salir del bucle para este campo
                 } else {
-                    $data[$api_field_name] = $field_values; // Usar todos los valores
+                    // Obtener el valor directamente
+                    $data[$api_field_name] = get_post_meta($post->ID, $api_field_name, true);
+                    continue;
+                }
+            }
+            
+            // Procesamiento específico para extras-cotxe
+            if ($field_name === 'extras-cotxe' || $field_name === 'extres-cotxe') {
+                // Si estamos procesando extras-cotxe pero ya procesamos extres-cotxe, saltar
+                if ($field_name === 'extras-cotxe' && isset($data['extres-cotxe'])) {
+                    continue;
+                }
+                
+                // Usar siempre extres-cotxe como nombre de campo en la respuesta
+                $api_field_name = 'extres-cotxe';
+                
+                // Verificar si es un campo de glosario
+                if (function_exists('is_glossary_field') && is_glossary_field($api_field_name)) {
+                    // Obtener el ID del glosario
+                    $glossary_id = Vehicle_Glossary_Mappings::get_glossary_id($api_field_name);
+                    
+                    // Obtener las opciones del glosario
+                    $options = $this->get_glossary_options($api_field_name);
+                    
+                    // Obtener el valor como array simple
+                    $values = get_post_meta($post->ID, $api_field_name, true);
+                    error_log("Valor recuperado para extres-cotxe: " . print_r($values, true));
+                    
+                    // Asegurarse de que values sea un array
+                    if (!is_array($values)) {
+                        $values = [$values];
+                    }
+                    
+                    // Procesar cada valor del array
+                    $labels = array();
+                    foreach ($values as $single_value) {
+                        // Buscar etiqueta en las opciones del glosario
+                        if (isset($options[$single_value])) {
+                            $labels[] = $options[$single_value];
+                            error_log("Label encontrado para extres-cotxe: " . $options[$single_value]);
+                        } else {
+                            $labels[] = $single_value; // Si no hay etiqueta, usar el valor original
+                            error_log("No se encontró label para extres-cotxe: " . $single_value);
+                        }
+                    }
+                    
+                    $data[$api_field_name] = $labels;
+                    continue; // Importante: salir del bucle para este campo
+                } else {
+                    // Obtener el valor directamente
+                    $data[$api_field_name] = get_post_meta($post->ID, $api_field_name, true);
                     continue;
                 }
             }
@@ -476,10 +526,21 @@ class Vehicle_Controller {
      * @return bool|WP_Error Verdadero si pasa la validación, objeto WP_Error si no
      */
     public function validate_vehicle_fields($request) {
+        $params = $request->get_params();
+        $is_update = isset($params['id']) && !empty($params['id']);
         $vehicle_type = $request->get_param('tipus-vehicle');
         
-        // Si no se especifica tipo de vehículo, no podemos continuar
-        if (empty($vehicle_type)) {
+        // Para actualizaciones (PUT), si no se especifica el tipo de vehículo, intentamos obtenerlo del post existente
+        if ($is_update && empty($vehicle_type)) {
+            $post_id = (int) $request['id'];
+            $stored_vehicle_type = get_post_meta($post_id, 'tipus-vehicle', true);
+            if (!empty($stored_vehicle_type)) {
+                $vehicle_type = $stored_vehicle_type;
+            }
+        }
+        
+        // Si no se especifica tipo de vehículo y es una creación (POST), no podemos continuar
+        if (empty($vehicle_type) && !$is_update) {
             return new WP_Error(
                 'missing_vehicle_type',
                 __('El tipo de vehículo (tipus-vehicle) es obligatorio', 'custom-api-vehicles'),
@@ -487,72 +548,151 @@ class Vehicle_Controller {
             );
         }
         
-        // Verificar que se ha proporcionado una imagen destacada
-        $has_image = false;
+        // Verificar que se ha proporcionado una imagen destacada (solo para POST)
+        if (!$is_update) {
+            $has_image = false;
+            
+            // Verificar si se ha proporcionado una imagen destacada como archivo
+            if (isset($_FILES['imatge-destacada']) && !empty($_FILES['imatge-destacada']['tmp_name'])) {
+                $has_image = true;
+            }
+            // Verificar si se ha proporcionado una imagen destacada como ID
+            elseif ($request->get_param('imatge-destacada-id') && !empty($request->get_param('imatge-destacada-id'))) {
+                $has_image = true;
+            }
+            // Verificar si se ha proporcionado una imagen destacada como URL
+            elseif ($request->get_param('imatge-destacada-url') && !empty($request->get_param('imatge-destacada-url'))) {
+                $has_image = true;
+            }
+            // Verificar si se ha proporcionado una imagen destacada directamente
+            elseif ($request->get_param('imatge-destacada') && !empty($request->get_param('imatge-destacada'))) {
+                $has_image = true;
+            }
+            
+            if (!$has_image) {
+                return new WP_Error(
+                    'missing_featured_image',
+                    __('La imagen destacada es obligatoria. Debe proporcionar una imagen a través del campo "imatge-destacada"', 'custom-api-vehicles'),
+                    array('status' => 400)
+                );
+            }
+            
+            // Validar campos obligatorios para POST
+            if (empty($request->get_param('title'))) {
+                return new WP_Error(
+                    'missing_title',
+                    __('El título del vehículo es obligatorio', 'custom-api-vehicles'),
+                    array('status' => 400)
+                );
+            }
+            
+            if (empty($request->get_param('preu'))) {
+                return new WP_Error(
+                    'missing_price',
+                    __('El precio del vehículo es obligatorio', 'custom-api-vehicles'),
+                    array('status' => 400)
+                );
+            }
+        }
         
-        // Verificar si se ha proporcionado una imagen destacada como archivo
-        if (isset($_FILES['imatge-destacada']) && !empty($_FILES['imatge-destacada']['tmp_name'])) {
-            $has_image = true;
-        }
-        // Verificar si se ha proporcionado una imagen destacada como ID
-        elseif ($request->get_param('imatge-destacada-id') && !empty($request->get_param('imatge-destacada-id'))) {
-            $has_image = true;
-        }
-        // Verificar si se ha proporcionado una imagen destacada como URL
-        elseif ($request->get_param('imatge-destacada-url') && !empty($request->get_param('imatge-destacada-url'))) {
-            $has_image = true;
-        }
-        // Verificar si se ha proporcionado una imagen destacada directamente
-        elseif ($request->get_param('imatge-destacada') && !empty($request->get_param('imatge-destacada'))) {
-            $has_image = true;
-        }
-        
-        if (!$has_image) {
-            return new WP_Error(
-                'missing_featured_image',
-                __('La imagen destacada es obligatoria. Debe proporcionar una imagen a través del campo "imatge-destacada"', 'custom-api-vehicles'),
-                array('status' => 400)
-            );
-        }
-        
-        // Normalizar el tipo de vehículo a minúsculas
-        $vehicle_type = strtolower(trim($vehicle_type));
-        
-        // Validación específica según el tipo de vehículo
-        switch ($vehicle_type) {
-            case 'cotxe':
-                // Eliminada la validación de marques-cotxe como obligatorio
-                break;
-                
-            case 'moto':
-                if (empty($request->get_param('marques-de-moto'))) {
-                    return new WP_Error(
-                        'missing_moto_brand',
-                        __('El campo marques-de-moto es obligatorio para vehículos tipo moto', 'custom-api-vehicles'),
-                        array('status' => 400)
-                    );
-                }
-                break;
-                
-            case 'autocaravana':
-                if (empty($request->get_param('marques-autocaravana'))) {
-                    return new WP_Error(
-                        'missing_caravan_brand',
-                        __('El campo marques-autocaravana es obligatorio para vehículos tipo autocaravana', 'custom-api-vehicles'),
-                        array('status' => 400)
-                    );
-                }
-                break;
-                
-            case 'vehicle-comercial':
-                if (empty($request->get_param('marques-comercial'))) {
-                    return new WP_Error(
-                        'missing_commercial_brand',
-                        __('El campo marques-comercial es obligatorio para vehículos comerciales', 'custom-api-vehicles'),
-                        array('status' => 400)
-                    );
-                }
-                break;
+        // Si tenemos el tipo de vehículo, normalizarlo a minúsculas
+        if (!empty($vehicle_type)) {
+            $vehicle_type = strtolower(trim($vehicle_type));
+            
+            // Validación específica según el tipo de vehículo (para POST y PUT)
+            switch ($vehicle_type) {
+                case 'cotxe':
+                    // Campos obligatorios para coches (tanto en POST como PUT)
+                    $cotxe_required_fields = [
+                        'marques-cotxe' => 'La marca del coche es obligatoria',
+                        'models-cotxe' => 'El modelo del coche es obligatorio',
+                        'estat-vehicle' => 'El estado del vehículo es obligatorio'
+                    ];
+                    
+                    foreach ($cotxe_required_fields as $field => $error_message) {
+                        // Para PUT, solo validar si no existe ya en el post
+                        if ($is_update) {
+                            $post_id = (int) $request['id'];
+                            $existing_value = get_post_meta($post_id, $field, true);
+                            
+                            // Si el campo ya tiene un valor y no se está intentando actualizar, omitir la validación
+                            if (!empty($existing_value) && !isset($params[$field])) {
+                                continue;
+                            }
+                            
+                            // Si se está intentando actualizar con un valor vacío, mostrar error
+                            if (isset($params[$field]) && empty($params[$field])) {
+                                return new WP_Error(
+                                    'missing_' . str_replace('-', '_', $field),
+                                    __($error_message, 'custom-api-vehicles'),
+                                    array('status' => 400)
+                                );
+                            }
+                        } 
+                        // Para POST, siempre validar
+                        else if (empty($request->get_param($field))) {
+                            return new WP_Error(
+                                'missing_' . str_replace('-', '_', $field),
+                                __($error_message, 'custom-api-vehicles'),
+                                array('status' => 400)
+                            );
+                        }
+                    }
+                    break;
+                    
+                case 'moto':
+                    // Para motos, siempre validar marques-de-moto (tanto en POST como PUT)
+                    if (empty($request->get_param('marques-de-moto'))) {
+                        return new WP_Error(
+                            'missing_moto_brand',
+                            __('El campo marques-de-moto es obligatorio para vehículos tipo moto', 'custom-api-vehicles'),
+                            array('status' => 400)
+                        );
+                    }
+                    
+                    // Validar otros campos específicos de motos
+                    $moto_required_fields = [
+                        'cilindrada' => 'La cilindrada es obligatoria para motos',
+                        'tipus-moto' => 'El tipo de moto es obligatorio'
+                    ];
+                    
+                    foreach ($moto_required_fields as $field => $error_message) {
+                        if (empty($request->get_param($field))) {
+                            return new WP_Error(
+                                'missing_' . str_replace('-', '_', $field),
+                                __($error_message, 'custom-api-vehicles'),
+                                array('status' => 400)
+                            );
+                        }
+                    }
+                    break;
+                    
+                case 'autocaravana':
+                    // Solo validar en POST o si se está actualizando este campo específicamente
+                    if (!$is_update || isset($params['marques-autocaravana'])) {
+                        if (empty($request->get_param('marques-autocaravana'))) {
+                            return new WP_Error(
+                                'missing_caravan_brand',
+                                __('El campo marques-autocaravana es obligatorio para vehículos tipo autocaravana', 'custom-api-vehicles'),
+                                array('status' => 400)
+                            );
+                        }
+                    }
+                    break;
+                    
+                case 'vehicle-comercial':
+                    // Solo validar en POST o si se está actualizando este campo específicamente
+                    if (!$is_update || isset($params['marques-comercial'])) {
+                        if (empty($request->get_param('marques-comercial'))) {
+                            return new WP_Error(
+                                'missing_commercial_brand',
+                                __('El campo marques-comercial es obligatorio para vehículos comerciales', 'custom-api-vehicles'),
+                                array('status' => 400)
+                            );
+                        }
+                    }
+                    break;
+            }
         }
         
         return true;
@@ -679,8 +819,21 @@ class Vehicle_Controller {
                 continue;
             }
             
+            // Manejo especial para extres-cotxe
+            if ($key === 'extres-cotxe') {
+                if (is_array($value)) {
+                    // Guardar como array simple (formato requerido por JSM)
+                    update_post_meta($post_id, $key, $value);
+                    error_log("Guardado $key como array simple en create_vehicle: " . print_r($value, true));
+                } else {
+                    // Si no es un array, convertirlo en array
+                    $array_value = [$value];
+                    update_post_meta($post_id, $key, $array_value);
+                    error_log("Guardado $key como array simple (valor único) en create_vehicle: " . print_r($array_value, true));
+                }
+            }
             // Guardar el campo como metadato
-            if (is_array($value)) {
+            else if (is_array($value)) {
                 // Para campos de tipo array (como extres-autocaravana)
                 delete_post_meta($post_id, $key); // Eliminar valores anteriores
                 foreach ($value as $single_value) {
@@ -755,8 +908,21 @@ class Vehicle_Controller {
                 continue;
             }
             
+            // Manejo especial para extres-cotxe
+            if ($key === 'extres-cotxe') {
+                if (is_array($value)) {
+                    // Guardar como array simple (formato requerido por JSM)
+                    update_post_meta($id, $key, $value);
+                    error_log("Actualizado $key como array simple en update_vehicle: " . print_r($value, true));
+                } else {
+                    // Si no es un array, convertirlo en array
+                    $array_value = [$value];
+                    update_post_meta($id, $key, $array_value);
+                    error_log("Actualizado $key como array simple (valor único) en update_vehicle: " . print_r($array_value, true));
+                }
+            }
             // Guardar el campo como metadato
-            if (is_array($value)) {
+            else if (is_array($value)) {
                 // Para campos de tipo array (como extres-autocaravana)
                 delete_post_meta($id, $key); // Eliminar valores anteriores
                 foreach ($value as $single_value) {
