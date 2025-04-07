@@ -388,6 +388,39 @@ class Vehicle_Controller {
                 }
             }
             
+            // Procesamiento específico para carroseria-vehicle-comercial
+            if ($field_name === 'carroseria-vehicle-comercial') {
+                $api_field_name = 'carroseria-vehicle-comercial';
+                
+                // Verificar si es un campo de glosario
+                if (function_exists('is_glossary_field') && is_glossary_field($api_field_name)) {
+                    // Obtener el ID del glosario
+                    $glossary_id = Vehicle_Glossary_Mappings::get_glossary_id($api_field_name);
+                    
+                    // Obtener las opciones del glosario
+                    $options = $this->get_glossary_options($api_field_name);
+                    
+                    // Obtener el valor
+                    $value = get_post_meta($post->ID, $api_field_name, true);
+                    error_log("Valor recuperado para carroseria-vehicle-comercial: " . print_r($value, true));
+                    
+                    // Buscar etiqueta en las opciones del glosario
+                    if (!empty($value) && isset($options[$value])) {
+                        $data[$api_field_name] = $options[$value];
+                        error_log("Label encontrado para carroseria-vehicle-comercial: " . $options[$value]);
+                    } else {
+                        $data[$api_field_name] = $value; // Si no hay etiqueta, usar el valor original
+                        error_log("No se encontró label para carroseria-vehicle-comercial: " . $value);
+                    }
+                    
+                    continue; // Importante: salir del bucle para este campo
+                } else {
+                    // Obtener el valor directamente
+                    $data[$api_field_name] = get_post_meta($post->ID, $api_field_name, true);
+                    continue;
+                }
+            }
+            
             // Para el resto de campos, simplemente añadirlos al array de datos
             $data[$field_name] = maybe_unserialize($field_values[0]);
         }
@@ -506,9 +539,9 @@ class Vehicle_Controller {
             if ($glossary_data && !empty($glossary_data['fields'])) {
                 $options = [];
                 
-                foreach ($glossary_data['fields'] as $item) {
-                    if (isset($item['value']) && isset($item['label'])) {
-                        $options[$item['value']] = $item['label'];
+                foreach ($glossary_data['fields'] as $glossary_field) {
+                    if (isset($glossary_field['value']) && isset($glossary_field['label'])) {
+                        $options[$glossary_field['value']] = $glossary_field['label'];
                     }
                 }
                 
@@ -691,6 +724,34 @@ class Vehicle_Controller {
                             );
                         }
                     }
+                    
+                    // Validar carroseria-vehicle-comercial
+                    if (!$is_update || isset($params['carroseria-vehicle-comercial'])) {
+                        if (empty($request->get_param('carroseria-vehicle-comercial'))) {
+                            return new WP_Error(
+                                'missing_commercial_body',
+                                __('El campo carroseria-vehicle-comercial es obligatorio para vehículos comerciales', 'custom-api-vehicles'),
+                                array('status' => 400)
+                            );
+                        }
+                        
+                        // Validar que el valor exista en el glosario
+                        $carroseria_value = $request->get_param('carroseria-vehicle-comercial');
+                        if (function_exists('validate_glossary_values')) {
+                            $validation = validate_glossary_values('carroseria-vehicle-comercial', [$carroseria_value]);
+                            
+                            if (!$validation['valid']) {
+                                $glossary_id = Vehicle_Glossary_Mappings::get_glossary_id('carroseria-vehicle-comercial');
+                                $valid_values = get_valid_glossary_values($glossary_id);
+                                
+                                return new WP_Error(
+                                    'invalid_commercial_body',
+                                    __('El valor proporcionado para carroseria-vehicle-comercial no es válido. Valores válidos: ' . implode(', ', $valid_values), 'custom-api-vehicles'),
+                                    array('status' => 400)
+                                );
+                            }
+                        }
+                    }
                     break;
             }
         }
@@ -798,6 +859,98 @@ class Vehicle_Controller {
         // Implementar la creación del vehículo
         $params = $request->get_params();
         
+        // Validar campos de glosario
+        if (function_exists('validate_glossary_values')) {
+            $invalid_fields = [];
+            
+            // Validar campos de glosario específicos según el tipo de vehículo
+            $vehicle_type = isset($params['tipus-vehicle']) ? $params['tipus-vehicle'] : '';
+            
+            // Campos de glosario comunes a todos los tipos de vehículo
+            $common_glossary_fields = [
+                'traccio', 'segment', 'color-vehicle', 'emissions-vehicle'
+            ];
+            
+            // Campos de glosario específicos por tipo de vehículo
+            $vehicle_specific_fields = [];
+            
+            switch ($vehicle_type) {
+                case 'cotxe':
+                    $vehicle_specific_fields = ['extres-cotxe', 'tipus-tapisseria', 'color-tapisseria'];
+                    break;
+                case 'moto':
+                    $vehicle_specific_fields = ['extres-moto', 'tipus-de-moto'];
+                    break;
+                case 'autocaravana':
+                    $vehicle_specific_fields = ['extres-autocaravana', 'carrosseria-caravana', 'extres-habitacle'];
+                    break;
+                case 'vehicle-comercial':
+                    $vehicle_specific_fields = ['carroseria-vehicle-comercial'];
+                    
+                    // Validación específica para carroseria-vehicle-comercial
+                    if (isset($params['carroseria-vehicle-comercial'])) {
+                        $carroseria_value = $params['carroseria-vehicle-comercial'];
+                        error_log("Validando carroseria-vehicle-comercial: " . $carroseria_value);
+                        
+                        // Validar que el valor sea válido para el glosario
+                        if (function_exists('validate_specific_glossary_field')) {
+                            $validation_result = validate_specific_glossary_field('carroseria-vehicle-comercial', $carroseria_value);
+                            
+                            if (is_wp_error($validation_result)) {
+                                error_log("Error de validación para carroseria-vehicle-comercial: " . $validation_result->get_error_message());
+                                return $validation_result;
+                            }
+                        }
+                    }
+                    break;
+            }
+            
+            // Combinar campos comunes y específicos
+            $glossary_fields = array_merge($common_glossary_fields, $vehicle_specific_fields);
+            
+            // Validar cada campo de glosario
+            foreach ($glossary_fields as $field) {
+                if (isset($params[$field])) {
+                    $field_value = $params[$field];
+                    
+                    // Si es un array, validar cada valor
+                    if (is_array($field_value)) {
+                        $validation = validate_glossary_values($field, $field_value);
+                    } else {
+                        $validation = validate_glossary_values($field, [$field_value]);
+                    }
+                    
+                    if (!$validation['valid']) {
+                        $glossary_id = Vehicle_Glossary_Mappings::get_glossary_id($field);
+                        $valid_values = get_valid_glossary_values($glossary_id);
+                        
+                        $invalid_fields[$field] = [
+                            'invalid_values' => $validation['invalid_values'],
+                            'valid_values' => $valid_values
+                        ];
+                    }
+                }
+            }
+            
+            // Si hay campos inválidos, devolver error
+            if (!empty($invalid_fields)) {
+                error_log("Campos inválidos en $vehicle_type: " . print_r($invalid_fields, true));
+                
+                $error_messages = [];
+                foreach ($invalid_fields as $field => $data) {
+                    $invalid_values = implode(', ', $data['invalid_values']);
+                    $valid_values = implode(', ', $data['valid_values']);
+                    $error_messages[] = "Campo $field: valores inválidos ($invalid_values). Valores válidos: $valid_values";
+                }
+                
+                return new WP_Error(
+                    'invalid_glossary_values',
+                    __('Valores de glosario inválidos: ' . implode('; ', $error_messages), 'custom-api-vehicles'),
+                    array('status' => 400)
+                );
+            }
+        }
+        
         $post_data = [
             'post_title' => sanitize_text_field($params['title']),
             'post_content' => isset($params['content']) ? wp_kses_post($params['content']) : '',
@@ -864,28 +1017,120 @@ class Vehicle_Controller {
      * @return WP_REST_Response|WP_Error
      */
     public function update_vehicle($request) {
+        $post_id = (int) $request['id'];
+        $post = get_post($post_id);
+        
+        if (!$post || $post->post_type !== 'singlecar') {
+            return new WP_Error(
+                'rest_post_invalid_id',
+                __('Vehículo no válido.', 'custom-api-vehicles'),
+                array('status' => 404)
+            );
+        }
+        
         // Validar campos obligatorios
         $validation = $this->validate_vehicle_fields($request);
         if (is_wp_error($validation)) {
             return $validation;
         }
         
-        $id = (int) $request['id'];
         $params = $request->get_params();
         
-        // Verificar que el post existe
-        $post = get_post($id);
-        if (!$post || $post->post_type !== 'singlecar') {
-            return new WP_Error(
-                'rest_post_not_found',
-                __('Vehículo no encontrado', 'custom-api-vehicles'),
-                ['status' => 404]
-            );
+        // Validar campos de glosario
+        if (function_exists('validate_glossary_values')) {
+            $invalid_fields = [];
+            
+            // Obtener el tipo de vehículo del post existente si no se proporciona
+            $vehicle_type = isset($params['tipus-vehicle']) ? $params['tipus-vehicle'] : get_post_meta($post_id, 'tipus-vehicle', true);
+            
+            // Campos de glosario comunes a todos los tipos de vehículo
+            $common_glossary_fields = [
+                'traccio', 'segment', 'color-vehicle', 'emissions-vehicle'
+            ];
+            
+            // Campos de glosario específicos por tipo de vehículo
+            $vehicle_specific_fields = [];
+            
+            switch ($vehicle_type) {
+                case 'cotxe':
+                    $vehicle_specific_fields = ['extres-cotxe', 'tipus-tapisseria', 'color-tapisseria'];
+                    break;
+                case 'moto':
+                    $vehicle_specific_fields = ['extres-moto', 'tipus-de-moto'];
+                    break;
+                case 'autocaravana':
+                    $vehicle_specific_fields = ['extres-autocaravana', 'carrosseria-caravana', 'extres-habitacle'];
+                    break;
+                case 'vehicle-comercial':
+                    $vehicle_specific_fields = ['carroseria-vehicle-comercial'];
+                    
+                    // Validación específica para carroseria-vehicle-comercial
+                    if (isset($params['carroseria-vehicle-comercial'])) {
+                        $carroseria_value = $params['carroseria-vehicle-comercial'];
+                        error_log("Validando carroseria-vehicle-comercial en update: " . $carroseria_value);
+                        
+                        // Validar que el valor sea válido para el glosario
+                        if (function_exists('validate_specific_glossary_field')) {
+                            $validation_result = validate_specific_glossary_field('carroseria-vehicle-comercial', $carroseria_value);
+                            
+                            if (is_wp_error($validation_result)) {
+                                error_log("Error de validación para carroseria-vehicle-comercial en update: " . $validation_result->get_error_message());
+                                return $validation_result;
+                            }
+                        }
+                    }
+                    break;
+            }
+            
+            // Combinar campos comunes y específicos
+            $glossary_fields = array_merge($common_glossary_fields, $vehicle_specific_fields);
+            
+            // Validar cada campo de glosario que se está actualizando
+            foreach ($glossary_fields as $field) {
+                if (isset($params[$field])) {
+                    $field_value = $params[$field];
+                    
+                    // Si es un array, validar cada valor
+                    if (is_array($field_value)) {
+                        $validation = validate_glossary_values($field, $field_value);
+                    } else {
+                        $validation = validate_glossary_values($field, [$field_value]);
+                    }
+                    
+                    if (!$validation['valid']) {
+                        $glossary_id = Vehicle_Glossary_Mappings::get_glossary_id($field);
+                        $valid_values = get_valid_glossary_values($glossary_id);
+                        
+                        $invalid_fields[$field] = [
+                            'invalid_values' => $validation['invalid_values'],
+                            'valid_values' => $valid_values
+                        ];
+                    }
+                }
+            }
+            
+            // Si hay campos inválidos, devolver error
+            if (!empty($invalid_fields)) {
+                error_log("Campos inválidos en $vehicle_type: " . print_r($invalid_fields, true));
+                
+                $error_messages = [];
+                foreach ($invalid_fields as $field => $data) {
+                    $invalid_values = implode(', ', $data['invalid_values']);
+                    $valid_values = implode(', ', $data['valid_values']);
+                    $error_messages[] = "Campo $field: valores inválidos ($invalid_values). Valores válidos: $valid_values";
+                }
+                
+                return new WP_Error(
+                    'invalid_glossary_values',
+                    __('Valores de glosario inválidos: ' . implode('; ', $error_messages), 'custom-api-vehicles'),
+                    array('status' => 400)
+                );
+            }
         }
         
-        // Datos para actualizar
+        // Actualizar el título y contenido si se proporcionan
         $post_data = [
-            'ID' => $id,
+            'ID' => $post_id
         ];
         
         if (isset($params['title'])) {
@@ -912,35 +1157,35 @@ class Vehicle_Controller {
             if ($key === 'extres-cotxe') {
                 if (is_array($value)) {
                     // Guardar como array simple (formato requerido por JSM)
-                    update_post_meta($id, $key, $value);
+                    update_post_meta($post_id, $key, $value);
                     error_log("Actualizado $key como array simple en update_vehicle: " . print_r($value, true));
                 } else {
                     // Si no es un array, convertirlo en array
                     $array_value = [$value];
-                    update_post_meta($id, $key, $array_value);
+                    update_post_meta($post_id, $key, $array_value);
                     error_log("Actualizado $key como array simple (valor único) en update_vehicle: " . print_r($array_value, true));
                 }
             }
             // Guardar el campo como metadato
             else if (is_array($value)) {
                 // Para campos de tipo array (como extres-autocaravana)
-                delete_post_meta($id, $key); // Eliminar valores anteriores
+                delete_post_meta($post_id, $key); // Eliminar valores anteriores
                 foreach ($value as $single_value) {
-                    add_post_meta($id, $key, $single_value);
+                    add_post_meta($post_id, $key, $single_value);
                 }
             } else {
                 // Para campos de tipo escalar
-                update_post_meta($id, $key, $value);
+                update_post_meta($post_id, $key, $value);
             }
         }
         
         // Procesar imágenes (imagen destacada y galería)
         if (function_exists('process_vehicle_images')) {
-            process_vehicle_images($id, $params);
+            process_vehicle_images($post_id, $params);
         }
         
         // Devolver el vehículo actualizado
-        $vehicle = get_post($id);
+        $vehicle = get_post($post_id);
         $data = $this->prepare_item_for_response($vehicle, $request);
         
         return rest_ensure_response($data);

@@ -334,7 +334,8 @@ function validate_glossary_fields($params) {
         'connectors',
         'extres-cotxe',
         'extres-moto',  // Añadido para motos
-        'tipus-de-moto' // Añadido para motos
+        'tipus-de-moto', // Añadido para motos
+        'carroseria-vehicle-comercial' // Añadido para vehículos comerciales
     ];
 
     foreach ($glossary_fields as $field) {
@@ -632,7 +633,8 @@ function has_glossary_fields($params) {
         'connectors',
         'extres-cotxe',
         'extres-moto',  // Añadido para motos
-        'tipus-de-moto' // Añadido para motos
+        'tipus-de-moto', // Añadido para motos
+        'carroseria-vehicle-comercial' // Añadido para vehículos comerciales
     ];
     return !empty(array_intersect(array_keys($params), $glossary_fields));
 }
@@ -693,19 +695,227 @@ function validate_required_fields_by_vehicle_type($data) {
 function get_valid_glossary_values($glossary_id) {
     $valid_values = [];
     
+    error_log("Obteniendo valores válidos para glosario ID: $glossary_id");
+    
+    // Mapeo directo para valores específicos de glosarios
+    $direct_mappings = [
+        43 => [ // carrosseria-caravana
+            'c-perfilada', 'c-capuchina', 'c-integral', 'c-camper'
+        ],
+        44 => [ // carroseria-vehicle-comercial
+            'c-furgon-industrial', 'c-furgo-industrial'  // Ambos valores son válidos
+        ]
+    ];
+    
+    // Si hay un mapeo directo para este glosario, usarlo
+    if (isset($direct_mappings[$glossary_id])) {
+        error_log("Usando mapeo directo para glosario ID: $glossary_id");
+        return $direct_mappings[$glossary_id];
+    }
+    
+    // Obtener los valores del glosario de JetEngine
     if (function_exists('jet_engine') && isset(jet_engine()->glossaries)) {
         $glossary = jet_engine()->glossaries->data->get_item_for_edit($glossary_id);
         
         if ($glossary && !empty($glossary['fields'])) {
+            error_log("Glosario encontrado: " . $glossary['name'] . " con " . count($glossary['fields']) . " campos");
+            
             foreach ($glossary['fields'] as $field) {
                 if (isset($field['value'])) {
-                    $valid_values[] = sanitize_title($field['value']);
+                    $value = sanitize_title($field['value']);
+                    $valid_values[] = $value;
+                    error_log("Valor válido encontrado: " . $field['value'] . " (slug: $value)");
                 }
             }
+        } else {
+            error_log("Glosario no encontrado o sin campos: $glossary_id");
         }
+    } else {
+        error_log("JetEngine Glossaries no está disponible");
     }
     
     return $valid_values;
+}
+
+/**
+ * Función de depuración para listar todos los glosarios disponibles
+ */
+function debug_list_all_glossaries() {
+    if (function_exists('jet_engine') && isset(jet_engine()->glossaries)) {
+        $glossaries = jet_engine()->glossaries->data->get_items();
+        error_log("=== LISTADO DE TODOS LOS GLOSARIOS ===");
+        
+        foreach ($glossaries as $id => $glossary) {
+            $name = isset($glossary['name']) ? $glossary['name'] : 'Sin nombre';
+            $slug = isset($glossary['slug']) ? $glossary['slug'] : 'Sin slug';
+            error_log("ID: $id | Nombre: $name | Slug: $slug");
+            
+            if (!empty($glossary['fields'])) {
+                error_log("  Campos:");
+                foreach ($glossary['fields'] as $field) {
+                    $label = isset($field['label']) ? $field['label'] : 'Sin etiqueta';
+                    $value = isset($field['value']) ? $field['value'] : 'Sin valor';
+                    error_log("    - Label: $label | Value: $value");
+                }
+            }
+        }
+        
+        error_log("=== FIN DEL LISTADO ===");
+    } else {
+        error_log("JetEngine Glossaries no está disponible");
+    }
+}
+
+/**
+ * Obtiene el ID del glosario mapeado para un campo específico
+ * 
+ * @param string $field_name Nombre del campo
+ * @return string|null ID del glosario o null si no hay mapeo
+ */
+function get_glossary_id_for_field($field_name) {
+    // Usar la clase Vehicle_Glossary_Mappings para obtener el ID del glosario
+    if (class_exists('Vehicle_Glossary_Mappings')) {
+        $glossary_id = Vehicle_Glossary_Mappings::get_glossary_id($field_name);
+        
+        // Registrar para depuración
+        error_log("Buscando mapeo para el campo: $field_name");
+        
+        if ($glossary_id) {
+            error_log("Mapeo encontrado para $field_name: " . $glossary_id);
+            return $glossary_id;
+        }
+    }
+    
+    // Mapeos directos para campos específicos (fallback)
+    $direct_mappings = [
+        'extres-cotxe' => 54,
+        'extres-autocaravana' => 56,
+        'carrosseria-caravana' => 43,
+        'extres-habitacle' => 57,
+        'tipus-tapisseria' => 52,
+        'color-tapisseria' => 53,
+        'extres-moto' => 55,
+        'cables-recarrega' => 58,
+        'connectors' => 59,
+        'traccio' => 60,
+        'emissions-vehicle' => 61,
+        'segment' => 63,
+        'tipus-de-moto' => 64,
+        'color-vehicle' => 51,
+        'carroseria-vehicle-comercial' => 44
+    ];
+    
+    if (isset($direct_mappings[$field_name])) {
+        error_log("Usando mapeo directo para $field_name: " . $direct_mappings[$field_name]);
+        return $direct_mappings[$field_name];
+    }
+    
+    error_log("No se encontró mapeo para el campo: $field_name");
+    return null;
+}
+
+/**
+ * Valida que los valores de un campo de glosario existan en el glosario correspondiente
+ * 
+ * @param string $field_name Nombre del campo
+ * @param array|string $values Valores a validar
+ * @return array Array con 'valid' (boolean) y 'invalid_values' (array)
+ */
+function validate_glossary_values($field_name, $values) {
+    $result = [
+        'valid' => true,
+        'invalid_values' => []
+    ];
+    
+    // Si no hay valores, es válido
+    if (empty($values)) {
+        return $result;
+    }
+    
+    // Convertir a array si es un string
+    if (!is_array($values)) {
+        $values = [$values];
+    }
+    
+    // Obtener el ID del glosario para este campo
+    $glossary_id = get_glossary_id_for_field($field_name);
+    
+    if (!$glossary_id) {
+        error_log("No se encontró mapeo de glosario para el campo: $field_name");
+        return $result; // Si no hay mapeo, consideramos válido
+    }
+    
+    // Obtener los valores válidos para este glosario
+    $valid_values = get_valid_glossary_values($glossary_id);
+    
+    if (empty($valid_values)) {
+        error_log("No se encontraron valores válidos para el glosario: $glossary_id");
+        return $result; // Si no hay valores válidos, consideramos válido
+    }
+    
+    error_log("Campo: $field_name, Glosario ID: $glossary_id, Valores válidos: " . implode(', ', $valid_values));
+    error_log("Valores a validar: " . implode(', ', $values));
+    
+    // Validar cada valor
+    foreach ($values as $value) {
+        if (empty($value)) {
+            continue; // Ignorar valores vacíos
+        }
+        
+        $value_slug = sanitize_title($value);
+        error_log("Validando valor: $value (slug: $value_slug)");
+        
+        // Verificar si el valor existe en los valores válidos
+        if (!in_array($value_slug, $valid_values) && !in_array($value, $valid_values)) {
+            $result['valid'] = false;
+            $result['invalid_values'][] = $value;
+            error_log("Valor inválido: $value (slug: $value_slug)");
+        } else {
+            error_log("Valor válido: $value (slug: $value_slug)");
+        }
+    }
+    
+    // Si hay valores inválidos, registrar en el log
+    if (!$result['valid']) {
+        error_log("Valores inválidos para el campo $field_name: " . implode(', ', $result['invalid_values']));
+        error_log("Valores válidos para el campo $field_name: " . implode(', ', $valid_values));
+    }
+    
+    return $result;
+}
+
+/**
+ * Valida un campo específico contra su glosario
+ * 
+ * @param string $field_name Nombre del campo
+ * @param mixed $value Valor a validar
+ * @return bool|WP_Error True si es válido, WP_Error si no
+ */
+function validate_specific_glossary_field($field_name, $value) {
+    if (empty($value)) {
+        return true; // Valores vacíos son válidos (a menos que sea un campo obligatorio)
+    }
+    
+    // Validar contra el glosario
+    $validation = validate_glossary_values($field_name, $value);
+    
+    if (!$validation['valid']) {
+        $glossary_id = get_glossary_id_for_field($field_name);
+        $valid_values = get_valid_glossary_values($glossary_id);
+        
+        return new WP_Error(
+            'invalid_glossary_value',
+            sprintf(
+                __('El valor "%s" no es válido para el campo "%s". Valores válidos: %s', 'custom-api-vehicles'),
+                is_array($value) ? implode(', ', $value) : $value,
+                $field_name,
+                implode(', ', $valid_values)
+            ),
+            array('status' => 400)
+        );
+    }
+    
+    return true;
 }
 
 /**
@@ -769,137 +979,4 @@ function get_glossary_label_from_value($glossary_id, $value) {
     // Si no se encuentra el label, devolver el value original
     error_log("Devolviendo value original: '$value'");
     return $value;
-}
-
-/**
- * Obtiene el ID del glosario mapeado para un campo específico
- * 
- * @param string $field_name Nombre del campo
- * @return string|null ID del glosario o null si no hay mapeo
- */
-function get_glossary_id_for_field($field_name) {
-    // Usar la clase Vehicle_Glossary_Mappings para obtener el ID del glosario
-    if (class_exists('Vehicle_Glossary_Mappings')) {
-        $glossary_id = Vehicle_Glossary_Mappings::get_glossary_id($field_name);
-        
-        // Registrar para depuración
-        error_log("Buscando mapeo para el campo: $field_name");
-        
-        if ($glossary_id) {
-            error_log("Mapeo encontrado para $field_name: " . $glossary_id);
-            return $glossary_id;
-        }
-    }
-    
-    // Mapeos directos para campos específicos (fallback)
-    $direct_mappings = [
-        'extres-cotxe' => 54,
-        'extres-autocaravana' => 56,
-        'carrosseria-caravana' => 43,
-        'extres-habitacle' => 57,
-        'tipus-tapisseria' => 52,
-        'color-tapisseria' => 53,
-        'extres-moto' => 55,
-        'cables-recarrega' => 58,
-        'connectors' => 59,
-        'traccio' => 60,
-        'emissions-vehicle' => 61,
-        'segment' => 63,
-        'tipus-de-moto' => 64,
-        'color-vehicle' => 51
-    ];
-    
-    if (isset($direct_mappings[$field_name])) {
-        error_log("Usando mapeo directo para $field_name: " . $direct_mappings[$field_name]);
-        return $direct_mappings[$field_name];
-    }
-    
-    error_log("No se encontró mapeo para el campo: $field_name");
-    return null;
-}
-
-/**
- * Valida que los valores de un campo de glosario existan en el glosario correspondiente
- * 
- * @param string $field_name Nombre del campo
- * @param array|string $values Valores a validar
- * @return array Array con 'valid' (boolean) y 'invalid_values' (array)
- */
-function validate_glossary_values($field_name, $values) {
-    $result = [
-        'valid' => true,
-        'invalid_values' => []
-    ];
-    
-    // Si no hay valores, es válido
-    if (empty($values)) {
-        return $result;
-    }
-    
-    // Convertir a array si es un string
-    if (!is_array($values)) {
-        $values = [$values];
-    }
-    
-    // Obtener el ID del glosario para este campo
-    $glossary_id = get_glossary_id_for_field($field_name);
-    
-    if (!$glossary_id) {
-        error_log("No se encontró mapeo de glosario para el campo: $field_name");
-        return $result; // Si no hay mapeo, consideramos válido
-    }
-    
-    // Obtener los valores válidos para este glosario
-    $valid_values = get_valid_glossary_values($glossary_id);
-    
-    if (empty($valid_values)) {
-        error_log("No se encontraron valores válidos para el glosario: $glossary_id");
-        return $result; // Si no hay valores válidos, consideramos válido
-    }
-    
-    // Validar cada valor
-    foreach ($values as $value) {
-        $value_slug = sanitize_title($value);
-        if (!in_array($value_slug, $valid_values)) {
-            $result['valid'] = false;
-            $result['invalid_values'][] = $value;
-        }
-    }
-    
-    // Si hay valores inválidos, registrar en el log
-    if (!$result['valid']) {
-        error_log("Valores inválidos para el campo $field_name: " . implode(', ', $result['invalid_values']));
-        error_log("Valores válidos para el campo $field_name: " . implode(', ', $valid_values));
-    }
-    
-    return $result;
-}
-
-/**
- * Función de depuración para listar todos los glosarios disponibles
- */
-function debug_list_all_glossaries() {
-    if (function_exists('jet_engine') && isset(jet_engine()->glossaries)) {
-        $glossaries = jet_engine()->glossaries->data->get_items();
-        error_log("=== LISTADO DE TODOS LOS GLOSARIOS ===");
-        
-        foreach ($glossaries as $id => $glossary) {
-            $name = isset($glossary['name']) ? $glossary['name'] : 'Sin nombre';
-            $slug = isset($glossary['slug']) ? $glossary['slug'] : 'Sin slug';
-            error_log("ID: $id | Nombre: $name | Slug: $slug");
-            
-            if (!empty($glossary['fields'])) {
-                error_log("  Campos:");
-                foreach ($glossary['fields'] as $field) {
-                    $label = isset($field['label']) ? $field['label'] : 'Sin etiqueta';
-                    $value = isset($field['value']) ? $field['value'] : 'Sin valor';
-                    error_log("    - Label: $label | Value: $value");
-                }
-            }
-        }
-        
-        error_log("=== FIN DEL LISTADO ===");
-    } else {
-        error_log("JetEngine Glossaries no está disponible");
-    }
 }

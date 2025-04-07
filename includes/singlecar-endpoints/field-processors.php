@@ -650,67 +650,54 @@ function process_vehicle_comercial_fields($post_id, $params) {
                 $values = !empty($values) ? $values[0] : '';
                 error_log("Campo $input_field es de tipo single, usando solo el primer valor: $values");
             }
-            // Si es un campo de tipo array y no viene como array, convertirlo en array
-            else if ($field_type === 'array' && !is_array($values)) {
-                $values = [$values];
-            }
             
-            // Validar que los valores existan en el glosario correspondiente
-            if (function_exists('validate_glossary_values')) {
+            // Validar campos de glosario
+            if (function_exists('validate_glossary_values') && is_glossary_field($input_field)) {
+                error_log("Validando campo de glosario: $input_field con valor: " . (is_array($values) ? implode(', ', $values) : $values));
+                
+                // Para validación, siempre convertir a array
                 $validation_values = is_array($values) ? $values : [$values];
                 $validation = validate_glossary_values($input_field, $validation_values);
                 
                 if (!$validation['valid']) {
-                    // Recopilar información de valores inválidos
+                    $glossary_id = get_glossary_id_for_field($input_field);
+                    $valid_values = get_valid_glossary_values($glossary_id);
+                    
                     $invalid_fields[$input_field] = [
-                        'invalid_values' => $validation['invalid_values']
+                        'invalid_values' => $validation['invalid_values'],
+                        'valid_values' => $valid_values
                     ];
                     
-                    // Obtener valores válidos para mostrarlos en el mensaje de error
-                    $glossary_id = get_glossary_id_for_field($input_field);
-                    if ($glossary_id) {
-                        $valid_values = get_valid_glossary_values($glossary_id);
-                        $invalid_fields[$input_field]['valid_values'] = $valid_values;
-                    }
+                    error_log("Campo inválido $input_field: " . print_r($validation['invalid_values'], true));
+                    error_log("Valores válidos para $input_field: " . implode(', ', $valid_values));
                     
-                    // Continuar con el siguiente campo, no guardar valores inválidos
+                    // No guardar valores inválidos
                     continue;
                 }
             }
             
-            error_log("Procesando campo de glosario $input_field -> $meta_field con valores: " . print_r($values, true));
-            
-            // Manejo específico para campos de tipo array
+            // Guardar el campo según su tipo
             if ($field_type === 'array') {
-                if ($input_field === 'extres-cotxe') {
+                // Para campos de tipo array (como extres-cotxe)
+                if (is_array($values)) {
                     // Guardar como array simple (formato requerido por JSM)
                     update_post_meta($post_id, $meta_field, $values);
                     error_log("Guardado $meta_field como array simple: " . print_r($values, true));
-                    
-                    // Verificación adicional
-                    $saved_value = get_post_meta($post_id, $meta_field, true);
-                    error_log("Valor guardado de $meta_field: " . print_r($saved_value, true));
                 } else {
-                    // Para otros campos de tipo array, usar el comportamiento normal
-                    update_post_meta($post_id, $meta_field, $values);
+                    // Si no es un array, convertirlo en array
+                    $array_value = [$values];
+                    update_post_meta($post_id, $meta_field, $array_value);
+                    error_log("Guardado $meta_field como array simple (valor único): " . print_r($array_value, true));
                 }
             } else {
-                // Para campos de tipo single, actualizamos normalmente
+                // Para campos de tipo escalar (como carroseria-vehicle-comercial)
                 update_post_meta($post_id, $meta_field, $values);
-            }
-            
-            error_log("Campo $meta_field guardado correctamente con valor: " . print_r($values, true));
-            
-            // Verificación adicional para extres-cotxe
-            if ($input_field === 'extres-cotxe') {
-                error_log("DEBUG SAVE - Verificación adicional para extres-cotxe");
-                $saved_values = get_post_meta($post_id, $meta_field, false); // Obtener todos los valores
-                error_log("DEBUG SAVE - Valores guardados de extres-cotxe: " . print_r($saved_values, true));
+                error_log("Guardado $meta_field como valor simple: $values");
             }
         }
     }
     
-    // Si hay campos inválidos, registrarlos para depuración
+    // Si hay campos inválidos, registrar en el log
     if (!empty($invalid_fields)) {
         error_log("Campos inválidos en vehículo comercial: " . print_r($invalid_fields, true));
     }

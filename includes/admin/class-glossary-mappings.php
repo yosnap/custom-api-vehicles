@@ -23,20 +23,24 @@ class Vehicle_Glossary_Mappings {
      */
     public static function get_glossary_mappings() {
         return [
+            'segment' => 41,
+            'tipus-de-moto' => 42,
+            'carrosseria-caravana' => 43,
+            'carroseria-vehicle-comercial' => 44,
+            'connectors' => 49,
+            'cables-recarrega' => 50,
+            'color-vehicle' => 51,
             'tipus-tapisseria' => 52,
             'color-tapisseria' => 53,
             'extres-cotxe' => 54,
             'extres-moto' => 55,
             'extres-autocaravana' => 56,
             'extres-habitacle' => 57,
-            'cables-recarrega' => 58,
-            'connectors' => 59,
-            'traccio' => 60,
-            'emissions-vehicle' => 61,
-            'segment' => 63,
-            'tipus-de-moto' => 64, // Añadir mapeo para tipus-de-moto
-            'color-vehicle' => 51,
-            'carrosseria-caravana' => 43 // Añadir mapeo para carrosseria-caravana
+            'emissions-vehicle' => 58,
+            'traccio' => 59,
+            'roda-recanvi' => 60,
+            'tipus-canvi-moto' => 62,
+            'tipus-canvi-electric' => 63
         ];
     }
 }
