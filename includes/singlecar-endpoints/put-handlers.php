@@ -2,14 +2,18 @@
 
 function update_singlecar($request) {
     try {
+        error_log('PUT - Iniciando update_singlecar');
         global $wpdb;
         $wpdb->query('START TRANSACTION');
 
         $params = $request->get_params();
+        error_log('PUT - Parámetros recibidos: ' . print_r($params, true));
         $post_id = isset($params['id']) ? $params['id'] : 0;
 
         // Verificar existencia y propiedad del vehículo
         validate_vehicle_ownership($post_id);
+
+        error_log('PUT - Valor inicial de anunci-actiu: ' . get_post_meta($post_id, 'anunci-actiu', true));
 
         // Verificar si hay campos obligatorios vacíos en el vehículo existente
         $empty_required_fields = check_empty_required_fields($post_id);
@@ -25,26 +29,41 @@ function update_singlecar($request) {
         // Actualizar el post
         update_vehicle_base_data($post_id, $params);
 
+        error_log('PUT - Valor de anunci-actiu después de update_vehicle_base_data: ' . get_post_meta($post_id, 'anunci-actiu', true));
+
         // Procesar actualizaciones solo para los campos proporcionados
         if (!empty($params)) {
             if (has_taxonomy_updates($params)) {
                 validate_taxonomies($params);
                 update_vehicle_taxonomies($post_id, $params);
+                error_log('PUT - Valor de anunci-actiu después de update_vehicle_taxonomies: ' . get_post_meta($post_id, 'anunci-actiu', true));
             }
 
             if (has_image_updates($params)) {
                 process_vehicle_images($post_id, $params);
+                error_log('PUT - Valor de anunci-actiu después de process_vehicle_images: ' . get_post_meta($post_id, 'anunci-actiu', true));
             }
 
-            if (isset($params['anunci-actiu'])) {
+            // Procesar anunci-actiu y anunci-destacat si están presentes
+            if (isset($params['anunci-actiu']) || isset($params['anunci-destacat'])) {
                 update_vehicle_status($post_id, $params);
+                error_log('PUT - Valor de anunci-actiu después de update_vehicle_status: ' . get_post_meta($post_id, 'anunci-actiu', true));
             }
 
+            // Crear una copia de los parámetros sin anunci-actiu y anunci-destacat
+            $meta_params = array_diff_key($params, array_flip(['anunci-actiu', 'anunci-destacat', 'id']));
+            error_log('PUT - Parámetros para meta fields: ' . print_r($meta_params, true));
+            
             // Procesar campos meta solo si hay campos para actualizar
-            process_and_save_meta_fields($post_id, $params, true);
+            if (!empty($meta_params)) {
+                process_and_save_meta_fields($post_id, $meta_params, true);
+                error_log('PUT - Valor de anunci-actiu después de process_and_save_meta_fields: ' . get_post_meta($post_id, 'anunci-actiu', true));
+            }
         }
 
         $wpdb->query('COMMIT');
+
+        error_log('PUT - Valor final de anunci-actiu antes de prepare_update_response: ' . get_post_meta($post_id, 'anunci-actiu', true));
 
         // Preparar y enviar respuesta
         return prepare_update_response($post_id);
@@ -176,20 +195,37 @@ function has_image_updates($params) {
 }
 
 function update_vehicle_status($post_id, $params) {
+    error_log('PUT - Iniciando update_vehicle_status');
+    error_log('PUT - Parámetros en update_vehicle_status: ' . print_r($params, true));
+    
+    // Manejar el campo anunci-actiu
     if (isset($params['anunci-actiu'])) {
-        $anunci_actiu = strtolower(trim($params['anunci-actiu']));
-        $true_values = ['true', 'si', '1', 'yes', 'on'];
-        $false_values = ['false', 'no', '0', 'off'];
+        error_log('PUT - Actualizando anunci-actiu');
+        $anunci_actiu = $params['anunci-actiu'];
+        error_log('PUT - Valor recibido de anunci-actiu: ' . $anunci_actiu);
+        error_log('PUT - Tipo de dato de anunci-actiu: ' . gettype($anunci_actiu));
+        
+        // Asegurar que el valor sea exactamente "true" o "false" (sin normalizar)
+        error_log('PUT - Intentando guardar anunci-actiu con valor exacto: ' . $anunci_actiu);
+        delete_post_meta($post_id, 'anunci-actiu');
+        $result = add_post_meta($post_id, 'anunci-actiu', $anunci_actiu, true);
+        error_log('PUT - Resultado de guardar anunci-actiu: ' . ($result ? 'true' : 'false'));
+        error_log('PUT - Valor guardado en anunci-actiu: ' . get_post_meta($post_id, 'anunci-actiu', true));
+    }
 
-        if (in_array($anunci_actiu, $true_values, true)) {
-            $anunci_actiu = 'true';
-        } elseif (in_array($anunci_actiu, $false_values, true)) {
-            $anunci_actiu = 'false';
-        } else {
-            $anunci_actiu = 'false';
-        }
-
-        update_post_meta($post_id, 'anunci-actiu', $anunci_actiu);
+    // Manejar el campo anunci-destacat
+    if (isset($params['anunci-destacat'])) {
+        error_log('PUT - Actualizando anunci-destacat');
+        $anunci_destacat = $params['anunci-destacat'];
+        error_log('PUT - Valor recibido de anunci-destacat: ' . $anunci_destacat);
+        error_log('PUT - Tipo de dato de anunci-destacat: ' . gettype($anunci_destacat));
+        
+        // Asegurar que el valor sea exactamente "true" o "false" (sin normalizar)
+        error_log('PUT - Intentando guardar is-vip con valor exacto: ' . $anunci_destacat);
+        delete_post_meta($post_id, 'is-vip');
+        $result = add_post_meta($post_id, 'is-vip', $anunci_destacat, true);
+        error_log('PUT - Resultado de guardar is-vip: ' . ($result ? 'true' : 'false'));
+        error_log('PUT - Valor guardado en is-vip: ' . get_post_meta($post_id, 'is-vip', true));
     }
 }
 
@@ -209,7 +245,7 @@ function prepare_update_response($post_id) {
     foreach ($taxonomy_fields as $field => $taxonomy) {
         $terms = wp_get_object_terms($post_id, $taxonomy);
         if (!is_wp_error($terms) && !empty($terms)) {
-            $response[$field] = $terms[0]->slug;
+            $response[$field] = strtolower($terms[0]->slug);
         }
     }
 
@@ -218,14 +254,16 @@ function prepare_update_response($post_id) {
     if (!is_wp_error($terms)) {
         foreach ($terms as $term) {
             if ($term->parent === 0) {
-                $response['marca'] = $term->slug;
+                $response['marca'] = strtolower($term->slug);
             } else {
-                $response['modelo'] = $term->slug;
+                $response['modelo'] = strtolower($term->slug);
             }
         }
     }
 
+    // Obtener los valores exactos de los campos booleanos
     $response['anunci-actiu'] = get_post_meta($post_id, 'anunci-actiu', true);
+    $response['anunci-destacat'] = get_post_meta($post_id, 'is-vip', true);
 
     return new WP_REST_Response($response, 200);
 }
@@ -240,7 +278,7 @@ function check_empty_required_fields($post_id) {
     // Obtener el tipo de vehículo actual
     $tipus_vehicle = '';
     $terms = wp_get_object_terms($post_id, 'tipus-vehicle');
-    if (!empty($terms)) {
+    if (!is_wp_error($terms) && !empty($terms)) {
         $tipus_vehicle = $terms[0]->slug;
     }
 
@@ -251,24 +289,24 @@ function check_empty_required_fields($post_id) {
 
     // Verificar estado del vehículo
     $estat_terms = wp_get_object_terms($post_id, 'estat-vehicle');
-    if (empty($estat_terms)) {
+    if (is_wp_error($estat_terms) || empty($estat_terms)) {
         $empty_fields[] = 'estat-vehicle';
     }
 
     // Verificar marca y modelo según el tipo de vehículo
     if ($tipus_vehicle && $tipus_vehicle !== 'moto-quad-atv') {
         $marques_terms = wp_get_object_terms($post_id, 'marques-cotxe');
-        if (empty($marques_terms)) {
+        if (is_wp_error($marques_terms) || empty($marques_terms)) {
             $empty_fields[] = 'marques-cotxe';
         }
         
         $models_terms = wp_get_object_terms($post_id, 'models-cotxe');
-        if (empty($models_terms)) {
+        if (is_wp_error($models_terms) || empty($models_terms)) {
             $empty_fields[] = 'models-cotxe';
         }
     } elseif ($tipus_vehicle === 'moto-quad-atv') {
         $marques_moto_terms = wp_get_object_terms($post_id, 'marques-de-moto');
-        if (empty($marques_moto_terms)) {
+        if (is_wp_error($marques_moto_terms) || empty($marques_moto_terms)) {
             $empty_fields[] = 'marques-de-moto';
         }
     }

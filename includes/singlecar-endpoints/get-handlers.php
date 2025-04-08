@@ -421,8 +421,8 @@ function get_vehicle_details_common($vehicle_id) {
         'slug' => $post->post_name,
         'titol-anunci' => get_the_title($vehicle_id),
         'descripcio-anunci' => $post->post_content,
-        'anunci-actiu' => true,
-        'anunci-destacat' => get_post_meta($vehicle_id, 'is-vip', true) === 'true'
+        'anunci-actiu' => get_post_meta($vehicle_id, 'anunci-actiu', true),
+        'anunci-destacat' => get_post_meta($vehicle_id, 'is-vip', true)
     ];
 
     // Agregar tipus-vehicle primero

@@ -5,6 +5,7 @@ function create_singlecar($request) {
     $wpdb->query('START TRANSACTION');
 
     try {
+        error_log('POST - Iniciando creación de vehículo');
         // Obtener parámetros del objeto Request de forma segura
         if (is_object($request) && method_exists($request, 'get_params')) {
             $params = $request->get_params();
@@ -13,6 +14,8 @@ function create_singlecar($request) {
         } else {
             throw new Exception('Formato de solicitud no válido');
         }
+
+        error_log('POST - Parámetros recibidos: ' . print_r($params, true));
 
         // Verificar que se ha proporcionado una imagen destacada
         $has_image = false;
@@ -175,6 +178,15 @@ function create_singlecar($request) {
         update_post_meta($post_id, 'portes-cotxe', $params['portes-cotxe']); // Guardar portes-cotxe
         update_post_meta($post_id, 'temps-recarrega-total', $params['temps-recarrega-total']);
         update_post_meta($post_id, 'temps-recarrega-fins-80', $params['temps-recarrega-fins-80']);
+
+        // Manejar el campo anunci-destacat (radio button)
+        error_log('POST - Verificando anunci-destacat en params: ' . (isset($params['anunci-destacat']) ? 'true' : 'false'));
+        error_log('POST - Tipo de anunci-destacat: ' . (isset($params['anunci-destacat']) ? gettype($params['anunci-destacat']) : 'no definido'));
+        $anunci_destacat = isset($params['anunci-destacat']) ? $params['anunci-destacat'] : 'false';
+        error_log('POST - Valor a guardar de anunci-destacat: ' . $anunci_destacat);
+        $result = update_post_meta($post_id, 'is-vip', $anunci_destacat);
+        error_log('POST - Resultado de guardar is-vip: ' . ($result ? 'true' : 'false'));
+        error_log('POST - Valor guardado en is-vip: ' . get_post_meta($post_id, 'is-vip', true));
 
         $wpdb->query('COMMIT');
 
