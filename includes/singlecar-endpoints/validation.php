@@ -194,12 +194,12 @@ function validate_numeric_fields($params) {
 
 function validate_required_fields($params, $is_update = false) {
     // Primero verificamos el tipo de vehículo
-    if (!isset($params['tipus-vehicle'])) {
+    if (!isset($params['tipus-vehicle']) && !$is_update) {
         throw new Exception('El campo tipus-vehicle es obligatorio');
     }
     
     // Normalizar tipo de vehículo a minúsculas para comparación consistente
-    $vehicle_type = strtolower(trim($params['tipus-vehicle']));
+    $vehicle_type = strtolower(trim($params['tipus-vehicle'] ?? ''));
     
     // Si el tipo es moto-quad-atv, simplificar para validaciones internas
     $simplified_type = $vehicle_type;
@@ -227,7 +227,7 @@ function validate_required_fields($params, $is_update = false) {
         $required_fields[] = 'marques-de-moto';
     }
 
-// Si es una actualización, solo validar los campos requeridos que se están modificando
+    // Si es una actualización, solo validar los campos requeridos que se están modificando
     if ($is_update) {
         $fields_to_validate = array_intersect(array_keys($params), $required_fields);
         
@@ -236,20 +236,16 @@ function validate_required_fields($params, $is_update = false) {
             return true;
         }
         
-        // Si se está modificando algún campo relacionado con marca/modelo
-        $brand_model_fields = ['marques-cotxe', 'models-cotxe'];
-        $updating_brand_model = !empty(array_intersect(array_keys($params), $brand_model_fields));
+        // Validar solo los campos enviados que son obligatorios
+        $missing_fields = [];
+        foreach ($fields_to_validate as $field) {
+            if (empty($params[$field])) {
+                $missing_fields[] = $field;
+            }
+        }
         
-        if ($updating_brand_model) {
-            $missing_fields = [];
-            foreach ($brand_model_fields as $field) {
-                if (!isset($params[$field]) || empty($params[$field])) {
-                    $missing_fields[] = $field;
-                }
-            }
-            if (!empty($missing_fields)) {
-                throw new Exception('Al modificar marca/modelo, ambos campos son requeridos: ' . implode(', ', $missing_fields));
-            }
+        if (!empty($missing_fields)) {
+            throw new Exception('Campos requeridos faltantes: ' . implode(', ', $missing_fields));
         }
         
         return true;
