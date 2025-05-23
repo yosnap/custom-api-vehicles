@@ -122,20 +122,16 @@ if (is_admin()) {
 // Scripts y estilos
 function enqueue_custom_scripts() {
     if (!is_admin()) {
-        wp_enqueue_script('react-js', plugins_url('js/react.js', __FILE__), array(), '1.0.0', true);
-        wp_enqueue_script('react-product-js', plugins_url('js/react-product.js', __FILE__), array('react-js'), '1.0.0', true);
-        wp_enqueue_script('my-react-app', plugins_url('js/my-react-app.js', __FILE__), array('react-product-js'), '1.0.0', true);
-        wp_enqueue_style('my-product-css', plugins_url('css/my-product.css', __FILE__), array(), '1.0.0', 'all');
+        // Se eliminaron las referencias a los archivos JS y CSS inexistentes
+        // que estaban causando errores 404
     }
 }
 add_action('wp_enqueue_scripts', 'enqueue_custom_scripts');
 
 // Scripts del admin
 function enqueue_admin_scripts() {
-    wp_enqueue_script('react-js', plugins_url('js/react.js', __FILE__), array(), '1.0.0', true);
-    wp_enqueue_script('react-product-js', plugins_url('js/react-product.js', __FILE__), array('react-js'), '1.0.0', true);
-    wp_enqueue_script('my-react-app', plugins_url('js/my-react-app.js', __FILE__), array('react-product-js'), '1.0.0', true);
-    wp_enqueue_style('my-product-css', plugins_url('css/my-product.css', __FILE__), array(), '1.0.0', 'all');
+    // Se eliminaron las referencias a los archivos JS y CSS inexistentes
+    // que estaban causando errores 404
 }
 add_action('admin_enqueue_scripts', 'enqueue_admin_scripts');
 
