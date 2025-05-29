@@ -20,24 +20,17 @@ class Custom_API_Vehicles {
      * Constructor
      */
     public function __construct() {
-        error_log("Inicializando Custom API Vehicles...");
-        
         // Asegurarnos de que los endpoints REST son accesibles
         add_filter('rest_authentication_errors', array($this, 'fix_rest_api_permissions'), 100);
         
         // Cargar dependencias
         $this->load_dependencies();
-        
-        error_log("Custom API Vehicles inicializado correctamente");
     }
     
     /**
      * Elimina restricciones de la API REST que puedan causar error 403
      */
     public function fix_rest_api_permissions($errors) {
-        // Durante la depuración, permite todas las solicitudes a nuestra API
-        error_log("REST API Debug - Endpoint solicitado: " . (isset($_SERVER['REQUEST_URI']) ? $_SERVER['REQUEST_URI'] : 'no definido'));
-        
         // Permitir todas las solicitudes durante las pruebas
         return null;
         
@@ -140,8 +133,6 @@ add_action('rest_api_init', function() {
     // Depurar errores específicos de la API REST
     add_filter('rest_request_before_callbacks', function($response, $handler, $request) {
         if (strpos($request->get_route(), 'api-motor/v1') !== false) {
-            error_log('REST API Debug - Endpoint solicitado: ' . $request->get_route());
-            
             // Verificar si hay errores de permisos
             if (is_wp_error($response)) {
                 error_log('REST API Error: ' . $response->get_error_message());
