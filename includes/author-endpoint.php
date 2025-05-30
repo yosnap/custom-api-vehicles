@@ -15,17 +15,17 @@ add_action('rest_api_init', function () {
 if (!function_exists('get_seller_details')) {
     function get_seller_details($request) {
         try {
-            error_log('DEBUG: Iniciando get_seller_details');
+            Vehicle_Debug_Handler::log('DEBUG: Iniciando get_seller_details');
             
             $params = $request->get_params();
             $user_id = isset($params['user_id']) ? intval($params['user_id']) : null;
             $current_user_id = get_current_user_id();
             $is_admin = current_user_can('administrator');
 
-            error_log('DEBUG: Params: ' . print_r($params, true));
-            error_log('DEBUG: User ID: ' . $user_id);
-            error_log('DEBUG: Current User ID: ' . $current_user_id);
-            error_log('DEBUG: Is Admin: ' . ($is_admin ? 'true' : 'false'));
+            Vehicle_Debug_Handler::log('DEBUG: Params: ' . print_r($params, true));
+            Vehicle_Debug_Handler::log('DEBUG: User ID: ' . $user_id);
+            Vehicle_Debug_Handler::log('DEBUG: Current User ID: ' . $current_user_id);
+            Vehicle_Debug_Handler::log('DEBUG: Is Admin: ' . ($is_admin ? 'true' : 'false'));
 
             // Si no es admin, solo puede ver sus propios datos
             if (!$is_admin) {
@@ -41,7 +41,7 @@ if (!function_exists('get_seller_details')) {
 
             // Si es admin y no proporciona user_id, devolver lista de usuarios
             if ($is_admin && !$user_id) {
-                error_log('DEBUG: Obteniendo lista de usuarios');
+                Vehicle_Debug_Handler::log('DEBUG: Obteniendo lista de usuarios');
                 $users = get_users(['role__not_in' => ['administrator']]);
                 $authors = [];
 
@@ -65,7 +65,7 @@ if (!function_exists('get_seller_details')) {
                 ], 200);
             }
 
-            error_log('DEBUG: Obteniendo datos del usuario ' . $user_id);
+            Vehicle_Debug_Handler::log('DEBUG: Obteniendo datos del usuario ' . $user_id);
 
             // Obtener datos del usuario específico
             $user = get_userdata($user_id);
@@ -78,7 +78,7 @@ if (!function_exists('get_seller_details')) {
 
             // Obtener metadatos del usuario
             $user_meta = get_user_meta($user_id);
-            error_log('DEBUG: User meta: ' . print_r($user_meta, true));
+            Vehicle_Debug_Handler::log('DEBUG: User meta: ' . print_r($user_meta, true));
 
             // Construir respuesta base
             $response_data = [
@@ -111,7 +111,7 @@ if (!function_exists('get_seller_details')) {
                 $response_data['galeria-professionals'] = array_map('wp_get_attachment_url', $gallery_ids);
             }
 
-            error_log('DEBUG: Respuesta final: ' . print_r($response_data, true));
+            Vehicle_Debug_Handler::log('DEBUG: Respuesta final: ' . print_r($response_data, true));
 
             return new WP_REST_Response([
                 'status' => 'success',
@@ -119,8 +119,8 @@ if (!function_exists('get_seller_details')) {
             ], 200);
 
         } catch (Exception $e) {
-            error_log('ERROR en get_seller_details: ' . $e->getMessage());
-            error_log('Stack trace: ' . $e->getTraceAsString());
+            Vehicle_Debug_Handler::log('ERROR en get_seller_details: ' . $e->getMessage());
+            Vehicle_Debug_Handler::log('Stack trace: ' . $e->getTraceAsString());
             
             return new WP_REST_Response([
                 'status' => 'error',

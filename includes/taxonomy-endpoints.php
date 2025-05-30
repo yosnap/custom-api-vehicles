@@ -18,12 +18,12 @@ function register_taxonomy_endpoints() {
             [
                 'methods' => 'GET',
                 'callback' => function(WP_REST_Request $request) use ($taxonomy, $endpoint) {
-                    error_log("Procesando petición para endpoint: $endpoint, taxonomía: $taxonomy");
+                    Vehicle_Debug_Handler::log("Procesando petición para endpoint: $endpoint, taxonomía: $taxonomy");
                     
                     // Manejar tanto marcas de coches como de motos
                     if (in_array($taxonomy, ['marques-coches', 'marques-de-moto'])) {
                         $marca = $request->get_param('marca');
-                        error_log("Parámetro marca recibido: " . ($marca ? $marca : 'no marca'));
+                        Vehicle_Debug_Handler::log("Parámetro marca recibido: " . ($marca ? $marca : 'no marca'));
                         return get_brand_models_hierarchy($taxonomy, $marca);
                     }
                     
@@ -45,7 +45,7 @@ function register_taxonomy_endpoints() {
 
 function get_brand_models_hierarchy($taxonomy, $marca = null) {
     try {
-        error_log("Obteniendo jerarquía para $taxonomy" . ($marca ? " con marca: $marca" : ""));
+        Vehicle_Debug_Handler::log("Obteniendo jerarquía para $taxonomy" . ($marca ? " con marca: $marca" : ""));
         
         if ($marca) {
             $parent_term = get_term_by('slug', $marca, $taxonomy);
@@ -89,7 +89,7 @@ function get_brand_models_hierarchy($taxonomy, $marca = null) {
         ], 200);
 
     } catch (Exception $e) {
-        error_log("Error en get_brand_models_hierarchy: " . $e->getMessage());
+        Vehicle_Debug_Handler::log("Error en get_brand_models_hierarchy: " . $e->getMessage());
         return new WP_REST_Response([
             'status' => 'error',
             'message' => $e->getMessage()

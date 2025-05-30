@@ -7,7 +7,7 @@ function get_field_label($field_name, $value) {
     
     // Para extres-cotxe, manejar el formato de array anidado
     if ($field_name === 'extres-cotxe') {
-        error_log("Procesando extres-cotxe con valor: " . print_r($value, true));
+        Vehicle_Debug_Handler::log("Procesando extres-cotxe con valor: " . print_r($value, true));
         
         // Deserializar si es necesario
         $value = deserialize_if_needed($value);
@@ -15,14 +15,14 @@ function get_field_label($field_name, $value) {
         // Extraer valores del array anidado si es necesario
         if (is_array($value) && isset($value[0]) && is_array($value[0])) {
             $value = $value[0];
-            error_log("Extraído array interno de extres-cotxe: " . print_r($value, true));
+            Vehicle_Debug_Handler::log("Extraído array interno de extres-cotxe: " . print_r($value, true));
         }
         
         // Obtener las opciones del glosario
         $glossary_id = Vehicle_Glossary_Mappings::get_glossary_id($field_name);
         if ($glossary_id && function_exists('jet_engine') && isset(jet_engine()->glossaries)) {
             $options = jet_engine()->glossaries->filters->get_glossary_options($glossary_id);
-            error_log("Opciones del glosario para extres-cotxe: " . print_r($options, true));
+            Vehicle_Debug_Handler::log("Opciones del glosario para extres-cotxe: " . print_r($options, true));
             
             // Procesar cada valor
             return process_array_value($value, $options);
@@ -35,7 +35,7 @@ function get_field_label($field_name, $value) {
     $glossary_id = Vehicle_Glossary_Mappings::get_glossary_id($field_name);
     if ($glossary_id && function_exists('jet_engine') && isset(jet_engine()->glossaries)) {
         $options = jet_engine()->glossaries->filters->get_glossary_options($glossary_id);
-        error_log("Opciones del glosario para {$field_name}: " . print_r($options, true));
+        Vehicle_Debug_Handler::log("Opciones del glosario para {$field_name}: " . print_r($options, true));
         
         if (!empty($options)) {
             if (is_array($value)) {
@@ -43,10 +43,10 @@ function get_field_label($field_name, $value) {
             }
             
             if (isset($options[$value])) {
-                error_log("Label encontrado para {$field_name}: {$options[$value]}");
+                Vehicle_Debug_Handler::log("Label encontrado para {$field_name}: {$options[$value]}");
                 return $options[$value];
             } elseif (isset($options[trim($value)])) {
-                error_log("Label encontrado (después de trim) para {$field_name}: {$options[trim($value)]}");
+                Vehicle_Debug_Handler::log("Label encontrado (después de trim) para {$field_name}: {$options[trim($value)]}");
                 return $options[trim($value)];
             }
         }
@@ -76,7 +76,7 @@ function process_array_value($value, $options) {
     
     // Asegurarse de que value sea un array
     if (!is_array($value)) {
-        error_log("process_array_value: valor no es un array: " . print_r($value, true));
+        Vehicle_Debug_Handler::log("process_array_value: valor no es un array: " . print_r($value, true));
         return [$value];
     }
     
@@ -92,7 +92,7 @@ function process_array_value($value, $options) {
             }
         } else {
             // Si el ítem no es un string o número, simplemente añadirlo como está
-            error_log("process_array_value: ítem no es string ni número: " . print_r($item, true));
+            Vehicle_Debug_Handler::log("process_array_value: ítem no es string ni número: " . print_r($item, true));
             $labels[] = is_array($item) ? json_encode($item) : (string)$item;
         }
     }
@@ -109,7 +109,7 @@ function process_array_field($field_name, $value) {
             // Extraer valores del array anidado si es necesario
             if (is_array($value) && isset($value[0]) && is_array($value[0])) {
                 $value = $value[0];
-                error_log("process_array_field: Extraído array interno de extres-cotxe: " . print_r($value, true));
+                Vehicle_Debug_Handler::log("process_array_field: Extraído array interno de extres-cotxe: " . print_r($value, true));
             }
         } else {
             $value = deserialize_if_needed($value);
@@ -127,7 +127,7 @@ function process_array_field($field_name, $value) {
         $options = jet_engine()->glossaries->filters->get_glossary_options($glossary_id);
         return empty($options) ? $value : process_array_value($value, $options);
     } catch (Exception $e) {
-        error_log("Error procesando campo array $field_name: " . $e->getMessage());
+        Vehicle_Debug_Handler::log("Error procesando campo array $field_name: " . $e->getMessage());
         return [];
     }
 }
@@ -142,32 +142,32 @@ function process_glossary_field($field_name, $value) {
         $options = get_glossary_options($glossary_id);
         return process_options($options, $value);
     } catch (Exception $e) {
-        error_log("Error procesando glosario $field_name: " . $e->getMessage());
+        Vehicle_Debug_Handler::log("Error procesando glosario $field_name: " . $e->getMessage());
         return $value;
     }
 }
 
 function process_taxonomy_field($field_name, $value) {
-    error_log("=== DEBUG PROCESS TAXONOMY FIELD ===");
-    error_log("Procesando campo: $field_name");
-    error_log("Valor recibido: " . print_r($value, true));
+    Vehicle_Debug_Handler::log("=== DEBUG PROCESS TAXONOMY FIELD ===");
+    Vehicle_Debug_Handler::log("Procesando campo: $field_name");
+    Vehicle_Debug_Handler::log("Valor recibido: " . print_r($value, true));
     
     $taxonomy = get_taxonomy_for_field($field_name);
-    error_log("Taxonomía mapeada: $taxonomy");
+    Vehicle_Debug_Handler::log("Taxonomía mapeada: $taxonomy");
     
     if (!$taxonomy) {
-        error_log("No se encontró taxonomía para el campo: $field_name");
+        Vehicle_Debug_Handler::log("No se encontró taxonomía para el campo: $field_name");
         return $value;
     }
 
     $term = get_term_by('slug', $value, $taxonomy);
-    error_log("Término encontrado: " . print_r($term, true));
+    Vehicle_Debug_Handler::log("Término encontrado: " . print_r($term, true));
     
     if ($term && !is_wp_error($term)) {
-        error_log("Retornando nombre del término: " . $term->name);
+        Vehicle_Debug_Handler::log("Retornando nombre del término: " . $term->name);
         return $term->name;
     } else {
-        error_log("No se encontró término, retornando valor original: $value");
+        Vehicle_Debug_Handler::log("No se encontró término, retornando valor original: $value");
         return $value;
     }
 }
@@ -282,7 +282,7 @@ function should_get_field_label($field_name) {
 }
 
 function is_taxonomy_field($field_name) {
-    error_log("Verificando si el campo '$field_name' es un campo de taxonomía");
+    Vehicle_Debug_Handler::log("Verificando si el campo '$field_name' es un campo de taxonomía");
     $taxonomy_fields = [
         'tipus-vehicle',
         'tipus-combustible',
@@ -295,12 +295,12 @@ function is_taxonomy_field($field_name) {
         'models-cotxe'
     ];
     $result = in_array($field_name, $taxonomy_fields);
-    error_log("Resultado para '$field_name': " . ($result ? 'SÍ es taxonomía' : 'NO es taxonomía'));
+    Vehicle_Debug_Handler::log("Resultado para '$field_name': " . ($result ? 'SÍ es taxonomía' : 'NO es taxonomía'));
     return $result;
 }
 
 function get_taxonomy_map() {
-    error_log("DEBUG - Obteniendo mapeo de taxonomías");
+    Vehicle_Debug_Handler::log("DEBUG - Obteniendo mapeo de taxonomías");
     $map = [
         'tipus-vehicle' => 'types-of-transport',
         'tipus-combustible' => 'tipus-combustible',
@@ -311,8 +311,8 @@ function get_taxonomy_map() {
         // 'tipus-carroseria-caravana' => 'tipus-carroseria-caravana', // Removido porque es un campo meta, no taxonomía
         'marques-cotxe' => 'marques-coches'
     ];
-    error_log("DEBUG - Mapeo de taxonomías completo: " . print_r($map, true));
-    error_log("DEBUG - Verificando que 'tipus-carroseria-caravana' no esté en el mapeo: " . (!isset($map['tipus-carroseria-caravana']) ? 'NO está incluido' : 'SÍ está incluido'));
+    Vehicle_Debug_Handler::log("DEBUG - Mapeo de taxonomías completo: " . print_r($map, true));
+    Vehicle_Debug_Handler::log("DEBUG - Verificando que 'tipus-carroseria-caravana' no esté en el mapeo: " . (!isset($map['tipus-carroseria-caravana']) ? 'NO está incluido' : 'SÍ está incluido'));
     return $map;
 }
 
@@ -439,13 +439,13 @@ function process_and_save_meta_fields($post_id, $params) {
             if ($validation['valid']) {
                 // Guardar como array simple (formato requerido por JSM)
                 update_post_meta($post_id, 'extres-cotxe', $values);
-                error_log("Guardado extres-cotxe como array simple: " . print_r($values, true));
+                Vehicle_Debug_Handler::log("Guardado extres-cotxe como array simple: " . print_r($values, true));
                 
                 // Verificación adicional
                 $saved_value = get_post_meta($post_id, 'extres-cotxe', true);
-                error_log("Valor guardado de extres-cotxe: " . print_r($saved_value, true));
+                Vehicle_Debug_Handler::log("Valor guardado de extres-cotxe: " . print_r($saved_value, true));
             } else {
-                error_log("Valores inválidos para extres-cotxe: " . print_r($validation['invalid_values'], true));
+                Vehicle_Debug_Handler::log("Valores inválidos para extres-cotxe: " . print_r($validation['invalid_values'], true));
             }
         }
     }
@@ -526,7 +526,7 @@ function process_autocaravana_fields($post_id, $params) {
             // Si es un campo de tipo single y viene como array, tomar solo el primer valor
             if ($field_type === 'single' && is_array($values)) {
                 $values = !empty($values) ? $values[0] : '';
-                error_log("Campo $input_field es de tipo single, usando solo el primer valor: $values");
+                Vehicle_Debug_Handler::log("Campo $input_field es de tipo single, usando solo el primer valor: $values");
             }
             // Si es un campo de tipo array y no viene como array, convertirlo en array
             else if ($field_type === 'array' && !is_array($values)) {
@@ -556,29 +556,29 @@ function process_autocaravana_fields($post_id, $params) {
                 }
             }
             
-            error_log("Procesando campo de glosario $input_field -> $meta_field con valores: " . print_r($values, true));
+            Vehicle_Debug_Handler::log("Procesando campo de glosario $input_field -> $meta_field con valores: " . print_r($values, true));
             
             // Guardar como campo meta (serializado para arrays, valor simple para single)
             update_post_meta($post_id, $meta_field, $values);
-            error_log("Campo $meta_field guardado correctamente con valor: " . print_r($values, true));
+            Vehicle_Debug_Handler::log("Campo $meta_field guardado correctamente con valor: " . print_r($values, true));
             
             // Verificación adicional
             if ($input_field === 'extres-autocaravana') {
-                error_log("DEBUG SAVE - Verificación adicional para extres-autocaravana");
+                Vehicle_Debug_Handler::log("DEBUG SAVE - Verificación adicional para extres-autocaravana");
                 $saved_value = get_post_meta($post_id, $meta_field, true);
-                error_log("DEBUG SAVE - Valor guardado de extres-autocaravana: " . print_r($saved_value, true));
+                Vehicle_Debug_Handler::log("DEBUG SAVE - Valor guardado de extres-autocaravana: " . print_r($saved_value, true));
                 
                 // Verificar el tipo de datos
-                error_log("DEBUG SAVE - Tipo de datos de values: " . gettype($values));
+                Vehicle_Debug_Handler::log("DEBUG SAVE - Tipo de datos de values: " . gettype($values));
                 if (is_array($values)) {
-                    error_log("DEBUG SAVE - Es un array con " . count($values) . " elementos");
+                    Vehicle_Debug_Handler::log("DEBUG SAVE - Es un array con " . count($values) . " elementos");
                 } else {
-                    error_log("DEBUG SAVE - No es un array, es: " . gettype($values));
+                    Vehicle_Debug_Handler::log("DEBUG SAVE - No es un array, es: " . gettype($values));
                 }
                 
                 // Asegurarse de que se guarde correctamente
                 if (empty($saved_value) && !empty($values)) {
-                    error_log("DEBUG SAVE - Intentando guardar extres-autocaravana nuevamente");
+                    Vehicle_Debug_Handler::log("DEBUG SAVE - Intentando guardar extres-autocaravana nuevamente");
                     
                     // Eliminar cualquier valor existente
                     delete_post_meta($post_id, $meta_field);
@@ -587,17 +587,17 @@ function process_autocaravana_fields($post_id, $params) {
                     if (is_array($values)) {
                         foreach ($values as $single_value) {
                             add_post_meta($post_id, $meta_field, $single_value);
-                            error_log("DEBUG SAVE - Añadido valor individual: " . $single_value);
+                            Vehicle_Debug_Handler::log("DEBUG SAVE - Añadido valor individual: " . $single_value);
                         }
                     } else {
                         // Si no es un array, guardar como un solo valor
                         add_post_meta($post_id, $meta_field, $values);
-                        error_log("DEBUG SAVE - Añadido valor único: " . $values);
+                        Vehicle_Debug_Handler::log("DEBUG SAVE - Añadido valor único: " . $values);
                     }
                     
                     // Verificar nuevamente
                     $saved_values = get_post_meta($post_id, $meta_field);
-                    error_log("DEBUG SAVE - Valores guardados después del segundo intento: " . print_r($saved_values, true));
+                    Vehicle_Debug_Handler::log("DEBUG SAVE - Valores guardados después del segundo intento: " . print_r($saved_values, true));
                 }
             }
         }
@@ -648,12 +648,12 @@ function process_vehicle_comercial_fields($post_id, $params) {
             // Si es un campo de tipo single y viene como array, tomar solo el primer valor
             if ($field_type === 'single' && is_array($values)) {
                 $values = !empty($values) ? $values[0] : '';
-                error_log("Campo $input_field es de tipo single, usando solo el primer valor: $values");
+                Vehicle_Debug_Handler::log("Campo $input_field es de tipo single, usando solo el primer valor: $values");
             }
             
             // Validar campos de glosario
             if (function_exists('validate_glossary_values') && is_glossary_field($input_field)) {
-                error_log("Validando campo de glosario: $input_field con valor: " . (is_array($values) ? implode(', ', $values) : $values));
+                Vehicle_Debug_Handler::log("Validando campo de glosario: $input_field con valor: " . (is_array($values) ? implode(', ', $values) : $values));
                 
                 // Para validación, siempre convertir a array
                 $validation_values = is_array($values) ? $values : [$values];
@@ -668,8 +668,8 @@ function process_vehicle_comercial_fields($post_id, $params) {
                         'valid_values' => $valid_values
                     ];
                     
-                    error_log("Campo inválido $input_field: " . print_r($validation['invalid_values'], true));
-                    error_log("Valores válidos para $input_field: " . implode(', ', $valid_values));
+                    Vehicle_Debug_Handler::log("Campo inválido $input_field: " . print_r($validation['invalid_values'], true));
+                    Vehicle_Debug_Handler::log("Valores válidos para $input_field: " . implode(', ', $valid_values));
                     
                     // No guardar valores inválidos
                     continue;
@@ -682,24 +682,24 @@ function process_vehicle_comercial_fields($post_id, $params) {
                 if (is_array($values)) {
                     // Guardar como array simple (formato requerido por JSM)
                     update_post_meta($post_id, $meta_field, $values);
-                    error_log("Guardado $meta_field como array simple: " . print_r($values, true));
+                    Vehicle_Debug_Handler::log("Guardado $meta_field como array simple: " . print_r($values, true));
                 } else {
                     // Si no es un array, convertirlo en array
                     $array_value = [$values];
                     update_post_meta($post_id, $meta_field, $array_value);
-                    error_log("Guardado $meta_field como array simple (valor único): " . print_r($array_value, true));
+                    Vehicle_Debug_Handler::log("Guardado $meta_field como array simple (valor único): " . print_r($array_value, true));
                 }
             } else {
                 // Para campos de tipo escalar (como carroseria-vehicle-comercial)
                 update_post_meta($post_id, $meta_field, $values);
-                error_log("Guardado $meta_field como valor simple: $values");
+                Vehicle_Debug_Handler::log("Guardado $meta_field como valor simple: $values");
             }
         }
     }
     
     // Si hay campos inválidos, registrar en el log
     if (!empty($invalid_fields)) {
-        error_log("Campos inválidos en vehículo comercial: " . print_r($invalid_fields, true));
+        Vehicle_Debug_Handler::log("Campos inválidos en vehículo comercial: " . print_r($invalid_fields, true));
     }
 }
 

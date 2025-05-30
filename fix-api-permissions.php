@@ -48,15 +48,15 @@ function diagnose_rest_api_permissions() {
     // Añade esto para depuración
     add_filter('rest_request_before_callbacks', function($response, $handler, $request) {
         if (strpos($request->get_route(), 'api-motor/v1/vehicles/types-of-transport') !== false) {
-            error_log('REST API Debug - Request route: ' . $request->get_route());
-            error_log('REST API Debug - Current user: ' . get_current_user_id());
-            error_log('REST API Debug - User can read: ' . (current_user_can('read') ? 'true' : 'false'));
+            Vehicle_Debug_Handler::log('REST API Debug - Request route: ' . $request->get_route());
+            Vehicle_Debug_Handler::log('REST API Debug - Current user: ' . get_current_user_id());
+            Vehicle_Debug_Handler::log('REST API Debug - User can read: ' . (current_user_can('read') ? 'true' : 'false'));
             
             // Inspeccionar el handler para ver el callback de permisos
             if (isset($handler['permission_callback'])) {
-                error_log('REST API Debug - Has permission callback: true');
+                Vehicle_Debug_Handler::log('REST API Debug - Has permission callback: true');
             } else {
-                error_log('REST API Debug - Has permission callback: false');
+                Vehicle_Debug_Handler::log('REST API Debug - Has permission callback: false');
             }
         }
         return $response;
@@ -72,7 +72,7 @@ function debug_allow_all_rest_endpoints() {
     add_filter('rest_authentication_errors', function($errors) {
         // Log the errors for debugging
         if ($errors) {
-            error_log('REST Auth Error: ' . print_r($errors, true));
+            Vehicle_Debug_Handler::log('REST Auth Error: ' . print_r($errors, true));
         }
         return null; // Permite todas las solicitudes durante depuración
     });

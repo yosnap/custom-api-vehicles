@@ -90,7 +90,7 @@ function is_vehicle_active($post_id) {
  * Log de errores personalizado
  */
 function log_vehicle_error($message, $data = []) {
-    error_log(sprintf(
+    Vehicle_Debug_Handler::log(sprintf(
         '[Vehicle API Error] %s | Data: %s',
         $message,
         json_encode($data)

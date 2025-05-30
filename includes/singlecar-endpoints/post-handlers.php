@@ -5,7 +5,7 @@ function create_singlecar($request) {
     $wpdb->query('START TRANSACTION');
 
     try {
-        error_log('POST - Iniciando creación de vehículo');
+        Vehicle_Debug_Handler::log('POST - Iniciando creación de vehículo');
         // Obtener parámetros del objeto Request de forma segura
         if (is_object($request) && method_exists($request, 'get_params')) {
             $params = $request->get_params();
@@ -15,42 +15,42 @@ function create_singlecar($request) {
             throw new Exception('Formato de solicitud no válido');
         }
 
-        error_log('POST - Parámetros recibidos: ' . print_r($params, true));
+        Vehicle_Debug_Handler::log('POST - Parámetros recibidos: ' . print_r($params, true));
 
         // Verificar que se ha proporcionado una imagen destacada
         $has_image = false;
         
         // Registrar para depuración
-        error_log('Validando imagen destacada en create_singlecar...');
-        error_log('$_FILES: ' . print_r($_FILES, true));
-        error_log('$params: ' . print_r($params, true));
+        Vehicle_Debug_Handler::log('Validando imagen destacada en create_singlecar...');
+        Vehicle_Debug_Handler::log('$_FILES: ' . print_r($_FILES, true));
+        Vehicle_Debug_Handler::log('$params: ' . print_r($params, true));
         
         // Verificar si se ha proporcionado una imagen destacada como archivo
         if (isset($_FILES['imatge-destacada']) && !empty($_FILES['imatge-destacada']['tmp_name'])) {
-            error_log('Imagen destacada encontrada en $_FILES[imatge-destacada]');
+            Vehicle_Debug_Handler::log('Imagen destacada encontrada en $_FILES[imatge-destacada]');
             $has_image = true;
         }
         // Verificar si se ha proporcionado una imagen destacada como ID
         elseif (isset($params['imatge-destacada-id']) && !empty($params['imatge-destacada-id'])) {
-            error_log('Imagen destacada encontrada en imatge-destacada-id: ' . $params['imatge-destacada-id']);
+            Vehicle_Debug_Handler::log('Imagen destacada encontrada en imatge-destacada-id: ' . $params['imatge-destacada-id']);
             $has_image = true;
         }
         // Verificar si se ha proporcionado una imagen destacada como URL
         elseif (isset($params['imatge-destacada-url']) && !empty($params['imatge-destacada-url'])) {
-            error_log('Imagen destacada encontrada en imatge-destacada-url: ' . $params['imatge-destacada-url']);
+            Vehicle_Debug_Handler::log('Imagen destacada encontrada en imatge-destacada-url: ' . $params['imatge-destacada-url']);
             $has_image = true;
         }
         // Verificar si se ha proporcionado una imagen destacada directamente
         elseif (isset($params['imatge-destacada']) && !empty($params['imatge-destacada'])) {
-            error_log('Imagen destacada encontrada en imatge-destacada: ' . $params['imatge-destacada']);
+            Vehicle_Debug_Handler::log('Imagen destacada encontrada en imatge-destacada: ' . $params['imatge-destacada']);
             $has_image = true;
         }
         
         if (!$has_image) {
-            error_log('No se encontró ninguna imagen destacada');
+            Vehicle_Debug_Handler::log('No se encontró ninguna imagen destacada');
             throw new Exception('La imagen destacada es obligatoria. Debe proporcionar una imagen a través del campo "imatge-destacada", "imatge-destacada-id" o "imatge-destacada-url"');
         } else {
-            error_log('Imagen destacada validada correctamente');
+            Vehicle_Debug_Handler::log('Imagen destacada validada correctamente');
         }
 
         // SOLUCIÓN DEFINITIVA: Siempre establecer valores por defecto para campos problemáticos
@@ -180,13 +180,13 @@ function create_singlecar($request) {
         update_post_meta($post_id, 'temps-recarrega-fins-80', $params['temps-recarrega-fins-80']);
 
         // Manejar el campo anunci-destacat (radio button)
-        error_log('POST - Verificando anunci-destacat en params: ' . (isset($params['anunci-destacat']) ? 'true' : 'false'));
-        error_log('POST - Tipo de anunci-destacat: ' . (isset($params['anunci-destacat']) ? gettype($params['anunci-destacat']) : 'no definido'));
+        Vehicle_Debug_Handler::log('POST - Verificando anunci-destacat en params: ' . (isset($params['anunci-destacat']) ? 'true' : 'false'));
+        Vehicle_Debug_Handler::log('POST - Tipo de anunci-destacat: ' . (isset($params['anunci-destacat']) ? gettype($params['anunci-destacat']) : 'no definido'));
         $anunci_destacat = isset($params['anunci-destacat']) ? $params['anunci-destacat'] : 'false';
-        error_log('POST - Valor a guardar de anunci-destacat: ' . $anunci_destacat);
+        Vehicle_Debug_Handler::log('POST - Valor a guardar de anunci-destacat: ' . $anunci_destacat);
         $result = update_post_meta($post_id, 'is-vip', $anunci_destacat);
-        error_log('POST - Resultado de guardar is-vip: ' . ($result ? 'true' : 'false'));
-        error_log('POST - Valor guardado en is-vip: ' . get_post_meta($post_id, 'is-vip', true));
+        Vehicle_Debug_Handler::log('POST - Resultado de guardar is-vip: ' . ($result ? 'true' : 'false'));
+        Vehicle_Debug_Handler::log('POST - Valor guardado en is-vip: ' . get_post_meta($post_id, 'is-vip', true));
 
         $wpdb->query('COMMIT');
 

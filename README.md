@@ -2,7 +2,7 @@
 
 Plugin WordPress para gestionar vehículos a través de una API REST personalizada.
 
-**Versión actual:** 1.7.7  
+**Versión actual:** 2.0  
 **Namespace:** `api-motor/v1`  
 **Tipo de contenido:** `singlecar`
 
@@ -37,6 +37,7 @@ Obtiene una lista de vehículos.
 - `user_id`: Filtrar por ID de usuario (admins pueden ver todos, usuarios solo pueden ver los suyos)
 - `post_id`: Filtrar por ID específico
 - `post_name`: Filtrar por slug
+- `anunci-actiu`: Filtrar por estado de activación (true: solo anuncios activos, false: solo anuncios inactivos, omitir: todos)
 
 **Respuesta:**
 
@@ -60,9 +61,7 @@ Obtiene una lista de vehículos.
     "canvi": "manual",
     "color-vehicle": "Blanco",
     "extres-cotxe": ["Extra 1", "Extra 2"]
-    // ... otros campos según el tipo de vehículo
-  },
-  // ... más vehículos
+  }
 ]
 ```
 

@@ -8,7 +8,7 @@ class Vehicle_Field_Handler {
             $type = Vehicle_Fields::get_field_type($field);
         }
 
-        error_log(sprintf(
+        Vehicle_Debug_Handler::log(sprintf(
             'Procesando campo - Campo: %s, Valor: %s, Tipo: %s',
             $field,
             is_array($value) ? json_encode($value) : (is_bool($value) ? ($value ? 'true' : 'false') : $value),
@@ -42,7 +42,7 @@ class Vehicle_Field_Handler {
                     return self::process_text_field($value);
             }
         } catch (Exception $e) {
-            error_log(sprintf(
+            Vehicle_Debug_Handler::log(sprintf(
                 'Error procesando campo - Campo: %s, Error: %s',
                 $field,
                 $e->getMessage()
@@ -69,8 +69,8 @@ class Vehicle_Field_Handler {
      * Procesa un campo de glosario
      */
     public static function process_glossary_field($field_name, $value) {
-        error_log("Procesando campo de glosario: " . $field_name);
-        error_log("Valor recibido: " . print_r($value, true));
+        Vehicle_Debug_Handler::log("Procesando campo de glosario: " . $field_name);
+        Vehicle_Debug_Handler::log("Valor recibido: " . print_r($value, true));
 
         // Campos que siempre deben tratarse como array
         $array_fields = ['extres-cotxe', 'cables-recarrega', 'connectors'];
@@ -84,24 +84,24 @@ class Vehicle_Field_Handler {
 
         // Obtener el ID del glosario
         $glossary_id = self::get_glossary_id($field_name);
-        error_log("ID del glosario obtenido: " . print_r($glossary_id, true));
+        Vehicle_Debug_Handler::log("ID del glosario obtenido: " . print_r($glossary_id, true));
 
         if (!$glossary_id) {
-            error_log("ERROR: No se encontró ID de glosario para el campo: " . $field_name);
+            Vehicle_Debug_Handler::log("ERROR: No se encontró ID de glosario para el campo: " . $field_name);
             throw new Exception("Campo de glosario no reconocido: " . $field_name);
         }
 
         // Obtener las opciones del glosario
         if (!function_exists('jet_engine') || !isset(jet_engine()->glossaries)) {
-            error_log("ERROR: JetEngine Glossaries no está disponible");
+            Vehicle_Debug_Handler::log("ERROR: JetEngine Glossaries no está disponible");
             throw new Exception("JetEngine Glossaries no está disponible");
         }
 
         $options = jet_engine()->glossaries->filters->get_glossary_options($glossary_id);
-        error_log("Opciones del glosario: " . print_r($options, true));
+        Vehicle_Debug_Handler::log("Opciones del glosario: " . print_r($options, true));
 
         if (empty($options)) {
-            error_log("ERROR: No se encontraron opciones para el glosario ID: " . $glossary_id);
+            Vehicle_Debug_Handler::log("ERROR: No se encontraron opciones para el glosario ID: " . $glossary_id);
             throw new Exception("No se encontraron opciones para el glosario");
         }
 
@@ -111,11 +111,11 @@ class Vehicle_Field_Handler {
             foreach ($value as $single_value) {
                 // Buscar el valor en las opciones del glosario
                 if (isset($options[$single_value]) || in_array($single_value, $options)) {
-                    error_log("Valor válido encontrado para: " . $single_value);
+                    Vehicle_Debug_Handler::log("Valor válido encontrado para: " . $single_value);
                     $found_value = array_search($single_value, $options);
                     $processed_values[] = $found_value !== false ? $found_value : $single_value;
                 } else {
-                    error_log("ERROR: Valor inválido para el campo. Valores válidos: " . implode(', ', array_keys($options)));
+                    Vehicle_Debug_Handler::log("ERROR: Valor inválido para el campo. Valores válidos: " . implode(', ', array_keys($options)));
                     throw new Exception(sprintf(
                         'Valor inválido "%s" para el campo %s. Valores válidos: %s',
                         $single_value,
@@ -129,12 +129,12 @@ class Vehicle_Field_Handler {
 
         // Para valores simples
         if (isset($options[$value]) || in_array($value, $options)) {
-            error_log("Valor válido encontrado para: " . $value);
+            Vehicle_Debug_Handler::log("Valor válido encontrado para: " . $value);
             $found_value = array_search($value, $options);
             return $found_value !== false ? $found_value : $value;
         }
 
-        error_log("ERROR: Valor inválido para el campo. Valores válidos: " . implode(', ', array_keys($options)));
+        Vehicle_Debug_Handler::log("ERROR: Valor inválido para el campo. Valores válidos: " . implode(', ', array_keys($options)));
         throw new Exception(sprintf(
             'Valor inválido "%s" para el campo %s. Valores válidos: %s',
             $value,

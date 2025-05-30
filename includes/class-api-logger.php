@@ -49,7 +49,7 @@ class Vehicle_API_Logger
             $details = json_encode($details, JSON_UNESCAPED_UNICODE);
         }
 
-        error_log("Registrando acción: {$action} para vehículo {$vehicle_id}");
+        Vehicle_Debug_Handler::log("Registrando acción: {$action} para vehículo {$vehicle_id}");
 
         $result = $wpdb->insert(
             $this->table_name,
@@ -63,7 +63,7 @@ class Vehicle_API_Logger
         );
 
         if ($result === false) {
-            error_log("Error al insertar log: " . $wpdb->last_error);
+            Vehicle_Debug_Handler::log("Error al insertar log: " . $wpdb->last_error);
             return false;
         }
 

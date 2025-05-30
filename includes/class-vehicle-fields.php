@@ -808,7 +808,7 @@ class Vehicle_Fields
             return $options;
 
         } catch (Exception $e) {
-            error_log("Error al obtener opciones de tipus-de-moto: " . $e->getMessage());
+            Vehicle_Debug_Handler::log("Error al obtener opciones de tipus-de-moto: " . $e->getMessage());
             return [];
         }
     }
@@ -852,7 +852,7 @@ class Vehicle_Fields
             return $formatted_options;
 
         } catch (Exception $e) {
-            error_log("Error al obtener extres-moto: " . $e->getMessage());
+            Vehicle_Debug_Handler::log("Error al obtener extres-moto: " . $e->getMessage());
             return [];
         }
     }

@@ -1,9 +1,9 @@
 <?php
 
 function process_vehicle_images($post_id, $params) {
-    error_log('=== INICIO PROCESAMIENTO DE IMÁGENES ===');
-    error_log('Post ID: ' . $post_id);
-    error_log('Parámetros recibidos: ' . print_r($params, true));
+    Vehicle_Debug_Handler::log('=== INICIO PROCESAMIENTO DE IMÁGENES ===');
+    Vehicle_Debug_Handler::log('Post ID: ' . $post_id);
+    Vehicle_Debug_Handler::log('Parámetros recibidos: ' . print_r($params, true));
 
     try {
         // Procesar imagen destacada
@@ -14,7 +14,7 @@ function process_vehicle_images($post_id, $params) {
             
             // Eliminar imagen destacada existente si hay una nueva
             delete_post_thumbnail($post_id);
-            error_log('Imagen destacada anterior eliminada');
+            Vehicle_Debug_Handler::log('Imagen destacada anterior eliminada');
 
             // Procesar nueva imagen destacada
             if (isset($params['imatge-destacada-id'])) {
@@ -35,7 +35,7 @@ function process_vehicle_images($post_id, $params) {
             
             // Eliminar galería existente
             delete_post_meta($post_id, 'ad_gallery');
-            error_log('Galería anterior eliminada');
+            Vehicle_Debug_Handler::log('Galería anterior eliminada');
 
             // Procesar nueva galería
             if (isset($params['galeria-vehicle']) && !empty($params['galeria-vehicle'])) {
@@ -47,9 +47,9 @@ function process_vehicle_images($post_id, $params) {
             }
         }
 
-        error_log('=== FIN PROCESAMIENTO DE IMÁGENES ===');
+        Vehicle_Debug_Handler::log('=== FIN PROCESAMIENTO DE IMÁGENES ===');
     } catch (Exception $e) {
-        error_log('ERROR en procesamiento de imágenes: ' . $e->getMessage());
+        Vehicle_Debug_Handler::log('ERROR en procesamiento de imágenes: ' . $e->getMessage());
         throw $e;
     }
 }
@@ -59,7 +59,7 @@ function process_vehicle_images($post_id, $params) {
  */
 function process_featured_image_url($post_id, $image_url) {
     try {
-        error_log('Procesando URL de imagen destacada: ' . $image_url);
+        Vehicle_Debug_Handler::log('Procesando URL de imagen destacada: ' . $image_url);
         
         // Verificar si es una URL web o una ruta local
         if (filter_var($image_url, FILTER_VALIDATE_URL)) {
@@ -76,12 +76,12 @@ function process_featured_image_url($post_id, $image_url) {
         
         if ($attach_id && wp_attachment_is_image($attach_id)) {
             set_post_thumbnail($post_id, $attach_id);
-            error_log('Imagen destacada establecida correctamente con ID: ' . $attach_id);
+            Vehicle_Debug_Handler::log('Imagen destacada establecida correctamente con ID: ' . $attach_id);
         } else {
             throw new Exception('ID de imagen destacada no válido');
         }
     } catch (Exception $e) {
-        error_log("Error procesando URL de imagen destacada: " . $e->getMessage());
+        Vehicle_Debug_Handler::log("Error procesando URL de imagen destacada: " . $e->getMessage());
         throw $e;
     }
 }
@@ -126,59 +126,59 @@ function handle_local_file($file_path, $post_id) {
 
 function process_uploaded_featured_image($post_id, $image_file) {
     try {
-        error_log('Procesando imagen destacada subida: ' . print_r($image_file, true));
+        Vehicle_Debug_Handler::log('Procesando imagen destacada subida: ' . print_r($image_file, true));
         $attach_id = handle_uploaded_image($image_file, $post_id);
         if ($attach_id && wp_attachment_is_image($attach_id)) {
             set_post_thumbnail($post_id, $attach_id);
-            error_log('Imagen destacada establecida correctamente con ID: ' . $attach_id);
+            Vehicle_Debug_Handler::log('Imagen destacada establecida correctamente con ID: ' . $attach_id);
         } else {
             throw new Exception('ID de imagen destacada no válido');
         }
     } catch (Exception $e) {
-        error_log("Error procesando imagen destacada subida: " . $e->getMessage());
+        Vehicle_Debug_Handler::log("Error procesando imagen destacada subida: " . $e->getMessage());
         throw $e;
     }
 }
 
 function process_uploaded_gallery_images($post_id, $gallery_files) {
     try {
-        error_log('=== INICIO PROCESAMIENTO GALERÍA SUBIDA ===');
-        error_log('Post ID: ' . $post_id);
-        error_log('Archivos de galería recibidos: ' . print_r($gallery_files, true));
+        Vehicle_Debug_Handler::log('=== INICIO PROCESAMIENTO GALERÍA SUBIDA ===');
+        Vehicle_Debug_Handler::log('Post ID: ' . $post_id);
+        Vehicle_Debug_Handler::log('Archivos de galería recibidos: ' . print_r($gallery_files, true));
 
         $gallery_ids = [];
         foreach ($gallery_files['tmp_name'] as $index => $tmp_name) {
             if (empty($tmp_name)) {
-                error_log('Archivo vacío, continuando con el siguiente');
+                Vehicle_Debug_Handler::log('Archivo vacío, continuando con el siguiente');
                 continue;
             }
 
-            error_log('Procesando archivo de galería: ' . $gallery_files['name'][$index]);
+            Vehicle_Debug_Handler::log('Procesando archivo de galería: ' . $gallery_files['name'][$index]);
 
             try {
                 $attach_id = handle_uploaded_image($gallery_files, $post_id, $index);
                 if ($attach_id) {
-                    error_log('Archivo de galería procesado, ID: ' . $attach_id);
+                    Vehicle_Debug_Handler::log('Archivo de galería procesado, ID: ' . $attach_id);
                     $gallery_ids[] = $attach_id;
                 }
             } catch (Exception $e) {
-                error_log('Error procesando archivo de galería: ' . $e->getMessage());
+                Vehicle_Debug_Handler::log('Error procesando archivo de galería: ' . $e->getMessage());
                 continue;
             }
         }
 
-        error_log('IDs de galería recolectados: ' . print_r($gallery_ids, true));
+        Vehicle_Debug_Handler::log('IDs de galería recolectados: ' . print_r($gallery_ids, true));
 
         if (!empty($gallery_ids)) {
             save_gallery_meta($post_id, $gallery_ids);
-            error_log('Galería guardada exitosamente');
+            Vehicle_Debug_Handler::log('Galería guardada exitosamente');
         } else {
-            error_log('No se encontraron IDs válidos para guardar en la galería');
+            Vehicle_Debug_Handler::log('No se encontraron IDs válidos para guardar en la galería');
         }
 
-        error_log('=== FIN PROCESAMIENTO GALERÍA SUBIDA ===');
+        Vehicle_Debug_Handler::log('=== FIN PROCESAMIENTO GALERÍA SUBIDA ===');
     } catch (Exception $e) {
-        error_log('ERROR CRÍTICO en proceso de galería subida: ' . $e->getMessage());
+        Vehicle_Debug_Handler::log('ERROR CRÍTICO en proceso de galería subida: ' . $e->getMessage());
         throw $e;
     }
 }
@@ -206,7 +206,7 @@ function handle_uploaded_image($image_file, $post_id, $index = null) {
     ];
 
     // Registrar información para depuración
-    error_log('Procesando archivo: ' . print_r($file_array, true));
+    Vehicle_Debug_Handler::log('Procesando archivo: ' . print_r($file_array, true));
 
     // Manejar el sideload
     $attach_id = media_handle_sideload($file_array, $post_id);
@@ -238,61 +238,61 @@ function process_featured_image($post_id, $image_data) {
             throw new Exception('ID de imagen destacada no válido');
         }
     } catch (Exception $e) {
-        error_log("Error procesando imagen destacada: " . $e->getMessage());
+        Vehicle_Debug_Handler::log("Error procesando imagen destacada: " . $e->getMessage());
         throw $e;
     }
 }
 
 function process_gallery_images($post_id, $gallery_data) {
     try {
-        error_log('=== INICIO PROCESAMIENTO GALERÍA ===');
-        error_log('Post ID: ' . $post_id);
-        error_log('Datos de galería recibidos: ' . print_r($gallery_data, true));
+        Vehicle_Debug_Handler::log('=== INICIO PROCESAMIENTO GALERÍA ===');
+        Vehicle_Debug_Handler::log('Post ID: ' . $post_id);
+        Vehicle_Debug_Handler::log('Datos de galería recibidos: ' . print_r($gallery_data, true));
 
         $gallery_ids = [];
         $gallery = is_array($gallery_data) ? $gallery_data : [$gallery_data];
 
         foreach ($gallery as $image_url) {
             if (empty($image_url)) {
-                error_log('URL de imagen vacía, continuando con la siguiente');
+                Vehicle_Debug_Handler::log('URL de imagen vacía, continuando con la siguiente');
                 continue;
             }
 
-            error_log('Procesando URL de imagen: ' . $image_url);
+            Vehicle_Debug_Handler::log('Procesando URL de imagen: ' . $image_url);
 
             try {
                 // Verificar si la imagen ya existe en la biblioteca de medios
                 $existing_attachment = get_attachment_by_url($image_url);
                 
                 if ($existing_attachment) {
-                    error_log('Imagen ya existe en la biblioteca, usando ID: ' . $existing_attachment);
+                    Vehicle_Debug_Handler::log('Imagen ya existe en la biblioteca, usando ID: ' . $existing_attachment);
                     $gallery_ids[] = $existing_attachment;
                 } else {
-                    error_log('Descargando nueva imagen...');
+                    Vehicle_Debug_Handler::log('Descargando nueva imagen...');
                     $attach_id = handle_image_url($image_url, $post_id);
                     if ($attach_id) {
-                        error_log('Nueva imagen procesada, ID: ' . $attach_id);
+                        Vehicle_Debug_Handler::log('Nueva imagen procesada, ID: ' . $attach_id);
                         $gallery_ids[] = $attach_id;
                     }
                 }
             } catch (Exception $e) {
-                error_log('Error procesando imagen: ' . $e->getMessage());
+                Vehicle_Debug_Handler::log('Error procesando imagen: ' . $e->getMessage());
                 continue;
             }
         }
 
-        error_log('IDs de galería recolectados: ' . print_r($gallery_ids, true));
+        Vehicle_Debug_Handler::log('IDs de galería recolectados: ' . print_r($gallery_ids, true));
 
         if (!empty($gallery_ids)) {
             save_gallery_meta($post_id, $gallery_ids);
-            error_log('Galería guardada exitosamente');
+            Vehicle_Debug_Handler::log('Galería guardada exitosamente');
         } else {
-            error_log('No se encontraron IDs válidos para guardar en la galería');
+            Vehicle_Debug_Handler::log('No se encontraron IDs válidos para guardar en la galería');
         }
 
-        error_log('=== FIN PROCESAMIENTO GALERÍA ===');
+        Vehicle_Debug_Handler::log('=== FIN PROCESAMIENTO GALERÍA ===');
     } catch (Exception $e) {
-        error_log('ERROR CRÍTICO en proceso de galería: ' . $e->getMessage());
+        Vehicle_Debug_Handler::log('ERROR CRÍTICO en proceso de galería: ' . $e->getMessage());
         throw $e;
     }
 }
@@ -316,7 +316,7 @@ function handle_image_url($url, $post_id) {
     if (empty($file_info['ext'])) {
         // Intentar determinar el tipo de archivo usando mime_content_type
         $mime_type = mime_content_type($temp_file);
-        error_log('MIME detectado: ' . $mime_type);
+        Vehicle_Debug_Handler::log('MIME detectado: ' . $mime_type);
         
         // Mapeo de MIME types comunes a extensiones
         $mime_to_ext = [
@@ -347,7 +347,7 @@ function handle_image_url($url, $post_id) {
     ];
 
     // Registrar información para depuración
-    error_log('Procesando archivo desde URL: ' . print_r($file_array, true));
+    Vehicle_Debug_Handler::log('Procesando archivo desde URL: ' . print_r($file_array, true));
 
     // Manejar el sideload
     $attach_id = media_handle_sideload($file_array, $post_id);
@@ -402,8 +402,8 @@ function handle_base64_image($base64_string, $post_id) {
 }
 
 function save_gallery_meta($post_id, $gallery_ids) {
-    error_log('Guardando galería para post ' . $post_id);
-    error_log('IDs de galería a guardar: ' . print_r($gallery_ids, true));
+    Vehicle_Debug_Handler::log('Guardando galería para post ' . $post_id);
+    Vehicle_Debug_Handler::log('IDs de galería a guardar: ' . print_r($gallery_ids, true));
 
     try {
         // Asegurarse de que los IDs son válidos
@@ -412,7 +412,7 @@ function save_gallery_meta($post_id, $gallery_ids) {
         });
 
         if (empty($valid_ids)) {
-            error_log('No se encontraron IDs válidos para guardar en la galería');
+            Vehicle_Debug_Handler::log('No se encontraron IDs válidos para guardar en la galería');
             return;
         }
 
@@ -426,9 +426,9 @@ function save_gallery_meta($post_id, $gallery_ids) {
             throw new Exception('Error al guardar la galería en la base de datos');
         }
 
-        error_log('Galería guardada exitosamente: ' . $gallery_ids_string);
+        Vehicle_Debug_Handler::log('Galería guardada exitosamente: ' . $gallery_ids_string);
     } catch (Exception $e) {
-        error_log('ERROR guardando galería: ' . $e->getMessage());
+        Vehicle_Debug_Handler::log('ERROR guardando galería: ' . $e->getMessage());
         throw $e;
     }
 }
@@ -496,25 +496,25 @@ function get_vehicle_images($post_id) {
  */
 function process_gallery_urls($post_id, $gallery_urls) {
     try {
-        error_log('=== INICIO PROCESAMIENTO GALERÍA URLS ===');
-        error_log('Post ID: ' . $post_id);
+        Vehicle_Debug_Handler::log('=== INICIO PROCESAMIENTO GALERÍA URLS ===');
+        Vehicle_Debug_Handler::log('Post ID: ' . $post_id);
         
         // Asegurarse de que tenemos un array
         if (!is_array($gallery_urls)) {
             $gallery_urls = explode(',', $gallery_urls);
         }
         
-        error_log('URLs de galería recibidas: ' . print_r($gallery_urls, true));
+        Vehicle_Debug_Handler::log('URLs de galería recibidas: ' . print_r($gallery_urls, true));
         
         $gallery_ids = [];
         
         foreach ($gallery_urls as $url) {
             if (empty($url)) {
-                error_log('URL vacía, continuando con la siguiente');
+                Vehicle_Debug_Handler::log('URL vacía, continuando con la siguiente');
                 continue;
             }
             
-            error_log('Procesando URL de galería: ' . $url);
+            Vehicle_Debug_Handler::log('Procesando URL de galería: ' . $url);
             
             try {
                 // Verificar si es una URL web o una ruta local
@@ -526,33 +526,33 @@ function process_gallery_urls($post_id, $gallery_urls) {
                     if (file_exists($url)) {
                         $attach_id = handle_local_file($url, $post_id);
                     } else {
-                        error_log('El archivo local no existe: ' . $url);
+                        Vehicle_Debug_Handler::log('El archivo local no existe: ' . $url);
                         continue;
                     }
                 }
                 
                 if ($attach_id) {
-                    error_log('Imagen de galería procesada, ID: ' . $attach_id);
+                    Vehicle_Debug_Handler::log('Imagen de galería procesada, ID: ' . $attach_id);
                     $gallery_ids[] = $attach_id;
                 }
             } catch (Exception $e) {
-                error_log('Error procesando URL de galería: ' . $e->getMessage());
+                Vehicle_Debug_Handler::log('Error procesando URL de galería: ' . $e->getMessage());
                 continue;
             }
         }
         
-        error_log('IDs de galería recolectados: ' . print_r($gallery_ids, true));
+        Vehicle_Debug_Handler::log('IDs de galería recolectados: ' . print_r($gallery_ids, true));
         
         if (!empty($gallery_ids)) {
             save_gallery_meta($post_id, $gallery_ids);
-            error_log('Galería guardada exitosamente');
+            Vehicle_Debug_Handler::log('Galería guardada exitosamente');
         } else {
-            error_log('No se encontraron IDs válidos para guardar en la galería');
+            Vehicle_Debug_Handler::log('No se encontraron IDs válidos para guardar en la galería');
         }
         
-        error_log('=== FIN PROCESAMIENTO GALERÍA URLS ===');
+        Vehicle_Debug_Handler::log('=== FIN PROCESAMIENTO GALERÍA URLS ===');
     } catch (Exception $e) {
-        error_log('ERROR CRÍTICO en proceso de galería URLs: ' . $e->getMessage());
+        Vehicle_Debug_Handler::log('ERROR CRÍTICO en proceso de galería URLs: ' . $e->getMessage());
         throw $e;
     }
 }

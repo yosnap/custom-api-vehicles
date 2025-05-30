@@ -310,7 +310,7 @@ class Vehicle_Controller {
                     
                     // Obtener el valor como array simple
                     $values = get_post_meta($post->ID, $api_field_name, true);
-                    error_log("Valor recuperado para extres-cotxe: " . print_r($values, true));
+                    Vehicle_Debug_Handler::log("Valor recuperado para extres-cotxe: " . print_r($values, true));
                     
                     // Asegurarse de que values sea un array
                     if (!is_array($values)) {
@@ -323,10 +323,10 @@ class Vehicle_Controller {
                         // Buscar etiqueta en las opciones del glosario
                         if (isset($options[$single_value])) {
                             $labels[] = $options[$single_value];
-                            error_log("Label encontrado para extres-cotxe: " . $options[$single_value]);
+                            Vehicle_Debug_Handler::log("Label encontrado para extres-cotxe: " . $options[$single_value]);
                         } else {
                             $labels[] = $single_value; // Si no hay etiqueta, usar el valor original
-                            error_log("No se encontró label para extres-cotxe: " . $single_value);
+                            Vehicle_Debug_Handler::log("No se encontró label para extres-cotxe: " . $single_value);
                         }
                     }
                     
@@ -359,7 +359,7 @@ class Vehicle_Controller {
                     
                     // Obtener el valor como array simple
                     $values = get_post_meta($post->ID, $api_field_name, true);
-                    error_log("Valor recuperado para extres-cotxe: " . print_r($values, true));
+                    Vehicle_Debug_Handler::log("Valor recuperado para extres-cotxe: " . print_r($values, true));
                     
                     // Asegurarse de que values sea un array
                     if (!is_array($values)) {
@@ -372,10 +372,10 @@ class Vehicle_Controller {
                         // Buscar etiqueta en las opciones del glosario
                         if (isset($options[$single_value])) {
                             $labels[] = $options[$single_value];
-                            error_log("Label encontrado para extres-cotxe: " . $options[$single_value]);
+                            Vehicle_Debug_Handler::log("Label encontrado para extres-cotxe: " . $options[$single_value]);
                         } else {
                             $labels[] = $single_value; // Si no hay etiqueta, usar el valor original
-                            error_log("No se encontró label para extres-cotxe: " . $single_value);
+                            Vehicle_Debug_Handler::log("No se encontró label para extres-cotxe: " . $single_value);
                         }
                     }
                     
@@ -402,15 +402,15 @@ class Vehicle_Controller {
                     
                     // Obtener el valor
                     $value = get_post_meta($post->ID, $api_field_name, true);
-                    error_log("Valor recuperado para carroseria-vehicle-comercial: " . print_r($value, true));
+                    // Valor recuperado para carroseria-vehicle-comercial
                     
                     // Buscar etiqueta en las opciones del glosario
                     if (!empty($value) && isset($options[$value])) {
                         $data[$api_field_name] = $options[$value];
-                        error_log("Label encontrado para carroseria-vehicle-comercial: " . $options[$value]);
+                        // Label encontrado para carroseria-vehicle-comercial
                     } else {
                         $data[$api_field_name] = $value; // Si no hay etiqueta, usar el valor original
-                        error_log("No se encontró label para carroseria-vehicle-comercial: " . $value);
+                        // No se encontró label para carroseria-vehicle-comercial
                     }
                     
                     continue; // Importante: salir del bucle para este campo
@@ -890,14 +890,14 @@ class Vehicle_Controller {
                     // Validación específica para carroseria-vehicle-comercial
                     if (isset($params['carroseria-vehicle-comercial'])) {
                         $carroseria_value = $params['carroseria-vehicle-comercial'];
-                        error_log("Validando carroseria-vehicle-comercial: " . $carroseria_value);
+                        Vehicle_Debug_Handler::log("Validando carroseria-vehicle-comercial: " . $carroseria_value);
                         
                         // Validar que el valor sea válido para el glosario
                         if (function_exists('validate_specific_glossary_field')) {
                             $validation_result = validate_specific_glossary_field('carroseria-vehicle-comercial', $carroseria_value);
                             
                             if (is_wp_error($validation_result)) {
-                                error_log("Error de validación para carroseria-vehicle-comercial: " . $validation_result->get_error_message());
+                                Vehicle_Debug_Handler::log("Error de validación para carroseria-vehicle-comercial: " . $validation_result->get_error_message());
                                 return $validation_result;
                             }
                         }
@@ -934,7 +934,7 @@ class Vehicle_Controller {
             
             // Si hay campos inválidos, devolver error
             if (!empty($invalid_fields)) {
-                error_log("Campos inválidos en $vehicle_type: " . print_r($invalid_fields, true));
+                Vehicle_Debug_Handler::log("Campos inválidos en $vehicle_type: " . print_r($invalid_fields, true));
                 
                 $error_messages = [];
                 foreach ($invalid_fields as $field => $data) {
@@ -977,12 +977,12 @@ class Vehicle_Controller {
                 if (is_array($value)) {
                     // Guardar como array simple (formato requerido por JSM)
                     update_post_meta($post_id, $key, $value);
-                    error_log("Guardado $key como array simple en create_vehicle: " . print_r($value, true));
+                    Vehicle_Debug_Handler::log("Guardado $key como array simple en create_vehicle: " . print_r($value, true));
                 } else {
                     // Si no es un array, convertirlo en array
                     $array_value = [$value];
                     update_post_meta($post_id, $key, $array_value);
-                    error_log("Guardado $key como array simple (valor único) en create_vehicle: " . print_r($array_value, true));
+                    Vehicle_Debug_Handler::log("Guardado $key como array simple (valor único) en create_vehicle: " . print_r($array_value, true));
                 }
             }
             // Guardar el campo como metadato
@@ -1067,14 +1067,14 @@ class Vehicle_Controller {
                     // Validación específica para carroseria-vehicle-comercial
                     if (isset($params['carroseria-vehicle-comercial'])) {
                         $carroseria_value = $params['carroseria-vehicle-comercial'];
-                        error_log("Validando carroseria-vehicle-comercial en update: " . $carroseria_value);
+                        Vehicle_Debug_Handler::log("Validando carroseria-vehicle-comercial en update: " . $carroseria_value);
                         
                         // Validar que el valor sea válido para el glosario
                         if (function_exists('validate_specific_glossary_field')) {
                             $validation_result = validate_specific_glossary_field('carroseria-vehicle-comercial', $carroseria_value);
                             
                             if (is_wp_error($validation_result)) {
-                                error_log("Error de validación para carroseria-vehicle-comercial en update: " . $validation_result->get_error_message());
+                                Vehicle_Debug_Handler::log("Error de validación para carroseria-vehicle-comercial en update: " . $validation_result->get_error_message());
                                 return $validation_result;
                             }
                         }
@@ -1111,7 +1111,7 @@ class Vehicle_Controller {
             
             // Si hay campos inválidos, devolver error
             if (!empty($invalid_fields)) {
-                error_log("Campos inválidos en $vehicle_type: " . print_r($invalid_fields, true));
+                Vehicle_Debug_Handler::log("Campos inválidos en $vehicle_type: " . print_r($invalid_fields, true));
                 
                 $error_messages = [];
                 foreach ($invalid_fields as $field => $data) {
@@ -1158,12 +1158,12 @@ class Vehicle_Controller {
                 if (is_array($value)) {
                     // Guardar como array simple (formato requerido por JSM)
                     update_post_meta($post_id, $key, $value);
-                    error_log("Actualizado $key como array simple en update_vehicle: " . print_r($value, true));
+                    Vehicle_Debug_Handler::log("Actualizado $key como array simple en update_vehicle: " . print_r($value, true));
                 } else {
                     // Si no es un array, convertirlo en array
                     $array_value = [$value];
                     update_post_meta($post_id, $key, $array_value);
-                    error_log("Actualizado $key como array simple (valor único) en update_vehicle: " . print_r($array_value, true));
+                    Vehicle_Debug_Handler::log("Actualizado $key como array simple (valor único) en update_vehicle: " . print_r($array_value, true));
                 }
             }
             // Guardar el campo como metadato

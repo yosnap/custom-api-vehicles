@@ -57,6 +57,7 @@ class Custom_API_Vehicles {
         // Incluir archivos necesarios en orden correcto
         require_once plugin_dir_path(__FILE__) . 'admin/class-admin-menu.php';          
         require_once plugin_dir_path(__FILE__) . 'includes/class-api-logger.php';       
+        require_once plugin_dir_path(__FILE__) . 'includes/class-debug-handler.php';     // Nuevo manejador de debug
         require_once plugin_dir_path(__FILE__) . 'includes/class-vehicle-fields.php';   
         require_once plugin_dir_path(__FILE__) . 'includes/class-glossary-fields.php';
         require_once plugin_dir_path(__FILE__) . 'admin/class-glossary-mappings.php';
@@ -103,7 +104,7 @@ add_action('plugins_loaded', function () {
         Vehicle_Fields::get_instance();
         Glossary_Fields::get_instance();
     } else {
-        error_log('Error: JetEngine no está disponible');
+        Vehicle_Debug_Handler::log('Error: JetEngine no está disponible');
     }
 }, 20);
 
@@ -135,7 +136,7 @@ add_action('rest_api_init', function() {
         if (strpos($request->get_route(), 'api-motor/v1') !== false) {
             // Verificar si hay errores de permisos
             if (is_wp_error($response)) {
-                error_log('REST API Error: ' . $response->get_error_message());
+                Vehicle_Debug_Handler::log('REST API Error: ' . $response->get_error_message());
             }
         }
         return $response;

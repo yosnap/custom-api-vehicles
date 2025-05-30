@@ -6,7 +6,7 @@ function save_vehicle_meta_fields($post_id, $params) {
     if (function_exists('process_and_save_meta_fields')) {
         return process_and_save_meta_fields($post_id, $params);
     } else {
-        error_log('Error: La función process_and_save_meta_fields no está disponible');
+        Vehicle_Debug_Handler::log('Error: La función process_and_save_meta_fields no está disponible');
         return false;
     }
 }

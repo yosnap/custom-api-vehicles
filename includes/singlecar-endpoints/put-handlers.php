@@ -2,18 +2,18 @@
 
 function update_singlecar($request) {
     try {
-        error_log('PUT - Iniciando update_singlecar');
+        Vehicle_Debug_Handler::log('PUT - Iniciando update_singlecar');
         global $wpdb;
         $wpdb->query('START TRANSACTION');
 
         $params = $request->get_params();
-        error_log('PUT - Parámetros recibidos: ' . print_r($params, true));
+        Vehicle_Debug_Handler::log('PUT - Parámetros recibidos: ' . print_r($params, true));
         $post_id = isset($params['id']) ? $params['id'] : 0;
 
         // Verificar existencia y propiedad del vehículo
         validate_vehicle_ownership($post_id);
 
-        error_log('PUT - Valor inicial de anunci-actiu: ' . get_post_meta($post_id, 'anunci-actiu', true));
+        Vehicle_Debug_Handler::log('PUT - Valor inicial de anunci-actiu: ' . get_post_meta($post_id, 'anunci-actiu', true));
 
         // Verificar si hay campos obligatorios vacíos en el vehículo existente
         $empty_required_fields = check_empty_required_fields($post_id);
@@ -29,41 +29,41 @@ function update_singlecar($request) {
         // Actualizar el post
         update_vehicle_base_data($post_id, $params);
 
-        error_log('PUT - Valor de anunci-actiu después de update_vehicle_base_data: ' . get_post_meta($post_id, 'anunci-actiu', true));
+        Vehicle_Debug_Handler::log('PUT - Valor de anunci-actiu después de update_vehicle_base_data: ' . get_post_meta($post_id, 'anunci-actiu', true));
 
         // Procesar actualizaciones solo para los campos proporcionados
         if (!empty($params)) {
             if (has_taxonomy_updates($params)) {
                 validate_taxonomies($params);
                 update_vehicle_taxonomies($post_id, $params);
-                error_log('PUT - Valor de anunci-actiu después de update_vehicle_taxonomies: ' . get_post_meta($post_id, 'anunci-actiu', true));
+                Vehicle_Debug_Handler::log('PUT - Valor de anunci-actiu después de update_vehicle_taxonomies: ' . get_post_meta($post_id, 'anunci-actiu', true));
             }
 
             if (has_image_updates($params)) {
                 process_vehicle_images($post_id, $params);
-                error_log('PUT - Valor de anunci-actiu después de process_vehicle_images: ' . get_post_meta($post_id, 'anunci-actiu', true));
+                Vehicle_Debug_Handler::log('PUT - Valor de anunci-actiu después de process_vehicle_images: ' . get_post_meta($post_id, 'anunci-actiu', true));
             }
 
             // Procesar anunci-actiu y anunci-destacat si están presentes
             if (isset($params['anunci-actiu']) || isset($params['anunci-destacat'])) {
                 update_vehicle_status($post_id, $params);
-                error_log('PUT - Valor de anunci-actiu después de update_vehicle_status: ' . get_post_meta($post_id, 'anunci-actiu', true));
+                Vehicle_Debug_Handler::log('PUT - Valor de anunci-actiu después de update_vehicle_status: ' . get_post_meta($post_id, 'anunci-actiu', true));
             }
 
             // Crear una copia de los parámetros sin anunci-actiu y anunci-destacat
             $meta_params = array_diff_key($params, array_flip(['anunci-actiu', 'anunci-destacat', 'id']));
-            error_log('PUT - Parámetros para meta fields: ' . print_r($meta_params, true));
+            Vehicle_Debug_Handler::log('PUT - Parámetros para meta fields: ' . print_r($meta_params, true));
             
             // Procesar campos meta solo si hay campos para actualizar
             if (!empty($meta_params)) {
                 process_and_save_meta_fields($post_id, $meta_params, true);
-                error_log('PUT - Valor de anunci-actiu después de process_and_save_meta_fields: ' . get_post_meta($post_id, 'anunci-actiu', true));
+                Vehicle_Debug_Handler::log('PUT - Valor de anunci-actiu después de process_and_save_meta_fields: ' . get_post_meta($post_id, 'anunci-actiu', true));
             }
         }
 
         $wpdb->query('COMMIT');
 
-        error_log('PUT - Valor final de anunci-actiu antes de prepare_update_response: ' . get_post_meta($post_id, 'anunci-actiu', true));
+        Vehicle_Debug_Handler::log('PUT - Valor final de anunci-actiu antes de prepare_update_response: ' . get_post_meta($post_id, 'anunci-actiu', true));
 
         // Preparar y enviar respuesta
         return prepare_update_response($post_id);
@@ -195,37 +195,37 @@ function has_image_updates($params) {
 }
 
 function update_vehicle_status($post_id, $params) {
-    error_log('PUT - Iniciando update_vehicle_status');
-    error_log('PUT - Parámetros en update_vehicle_status: ' . print_r($params, true));
+    Vehicle_Debug_Handler::log('PUT - Iniciando update_vehicle_status');
+    Vehicle_Debug_Handler::log('PUT - Parámetros en update_vehicle_status: ' . print_r($params, true));
     
     // Manejar el campo anunci-actiu
     if (isset($params['anunci-actiu'])) {
-        error_log('PUT - Actualizando anunci-actiu');
+        Vehicle_Debug_Handler::log('PUT - Actualizando anunci-actiu');
         $anunci_actiu = $params['anunci-actiu'];
-        error_log('PUT - Valor recibido de anunci-actiu: ' . $anunci_actiu);
-        error_log('PUT - Tipo de dato de anunci-actiu: ' . gettype($anunci_actiu));
+        Vehicle_Debug_Handler::log('PUT - Valor recibido de anunci-actiu: ' . $anunci_actiu);
+        Vehicle_Debug_Handler::log('PUT - Tipo de dato de anunci-actiu: ' . gettype($anunci_actiu));
         
         // Asegurar que el valor sea exactamente "true" o "false" (sin normalizar)
-        error_log('PUT - Intentando guardar anunci-actiu con valor exacto: ' . $anunci_actiu);
+        Vehicle_Debug_Handler::log('PUT - Intentando guardar anunci-actiu con valor exacto: ' . $anunci_actiu);
         delete_post_meta($post_id, 'anunci-actiu');
         $result = add_post_meta($post_id, 'anunci-actiu', $anunci_actiu, true);
-        error_log('PUT - Resultado de guardar anunci-actiu: ' . ($result ? 'true' : 'false'));
-        error_log('PUT - Valor guardado en anunci-actiu: ' . get_post_meta($post_id, 'anunci-actiu', true));
+        Vehicle_Debug_Handler::log('PUT - Resultado de guardar anunci-actiu: ' . ($result ? 'true' : 'false'));
+        Vehicle_Debug_Handler::log('PUT - Valor guardado en anunci-actiu: ' . get_post_meta($post_id, 'anunci-actiu', true));
     }
 
     // Manejar el campo anunci-destacat
     if (isset($params['anunci-destacat'])) {
-        error_log('PUT - Actualizando anunci-destacat');
+        Vehicle_Debug_Handler::log('PUT - Actualizando anunci-destacat');
         $anunci_destacat = $params['anunci-destacat'];
-        error_log('PUT - Valor recibido de anunci-destacat: ' . $anunci_destacat);
-        error_log('PUT - Tipo de dato de anunci-destacat: ' . gettype($anunci_destacat));
+        Vehicle_Debug_Handler::log('PUT - Valor recibido de anunci-destacat: ' . $anunci_destacat);
+        Vehicle_Debug_Handler::log('PUT - Tipo de dato de anunci-destacat: ' . gettype($anunci_destacat));
         
         // Asegurar que el valor sea exactamente "true" o "false" (sin normalizar)
-        error_log('PUT - Intentando guardar is-vip con valor exacto: ' . $anunci_destacat);
+        Vehicle_Debug_Handler::log('PUT - Intentando guardar is-vip con valor exacto: ' . $anunci_destacat);
         delete_post_meta($post_id, 'is-vip');
         $result = add_post_meta($post_id, 'is-vip', $anunci_destacat, true);
-        error_log('PUT - Resultado de guardar is-vip: ' . ($result ? 'true' : 'false'));
-        error_log('PUT - Valor guardado en is-vip: ' . get_post_meta($post_id, 'is-vip', true));
+        Vehicle_Debug_Handler::log('PUT - Resultado de guardar is-vip: ' . ($result ? 'true' : 'false'));
+        Vehicle_Debug_Handler::log('PUT - Valor guardado en is-vip: ' . get_post_meta($post_id, 'is-vip', true));
     }
 }
 

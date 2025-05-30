@@ -46,12 +46,12 @@ function delete_singlecar($request) {
  * @param int $post_id ID del vehículo
  */
 function delete_vehicle_images($post_id) {
-    error_log('Eliminando imágenes asociadas al vehículo ID: ' . $post_id);
+    Vehicle_Debug_Handler::log('Eliminando imágenes asociadas al vehículo ID: ' . $post_id);
     
     // Eliminar imagen destacada
     $featured_image_id = get_post_thumbnail_id($post_id);
     if ($featured_image_id) {
-        error_log('Eliminando imagen destacada ID: ' . $featured_image_id);
+        Vehicle_Debug_Handler::log('Eliminando imagen destacada ID: ' . $featured_image_id);
         wp_delete_attachment($featured_image_id, true);
     }
     
@@ -61,7 +61,7 @@ function delete_vehicle_images($post_id) {
         $gallery_ids = explode(',', $gallery_string);
         foreach ($gallery_ids as $attachment_id) {
             if (!empty($attachment_id) && is_numeric($attachment_id)) {
-                error_log('Eliminando imagen de galería ID: ' . $attachment_id);
+                Vehicle_Debug_Handler::log('Eliminando imagen de galería ID: ' . $attachment_id);
                 wp_delete_attachment($attachment_id, true);
             }
         }
@@ -70,7 +70,7 @@ function delete_vehicle_images($post_id) {
     // Eliminar metadatos de la galería
     delete_post_meta($post_id, 'ad_gallery');
     
-    error_log('Imágenes asociadas al vehículo eliminadas correctamente');
+    Vehicle_Debug_Handler::log('Imágenes asociadas al vehículo eliminadas correctamente');
 }
 
 function validate_delete_permissions($post_id) {

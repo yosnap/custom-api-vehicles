@@ -126,7 +126,7 @@ class Glossary_Fields {
                 try {
                     // ... código para registrar con JetEngine ...
                 } catch (Exception $e) {
-                    error_log("Error al registrar campo con JetEngine: " . $e->getMessage());
+                    Vehicle_Debug_Handler::log("Error al registrar campo con JetEngine: " . $e->getMessage());
                 }
             }
             */
