@@ -53,6 +53,9 @@ function get_seller_data($user_id) {
     // Obtener vehículos del vendedor
     $vehicles = get_seller_vehicles($user_id);
 
+    // Obtener metadatos de usuario para los teléfonos
+    $user_meta = get_user_meta($user_id);
+
     $response = [
         'status' => 'success',
         'data' => [
@@ -62,6 +65,16 @@ function get_seller_data($user_id) {
             'name' => $user->display_name,
             'registered_date' => $user->user_registered,
             'role' => $user->roles[0],
+            'telefon-mobile-professional' => $user_meta['telefon-mobile-professional'][0] ?? '', // Professional mobile phone
+            'telefon-comercial' => $user_meta['telefon-comercial'][0] ?? '', // Commercial phone
+            'telefon-whatsapp' => $user_meta['telefon-whatsapp'][0] ?? '', // Whatsapp phone
+            'localitat-professional' => $user_meta['localitat-professional'][0] ?? '', // Professional locality
+            'adreca-professional' => $user_meta['adreca-professional'][0] ?? '', // Professional address
+            'nom-contacte' => $user_meta['nom-contacte'][0] ?? '', // Contact name
+            'cognoms-contacte' => $user_meta['cognoms-contacte'][0] ?? '', // Contact surname
+            'galeria-professionals' => !empty($user_meta['galeria-professionals'][0]) ? array_map('wp_get_attachment_url', explode(',', $user_meta['galeria-professionals'][0])) : [], // Professional gallery
+            'descripcio-empresa' => $user_meta['descripcio-empresa'][0] ?? '', // Company description
+            'pagina-web' => $user_meta['pagina-web'][0] ?? '', // Website
             'total_vehicles' => count($vehicles),
             'active_vehicles' => count(array_filter($vehicles, function($v) {
                 return $v['anunci-actiu'];
@@ -79,6 +92,7 @@ function get_all_sellers_data() {
 
     $sellers_data = array_map(function($user) {
         $vehicles = get_seller_vehicles($user->ID);
+        $user_meta = get_user_meta($user->ID);
         return [
             'id' => $user->ID,
             'username' => $user->user_login,
@@ -86,6 +100,16 @@ function get_all_sellers_data() {
             'name' => $user->display_name,
             'registered_date' => $user->user_registered,
             'role' => $user->roles[0],
+            'telefon-mobile-professional' => $user_meta['telefon-mobile-professional'][0] ?? '', // Professional mobile phone
+            'telefon-comercial' => $user_meta['telefon-comercial'][0] ?? '', // Commercial phone
+            'telefon-whatsapp' => $user_meta['telefon-whatsapp'][0] ?? '', // Whatsapp phone
+            'localitat-professional' => $user_meta['localitat-professional'][0] ?? '',
+            'adreca-professional' => $user_meta['adreca-professional'][0] ?? '',
+            'nom-contacte' => $user_meta['nom-contacte'][0] ?? '',
+            'cognoms-contacte' => $user_meta['cognoms-contacte'][0] ?? '',
+            'galeria-professionals' => !empty($user_meta['galeria-professionals'][0]) ? array_map('wp_get_attachment_url', explode(',', $user_meta['galeria-professionals'][0])) : [],
+            'descripcio-empresa' => $user_meta['descripcio-empresa'][0] ?? '',
+            'pagina-web' => $user_meta['pagina-web'][0] ?? '',
             'total_vehicles' => count($vehicles),
             'active_vehicles' => count(array_filter($vehicles, function($v) {
                 return $v['anunci-actiu'];

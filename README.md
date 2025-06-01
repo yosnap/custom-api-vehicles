@@ -483,3 +483,101 @@ La respuesta incluye:
 - `pages`: Número total de páginas
 - `page`: Página actual
 - `per_page`: Items por página
+
+### Ejemplo de respuesta de un vehículo individual
+```json
+{
+  "id": 123,
+  "author_id": 45,
+  "data-creacio": "2024-06-01 12:00:00",
+  "status": "publish",
+  "slug": "ford-focus-2024",
+  "titol-anunci": "Ford Focus 2024",
+  "descripcio-anunci": "Vehículo en perfecto estado...",
+  "anunci-actiu": "true",
+  "anunci-destacat": "true",
+  "tipus-vehicle": "Cotxe",
+  "marques-cotxe": "Ford",
+  "models-cotxe": "Focus",
+  "imatge-destacada-url": "https://...",
+  "galeria-vehicle-urls": ["https://...", "https://..."]
+  // ...otros campos personalizados...
+}
+```
+
+### Ejemplo de respuesta de sellers (lista)
+```json
+{
+  "status": "success",
+  "total": 2,
+  "data": [
+    {
+      "id": 45,
+      "username": "vendedor1",
+      "email": "vendedor1@email.com",
+      "name": "Nombre Vendedor",
+      "registered_date": "2024-01-01 10:00:00",
+      "role": "professional",
+      "total_vehicles": 10,
+      "active_vehicles": 8
+    }
+    // ...más vendedores...
+  ]
+}
+```
+
+### Ejemplo de respuesta de sellers (detalle)
+```json
+{
+  "status": "success",
+  "data": {
+    "id": 45,
+    "username": "vendedor1",
+    "email": "vendedor1@email.com",
+    "name": "Nombre Vendedor",
+    "registered_date": "2024-01-01 10:00:00",
+    "role": "professional",
+    "logo-empresa": "https://...",
+    "logo-empresa-home": "https://...",
+    "nom-empresa": "Empresa S.L.",
+    "telefon-mobile-professional": "600123456",
+    "telefon-comercial": "934567890",
+    "telefon-whatsapp": "600123456",
+    "localitat-professional": "Barcelona",
+    "adreca-professional": "Calle Falsa 123",
+    "nom-contacte": "Juan",
+    "cognoms-contacte": "Pérez",
+    "descripcio-empresa": "Concesionario oficial...",
+    "pagina-web": "https://empresa.com",
+    "galeria-professionals": [
+      "https://.../img1.jpg",
+      "https://.../img2.jpg"
+    ],
+    "total_vehicles": 10,
+    "active_vehicles": 8
+  }
+}
+```
+
+### Parámetros de ordenación soportados en /vehicles
+
+| Opción UI                | Parámetro `orderby` | Parámetro `order` | Descripción                                 |
+|--------------------------|---------------------|-------------------|---------------------------------------------|
+| Destacados primero       | featured            | -                 | Destacados primero, luego más recientes     |
+| Precio: menor a mayor    | price               | ASC               | Precio ascendente                           |
+| Precio: mayor a menor    | price               | DESC              | Precio descendente                          |
+| Más recientes            | date                | DESC              | Fecha de publicación descendente            |
+| Más antiguos             | date                | ASC               | Fecha de publicación ascendente             |
+| Alfabético (A-Z)         | title               | ASC               | Título ascendente                           |
+| Alfabético (Z-A)         | title               | DESC              | Título descendente                          |
+
+### Ejemplos de consulta de vehículos por usuario y estado
+
+- Todos los vehículos de un usuario:
+  `/wp-json/api-motor/v1/vehicles?user_id=45`
+- Solo activos:
+  `/wp-json/api-motor/v1/vehicles?user_id=45&anunci-actiu=true`
+- Solo inactivos:
+  `/wp-json/api-motor/v1/vehicles?user_id=45&anunci-actiu=false`
+- Solo vendidos (si existe el campo `venut`):
+  `/wp-json/api-motor/v1/vehicles?user_id=45&venut=true`

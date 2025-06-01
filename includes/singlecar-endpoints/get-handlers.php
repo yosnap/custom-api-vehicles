@@ -264,27 +264,44 @@ function build_query_args($params) {
     // Ordenamiento
     if (isset($params['orderby'])) {
         switch ($params['orderby']) {
-            case 'date':
-                $args['orderby'] = 'date';
+            case 'featured':
+                // Destacados primero: primero por is-vip DESC, luego por fecha DESC
+                $args['orderby'] = [
+                    'meta_value_num' => 'DESC', // is-vip primero
+                    'date' => 'DESC'
+                ];
+                $args['meta_key'] = 'is-vip';
                 break;
             case 'price':
                 $args['orderby'] = 'meta_value_num';
                 $args['meta_key'] = 'preu';
+                $args['order'] = isset($params['order']) && in_array(strtoupper($params['order']), ['ASC', 'DESC']) 
+                    ? strtoupper($params['order']) 
+                    : 'ASC';
                 break;
-            case 'km':
-                $args['orderby'] = 'meta_value_num';
-                $args['meta_key'] = 'quilometratge';
+            case 'date':
+                $args['orderby'] = 'date';
+                $args['order'] = isset($params['order']) && in_array(strtoupper($params['order']), ['ASC', 'DESC']) 
+                    ? strtoupper($params['order']) 
+                    : 'DESC';
                 break;
-            case 'year':
-                $args['orderby'] = 'meta_value_num';
-                $args['meta_key'] = 'any';
+            case 'title':
+                $args['orderby'] = 'title';
+                $args['order'] = isset($params['order']) && in_array(strtoupper($params['order']), ['ASC', 'DESC']) 
+                    ? strtoupper($params['order']) 
+                    : 'ASC';
                 break;
             default:
                 $args['orderby'] = 'date';
+                $args['order'] = 'DESC';
         }
-        $args['order'] = isset($params['order']) && in_array(strtoupper($params['order']), ['ASC', 'DESC']) 
-            ? strtoupper($params['order']) 
-            : 'DESC';
+    } else {
+        // Por defecto, destacados primero
+        $args['orderby'] = [
+            'meta_value_num' => 'DESC',
+            'date' => 'DESC'
+        ];
+        $args['meta_key'] = 'is-vip';
     }
 
     // Estado activo del anuncio
@@ -416,6 +433,7 @@ function get_vehicle_details_common($vehicle_id) {
     // Construir respuesta base con orden específico
     $response = [
         'id' => $vehicle_id,
+        'author_id' => $post->post_author,
         'data-creacio' => $post->post_date,
         'status' => $post->post_status,
         'slug' => $post->post_name,

@@ -46,6 +46,24 @@ if (!function_exists('get_seller_details')) {
                 $authors = [];
 
                 foreach ($users as $user) {
+                    $user_meta = get_user_meta($user->ID);
+                    // Calcular vehículos totales y activos
+                    $args = [
+                        'post_type' => 'singlecar',
+                        'author' => $user->ID,
+                        'post_status' => 'publish',
+                        'posts_per_page' => -1
+                    ];
+                    $query = new WP_Query($args);
+                    $total_vehicles = $query->found_posts;
+                    $active_vehicles = 0;
+                    if ($query->have_posts()) {
+                        foreach ($query->posts as $post) {
+                            if (get_post_meta($post->ID, 'anunci-actiu', true) === 'true') {
+                                $active_vehicles++;
+                            }
+                        }
+                    }
                     $authors[] = [
                         'id' => $user->ID,
                         'username' => $user->user_login,
@@ -53,8 +71,8 @@ if (!function_exists('get_seller_details')) {
                         'name' => $user->display_name,
                         'registered_date' => $user->user_registered,
                         'role' => $user->roles[0] ?? '',
-                        'total_vehicles' => 0,
-                        'active_vehicles' => 0
+                        'total_vehicles' => $total_vehicles,
+                        'active_vehicles' => $active_vehicles
                     ];
                 }
 
@@ -80,6 +98,24 @@ if (!function_exists('get_seller_details')) {
             $user_meta = get_user_meta($user_id);
             Vehicle_Debug_Handler::log('DEBUG: User meta: ' . print_r($user_meta, true));
 
+            // Obtener vehículos del usuario
+            $args = [
+                'post_type' => 'singlecar',
+                'author' => $user_id,
+                'post_status' => 'publish',
+                'posts_per_page' => -1
+            ];
+            $query = new WP_Query($args);
+            $total_vehicles = $query->found_posts;
+            $active_vehicles = 0;
+            if ($query->have_posts()) {
+                foreach ($query->posts as $post) {
+                    if (get_post_meta($post->ID, 'anunci-actiu', true) === 'true') {
+                        $active_vehicles++;
+                    }
+                }
+            }
+
             // Construir respuesta base
             $response_data = [
                 'id' => $user_id,
@@ -101,8 +137,8 @@ if (!function_exists('get_seller_details')) {
                 'descripcio-empresa' => $user_meta['descripcio-empresa'][0] ?? '',
                 'pagina-web' => $user_meta['pagina-web'][0] ?? '',
                 'galeria-professionals' => [],
-                'total_vehicles' => 0,
-                'active_vehicles' => 0
+                'total_vehicles' => $total_vehicles,
+                'active_vehicles' => $active_vehicles
             ];
 
             // Procesar galería de imágenes

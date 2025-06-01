@@ -26,3 +26,22 @@ y este proyecto adhiere a [Semantic Versioning](https://semver.org/spec/v2.0.0.h
 - Soporte inicial para la API REST de vehículos
 - Endpoints básicos para CRUD de vehículos
 - Soporte para taxonomías y glosarios
+
+## [2.1] - 2024-06-01
+
+### Añadido
+- Campo `author_id` en la respuesta de vehículos individuales
+- Nuevos campos detallados en la respuesta de sellers (teléfonos, dirección, contacto, galería, etc.) al consultar un vendedor específico
+- Cálculo real de vehículos totales y activos para cada vendedor
+- Ejemplos de payloads actualizados en la documentación
+- Parámetro de ordenación `featured` (destacados primero) y resto de opciones de ordenación en el endpoint de vehículos
+- Ejemplos de consulta de vehículos por usuario y estado en la documentación
+
+### Cambiado
+- La respuesta de la lista de sellers ahora solo incluye los campos principales (id, username, email, name, registered_date, role, total_vehicles, active_vehicles)
+- El parámetro de ordenación para destacados primero es ahora `featured` en vez de `vip_first`
+- Documentación y ejemplos actualizados en README.md y API-DOCUMENTATION.md
+
+### Corregido
+- Ahora los endpoints de sellers devuelven correctamente el total y activos de cada vendedor
+- Mejoras menores de formato y consistencia en la documentación
