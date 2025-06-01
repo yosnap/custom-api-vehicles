@@ -472,6 +472,26 @@ function get_vehicle_details_common($vehicle_id) {
         }
     }
 
+    // --- Asegurar devolución de campos de carrocería ---
+    $carroceria_fields = [
+        'carroseria-cotxe',
+        'carrosseria-cotxe',
+        'carroseria-vehicle-comercial',
+        'carrosseria-caravana',
+        'tipus-carroseria-caravana'
+    ];
+    foreach ($carroceria_fields as $field) {
+        if (isset($meta[$field]) && !empty($meta[$field][0])) {
+            $value = $meta[$field][0];
+            // Si es glosario, mostrar label
+            if (function_exists('should_get_field_label') && should_get_field_label($field)) {
+                $response[$field] = get_field_label($field, $value);
+            } else {
+                $response[$field] = $value;
+            }
+        }
+    }
+
     // Procesar campos adicionales
     process_meta_fields($meta, $response);
     add_image_data($vehicle_id, $response);
