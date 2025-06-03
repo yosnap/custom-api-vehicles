@@ -210,7 +210,32 @@ function build_query_args($params) {
     ];
 
     foreach ($boolean_filters as $filter) {
-        if (isset($params[$filter])) {
+        if ($filter === 'venut') {
+            if (array_key_exists('venut', $params)) {
+                // Si se pasa venut, filtrar solo por el valor exacto
+                $meta_query[] = [
+                    'key' => 'venut',
+                    'value' => filter_var($params['venut'], FILTER_VALIDATE_BOOLEAN) ? 'true' : 'false',
+                    'compare' => '='
+                ];
+                $apply_meta_query = true;
+            } else {
+                // Si NO se pasa venut, mostrar los que no están vendidos o no tienen el campo
+                $meta_query[] = [
+                    'relation' => 'OR',
+                    [
+                        'key' => 'venut',
+                        'value' => 'false',
+                        'compare' => '='
+                    ],
+                    [
+                        'key' => 'venut',
+                        'compare' => 'NOT EXISTS'
+                    ]
+                ];
+                $apply_meta_query = true;
+            }
+        } elseif (isset($params[$filter])) {
             $meta_query[] = [
                 'key' => $filter,
                 'value' => filter_var($params[$filter], FILTER_VALIDATE_BOOLEAN) ? 'true' : 'false',

@@ -598,3 +598,8 @@ Para mostrar los vehículos destacados primero, usa:
 - `/wp-json/api-motor/v1/vehicles?orderby=featured`
 
 Esto ordena primero los que tienen `is-vip = 'true'` y luego el resto, por fecha descendente.
+
+### Filtro por vendidos (`venut`)
+- Si **no pasas** el parámetro `venut`, solo se mostrarán los vehículos no vendidos o que no tienen el campo (disponibles).
+- Si pasas `venut=false`, solo se mostrarán los vehículos que tienen el campo `venut` explícitamente en "false".
+- Si pasas `venut=true`, solo se mostrarán los vehículos vendidos.

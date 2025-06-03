@@ -52,3 +52,12 @@ y este proyecto adhiere a [Semantic Versioning](https://semver.org/spec/v2.0.0.h
 - Filtro exacto por `anunci-actiu` en el endpoint de vehículos: solo devuelve los ítems activos o inactivos según el parámetro.
 - Ordenación por destacados con el parámetro `orderby=featured` (primero los que tienen `is-vip='true'`).
 - Documentación actualizada con ejemplos de filtrado y ordenación.
+
+## [2.3] - 2024-06-01
+
+### Añadido
+- Nueva lógica para el filtro `venut` en el endpoint de vehículos:
+  - Si no se pasa el parámetro, solo se muestran los vehículos no vendidos o que no tienen el campo (disponibles).
+  - Si se pasa `venut=false`, solo los que tienen el campo explícitamente en 'false'.
+  - Si se pasa `venut=true`, solo los vendidos.
+- Documentación actualizada para reflejar este comportamiento.

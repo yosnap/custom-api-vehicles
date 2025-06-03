@@ -602,22 +602,10 @@ fetch('/wp-json/api-motor/v1/vehicles', {
 }
 ```
 
-### Filtro por estado activo
-Puedes filtrar los vehículos activos o inactivos:
-
-- Solo activos:
-  `/wp-json/api-motor/v1/vehicles?anunci-actiu=true`
-- Solo inactivos:
-  `/wp-json/api-motor/v1/vehicles?anunci-actiu=false`
-
-El filtro es exacto y solo devuelve los ítems cuyo estado real coincide con el solicitado.
-
-### Ordenar por destacados
-Para mostrar los vehículos destacados primero, usa:
-
-- `/wp-json/api-motor/v1/vehicles?orderby=featured`
-
-Esto ordena primero los que tienen `is-vip = 'true'` y luego el resto, por fecha descendente.
+### Filtro por vendidos (`venut`)
+- Si **no pasas** el parámetro `venut`, solo se mostrarán los vehículos no vendidos o que no tienen el campo (disponibles).
+- Si pasas `venut=false`, solo se mostrarán los vehículos que tienen el campo `venut` explícitamente en "false".
+- Si pasas `venut=true`, solo se mostrarán los vehículos vendidos.
 
 ## Soporte y Contacto
 
