@@ -602,28 +602,22 @@ fetch('/wp-json/api-motor/v1/vehicles', {
 }
 ```
 
-### Parámetros de ordenación soportados en /vehicles
+### Filtro por estado activo
+Puedes filtrar los vehículos activos o inactivos:
 
-| Opción UI                | Parámetro `orderby` | Parámetro `order` | Descripción                                 |
-|--------------------------|---------------------|-------------------|---------------------------------------------|
-| Destacados primero       | featured            | -                 | Destacados primero, luego más recientes     |
-| Precio: menor a mayor    | price               | ASC               | Precio ascendente                           |
-| Precio: mayor a menor    | price               | DESC              | Precio descendente                          |
-| Más recientes            | date                | DESC              | Fecha de publicación descendente            |
-| Más antiguos             | date                | ASC               | Fecha de publicación ascendente             |
-| Alfabético (A-Z)         | title               | ASC               | Título ascendente                           |
-| Alfabético (Z-A)         | title               | DESC              | Título descendente                          |
-
-### Ejemplos de consulta de vehículos por usuario y estado
-
-- Todos los vehículos de un usuario:
-  `/wp-json/api-motor/v1/vehicles?user_id=45`
 - Solo activos:
-  `/wp-json/api-motor/v1/vehicles?user_id=45&anunci-actiu=true`
+  `/wp-json/api-motor/v1/vehicles?anunci-actiu=true`
 - Solo inactivos:
-  `/wp-json/api-motor/v1/vehicles?user_id=45&anunci-actiu=false`
-- Solo vendidos (si existe el campo `venut`):
-  `/wp-json/api-motor/v1/vehicles?user_id=45&venut=true`
+  `/wp-json/api-motor/v1/vehicles?anunci-actiu=false`
+
+El filtro es exacto y solo devuelve los ítems cuyo estado real coincide con el solicitado.
+
+### Ordenar por destacados
+Para mostrar los vehículos destacados primero, usa:
+
+- `/wp-json/api-motor/v1/vehicles?orderby=featured`
+
+Esto ordena primero los que tienen `is-vip = 'true'` y luego el resto, por fecha descendente.
 
 ## Soporte y Contacto
 

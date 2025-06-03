@@ -265,9 +265,14 @@ function build_query_args($params) {
     if (isset($params['orderby'])) {
         switch ($params['orderby']) {
             case 'featured':
-                // Destacados primero: primero por is-vip DESC, luego por fecha DESC
+                // Asegurar que todos los vehículos tengan el campo is-vip (aunque sea 0)
+                $meta_query[] = [
+                    'key' => 'is-vip',
+                    'compare' => 'EXISTS'
+                ];
+                $args['meta_query'] = $meta_query;
                 $args['orderby'] = [
-                    'meta_value_num' => 'DESC', // is-vip primero
+                    'meta_value' => 'DESC', // is-vip 'true' primero
                     'date' => 'DESC'
                 ];
                 $args['meta_key'] = 'is-vip';
@@ -358,6 +363,12 @@ function add_active_status_query(&$meta_query, $is_active) {
 
 function process_query_results($query) {
     $vehicles = [];
+    $params = $_GET; // Obtener los parámetros de la consulta actual
+    $filter_anunci_actiu = isset($params['anunci-actiu']);
+    $filter_value = null;
+    if ($filter_anunci_actiu) {
+        $filter_value = filter_var($params['anunci-actiu'], FILTER_VALIDATE_BOOLEAN);
+    }
     
     while ($query->have_posts()) {
         $query->the_post();
@@ -369,7 +380,12 @@ function process_query_results($query) {
                 $vehicle_details = get_vehicle_details_common($vehicle_id);
                 if (!is_wp_error($vehicle_details)) {
                     $response_data = $vehicle_details->get_data();
-                    // Verificación adicional de estado activo si es necesario
+                    // Filtrar por anunci-actiu si corresponde
+                    if ($filter_anunci_actiu) {
+                        if (filter_var($response_data['anunci-actiu'], FILTER_VALIDATE_BOOLEAN) !== $filter_value) {
+                            continue;
+                        }
+                    }
                     $vehicles[] = $response_data;
                 }
             } catch (Exception $e) {

@@ -45,3 +45,10 @@ y este proyecto adhiere a [Semantic Versioning](https://semver.org/spec/v2.0.0.h
 ### Corregido
 - Ahora los endpoints de sellers devuelven correctamente el total y activos de cada vendedor
 - Mejoras menores de formato y consistencia en la documentación
+
+## [2.2] - 2024-06-01
+
+### Añadido
+- Filtro exacto por `anunci-actiu` en el endpoint de vehículos: solo devuelve los ítems activos o inactivos según el parámetro.
+- Ordenación por destacados con el parámetro `orderby=featured` (primero los que tienen `is-vip='true'`).
+- Documentación actualizada con ejemplos de filtrado y ordenación.
