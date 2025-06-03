@@ -411,6 +411,8 @@ function process_query_results($query) {
                             continue;
                         }
                     }
+                    // Convertir anunci-destacat a 1 o 0 siempre
+                    $response_data['anunci-destacat'] = ($response_data['anunci-destacat'] === 1) ? 1 : 0;
                     $vehicles[] = $response_data;
                 }
             } catch (Exception $e) {
@@ -481,7 +483,7 @@ function get_vehicle_details_common($vehicle_id) {
         'titol-anunci' => get_the_title($vehicle_id),
         'descripcio-anunci' => $post->post_content,
         'anunci-actiu' => get_post_meta($vehicle_id, 'anunci-actiu', true),
-        'anunci-destacat' => get_post_meta($vehicle_id, 'is-vip', true)
+        'anunci-destacat' => (get_post_meta($vehicle_id, 'is-vip', true) === 'true') ? 1 : 0
     ];
 
     // Agregar tipus-vehicle primero
@@ -544,6 +546,9 @@ function get_vehicle_details_common($vehicle_id) {
     if (!current_user_can('administrator')) {
         unset($response['dies-caducitat']);
     }
+
+    // Forzar que anunci-destacat sea 1 o 0 justo antes de devolver la respuesta
+    $response['anunci-destacat'] = ($response['anunci-destacat'] === 1) ? 1 : 0;
 
     return new WP_REST_Response($response, 200);
 }

@@ -61,3 +61,17 @@ y este proyecto adhiere a [Semantic Versioning](https://semver.org/spec/v2.0.0.h
   - Si se pasa `venut=false`, solo los que tienen el campo explícitamente en 'false'.
   - Si se pasa `venut=true`, solo los vendidos.
 - Documentación actualizada para reflejar este comportamiento.
+
+## [2.2.0] - YYYY-MM-DD
+### Añadido
+- Endpoints REST para filtrar vehículos por:
+  - Estado (`estat-vehicle`)
+  - Tipo de combustible (`tipus-combustible`)
+  - Tipo de propulsor (`tipus-propulsor`)
+  - Tipo de vehículo (`tipus-vehicle`)
+  - Marca de coche (`marques-cotxe`)
+  - Marca de moto (`marques-moto`)
+- Endpoints anidados para modelos bajo marca:
+  - `/marques-cotxe/{marca}/{modelo}`
+  - `/marques-moto/{marca}/{modelo}`
+- Todos los endpoints permiten paginación, orden y devuelven la respuesta completa de vehículos.

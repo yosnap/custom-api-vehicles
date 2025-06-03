@@ -65,6 +65,8 @@ function get_seller_data($user_id) {
             'name' => $user->display_name,
             'registered_date' => $user->user_registered,
             'role' => $user->roles[0],
+            'logo-empresa' => isset($user_meta['logo-empresa'][0]) && $user_meta['logo-empresa'][0] ? wp_get_attachment_url($user_meta['logo-empresa'][0]) : '',
+            'logo-empresa-home' => isset($user_meta['logo-empresa-home'][0]) && $user_meta['logo-empresa-home'][0] ? wp_get_attachment_url($user_meta['logo-empresa-home'][0]) : '',
             'telefon-mobile-professional' => $user_meta['telefon-mobile-professional'][0] ?? '', // Professional mobile phone
             'telefon-comercial' => $user_meta['telefon-comercial'][0] ?? '', // Commercial phone
             'telefon-whatsapp' => $user_meta['telefon-whatsapp'][0] ?? '', // Whatsapp phone
@@ -86,6 +88,8 @@ function get_seller_data($user_id) {
 }
 
 function get_all_sellers_data() {
+    exit('PRUEBA DE EJECUCIÓN');
+
     $users = get_users([
         'role__in' => ['administrator', 'subscriber', 'contributor', 'author']
     ]);
@@ -93,6 +97,17 @@ function get_all_sellers_data() {
     $sellers_data = array_map(function($user) {
         $vehicles = get_seller_vehicles($user->ID);
         $user_meta = get_user_meta($user->ID);
+
+        // Obtener el ID del logo-empresa-home
+        $logo_empresa_home_id = isset($user_meta['logo-empresa-home'][0]) ? $user_meta['logo-empresa-home'][0] : '';
+        $logo_empresa_home_url = '';
+        if ($logo_empresa_home_id && is_numeric($logo_empresa_home_id)) {
+            $url = wp_get_attachment_url($logo_empresa_home_id);
+            if ($url) {
+                $logo_empresa_home_url = $url;
+            }
+        }
+
         return [
             'id' => $user->ID,
             'username' => $user->user_login,
@@ -100,22 +115,15 @@ function get_all_sellers_data() {
             'name' => $user->display_name,
             'registered_date' => $user->user_registered,
             'role' => $user->roles[0],
-            'telefon-mobile-professional' => $user_meta['telefon-mobile-professional'][0] ?? '', // Professional mobile phone
-            'telefon-comercial' => $user_meta['telefon-comercial'][0] ?? '', // Commercial phone
-            'telefon-whatsapp' => $user_meta['telefon-whatsapp'][0] ?? '', // Whatsapp phone
-            'localitat-professional' => $user_meta['localitat-professional'][0] ?? '',
-            'adreca-professional' => $user_meta['adreca-professional'][0] ?? '',
-            'nom-contacte' => $user_meta['nom-contacte'][0] ?? '',
-            'cognoms-contacte' => $user_meta['cognoms-contacte'][0] ?? '',
-            'galeria-professionals' => !empty($user_meta['galeria-professionals'][0]) ? array_map('wp_get_attachment_url', explode(',', $user_meta['galeria-professionals'][0])) : [],
-            'descripcio-empresa' => $user_meta['descripcio-empresa'][0] ?? '',
-            'pagina-web' => $user_meta['pagina-web'][0] ?? '',
+            'logo-empresa-home' => $logo_empresa_home_url, // SIEMPRE presente
             'total_vehicles' => count($vehicles),
             'active_vehicles' => count(array_filter($vehicles, function($v) {
-                return $v['anunci-actiu'];
-            }))
+                return get_post_meta($v, 'anunci-actiu', true) === 'true';
+            })),
         ];
     }, $users);
+
+    var_dump($sellers_data); exit;
 
     return new WP_REST_Response([
         'status' => 'success',

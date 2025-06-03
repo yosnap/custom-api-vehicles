@@ -603,3 +603,39 @@ Esto ordena primero los que tienen `is-vip = 'true'` y luego el resto, por fecha
 - Si **no pasas** el parámetro `venut`, solo se mostrarán los vehículos no vendidos o que no tienen el campo (disponibles).
 - Si pasas `venut=false`, solo se mostrarán los vehículos que tienen el campo `venut` explícitamente en "false".
 - Si pasas `venut=true`, solo se mostrarán los vehículos vendidos.
+
+# Endpoints REST avanzados para vehículos
+
+## Filtros por taxonomía
+
+Puedes filtrar vehículos por los siguientes endpoints:
+
+- `/wp-json/api-motor/v1/tipus-combustible/{slug}`
+- `/wp-json/api-motor/v1/tipus-propulsor/{slug}`
+- `/wp-json/api-motor/v1/tipus-vehicle/{slug}`
+- `/wp-json/api-motor/v1/marques-cotxe/{slug}`
+- `/wp-json/api-motor/v1/marques-moto/{slug}`
+- `/wp-json/api-motor/v1/estat-vehicle/{slug}`
+
+**Parámetros disponibles:**
+- `page` (int, por defecto 1)
+- `per_page` (int, por defecto 10)
+- `orderby` (string, por defecto 'date')
+- `order` (string, por defecto 'DESC')
+
+**Ejemplo:**
+```
+/wp-json/api-motor/v1/marques-cotxe/audi?page=2&per_page=5&orderby=price&order=ASC
+```
+
+## Filtros por modelo bajo marca
+
+- `/wp-json/api-motor/v1/marques-cotxe/{marca}/{modelo}`
+- `/wp-json/api-motor/v1/marques-moto/{marca}/{modelo}`
+
+**Ejemplo:**
+```
+/wp-json/api-motor/v1/marques-cotxe/audi/a3
+```
+
+La respuesta es igual que el endpoint general de vehículos, incluyendo paginación, total de resultados y todos los campos de cada vehículo.

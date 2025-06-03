@@ -180,5 +180,228 @@ function apply_default_values($params) {
     return $params;
 }
 
+add_action('rest_api_init', function () {
+    register_rest_route('api-motor/v1', '/estat-vehicle/(?P<estat>[\w-]+)', [
+        'methods' => 'GET',
+        'callback' => 'get_vehicles_by_estat',
+        'permission_callback' => '__return_true',
+        'args' => [
+            'page' => [
+                'default' => 1,
+                'sanitize_callback' => 'absint'
+            ],
+            'per_page' => [
+                'default' => 10,
+                'sanitize_callback' => 'absint'
+            ],
+            'orderby' => [
+                'default' => 'date',
+                'sanitize_callback' => 'sanitize_text_field'
+            ],
+            'order' => [
+                'default' => 'DESC',
+                'sanitize_callback' => 'sanitize_text_field'
+            ],
+            // Puedes añadir más parámetros aquí si lo necesitas
+        ]
+    ]);
+});
+
+function get_vehicles_by_estat($request) {
+    $estat = $request['estat'];
+    $paged = $request->get_param('page') ?: 1;
+    $per_page = $request->get_param('per_page') ?: 10;
+    $orderby = $request->get_param('orderby') ?: 'date';
+    $order = $request->get_param('order') ?: 'DESC';
+
+    $args = [
+        'post_type' => 'singlecar',
+        'posts_per_page' => $per_page,
+        'paged' => $paged,
+        'orderby' => $orderby,
+        'order' => $order,
+        'post_status' => 'publish',
+        'tax_query' => [
+            [
+                'taxonomy' => 'estat-vehicle',
+                'field' => 'slug',
+                'terms' => $estat
+            ]
+        ]
+    ];
+
+    $query = new WP_Query($args);
+    $vehicles = process_query_results($query);
+    wp_reset_postdata();
+
+    return new WP_REST_Response([
+        'status' => 'success',
+        'items' => $vehicles,
+        'total' => $query->found_posts,
+        'pages' => ceil($query->found_posts / $per_page),
+        'page' => (int) $paged,
+        'per_page' => (int) $per_page
+    ], 200);
+}
+
+// ENDPOINTS DINÁMICOS PARA TAXONOMÍAS Y MODELOS
+add_action('rest_api_init', function () {
+    $taxonomies = [
+        'tipus-combustible' => 'tipus-combustible',
+        'tipus-propulsor' => 'tipus-propulsor',
+        'tipus-vehicle' => 'types-of-transport',
+        'marques-cotxe' => 'marques-coches',
+        'marques-moto' => 'marques-de-moto'
+    ];
+    foreach ($taxonomies as $endpoint => $taxonomy) {
+        register_rest_route('api-motor/v1', '/' . $endpoint . '/(?P<slug>[\w-]+)', [
+            'methods' => 'GET',
+            'callback' => function($request) use ($taxonomy) {
+                $slug = $request['slug'];
+                $paged = $request->get_param('page') ?: 1;
+                $per_page = $request->get_param('per_page') ?: 10;
+                $orderby = $request->get_param('orderby') ?: 'date';
+                $order = $request->get_param('order') ?: 'DESC';
+                $args = [
+                    'post_type' => 'singlecar',
+                    'posts_per_page' => $per_page,
+                    'paged' => $paged,
+                    'orderby' => $orderby,
+                    'order' => $order,
+                    'post_status' => 'publish',
+                    'tax_query' => [
+                        [
+                            'taxonomy' => $taxonomy,
+                            'field' => 'slug',
+                            'terms' => $slug
+                        ]
+                    ]
+                ];
+                $query = new WP_Query($args);
+                $vehicles = process_query_results($query);
+                wp_reset_postdata();
+                return new WP_REST_Response([
+                    'status' => 'success',
+                    'items' => $vehicles,
+                    'total' => $query->found_posts,
+                    'pages' => ceil($query->found_posts / $per_page),
+                    'page' => (int) $paged,
+                    'per_page' => (int) $per_page
+                ], 200);
+            },
+            'permission_callback' => '__return_true',
+            'args' => [
+                'page' => [ 'default' => 1, 'sanitize_callback' => 'absint' ],
+                'per_page' => [ 'default' => 10, 'sanitize_callback' => 'absint' ],
+                'orderby' => [ 'default' => 'date', 'sanitize_callback' => 'sanitize_text_field' ],
+                'order' => [ 'default' => 'DESC', 'sanitize_callback' => 'sanitize_text_field' ]
+            ]
+        ]);
+    }
+
+    // Endpoints anidados para modelos bajo marca (coches)
+    register_rest_route('api-motor/v1', '/marques-cotxe/(?P<marca>[\w-]+)/(?P<modelo>[\w-]+)', [
+        'methods' => 'GET',
+        'callback' => function($request) {
+            $marca = $request['marca'];
+            $modelo = $request['modelo'];
+            $paged = $request->get_param('page') ?: 1;
+            $per_page = $request->get_param('per_page') ?: 10;
+            $orderby = $request->get_param('orderby') ?: 'date';
+            $order = $request->get_param('order') ?: 'DESC';
+            $args = [
+                'post_type' => 'singlecar',
+                'posts_per_page' => $per_page,
+                'paged' => $paged,
+                'orderby' => $orderby,
+                'order' => $order,
+                'post_status' => 'publish',
+                'tax_query' => [
+                    'relation' => 'AND',
+                    [
+                        'taxonomy' => 'marques-coches',
+                        'field' => 'slug',
+                        'terms' => $marca
+                    ],
+                    [
+                        'taxonomy' => 'marques-coches',
+                        'field' => 'slug',
+                        'terms' => $modelo
+                    ]
+                ]
+            ];
+            $query = new WP_Query($args);
+            $vehicles = process_query_results($query);
+            wp_reset_postdata();
+            return new WP_REST_Response([
+                'status' => 'success',
+                'items' => $vehicles,
+                'total' => $query->found_posts,
+                'pages' => ceil($query->found_posts / $per_page),
+                'page' => (int) $paged,
+                'per_page' => (int) $per_page
+            ], 200);
+        },
+        'permission_callback' => '__return_true',
+        'args' => [
+            'page' => [ 'default' => 1, 'sanitize_callback' => 'absint' ],
+            'per_page' => [ 'default' => 10, 'sanitize_callback' => 'absint' ],
+            'orderby' => [ 'default' => 'date', 'sanitize_callback' => 'sanitize_text_field' ],
+            'order' => [ 'default' => 'DESC', 'sanitize_callback' => 'sanitize_text_field' ]
+        ]
+    ]);
+    // Endpoints anidados para modelos bajo marca (motos)
+    register_rest_route('api-motor/v1', '/marques-moto/(?P<marca>[\w-]+)/(?P<modelo>[\w-]+)', [
+        'methods' => 'GET',
+        'callback' => function($request) {
+            $marca = $request['marca'];
+            $modelo = $request['modelo'];
+            $paged = $request->get_param('page') ?: 1;
+            $per_page = $request->get_param('per_page') ?: 10;
+            $orderby = $request->get_param('orderby') ?: 'date';
+            $order = $request->get_param('order') ?: 'DESC';
+            $args = [
+                'post_type' => 'singlecar',
+                'posts_per_page' => $per_page,
+                'paged' => $paged,
+                'orderby' => $orderby,
+                'order' => $order,
+                'post_status' => 'publish',
+                'tax_query' => [
+                    'relation' => 'AND',
+                    [
+                        'taxonomy' => 'marques-de-moto',
+                        'field' => 'slug',
+                        'terms' => $marca
+                    ],
+                    [
+                        'taxonomy' => 'marques-de-moto',
+                        'field' => 'slug',
+                        'terms' => $modelo
+                    ]
+                ]
+            ];
+            $query = new WP_Query($args);
+            $vehicles = process_query_results($query);
+            wp_reset_postdata();
+            return new WP_REST_Response([
+                'status' => 'success',
+                'items' => $vehicles,
+                'total' => $query->found_posts,
+                'pages' => ceil($query->found_posts / $per_page),
+                'page' => (int) $paged,
+                'per_page' => (int) $per_page
+            ], 200);
+        },
+        'permission_callback' => '__return_true',
+        'args' => [
+            'page' => [ 'default' => 1, 'sanitize_callback' => 'absint' ],
+            'per_page' => [ 'default' => 10, 'sanitize_callback' => 'absint' ],
+            'orderby' => [ 'default' => 'date', 'sanitize_callback' => 'sanitize_text_field' ],
+            'order' => [ 'default' => 'DESC', 'sanitize_callback' => 'sanitize_text_field' ]
+        ]
+    ]);
+});
+
 
 

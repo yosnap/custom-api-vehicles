@@ -71,6 +71,7 @@ if (!function_exists('get_seller_details')) {
                         'name' => $user->display_name,
                         'registered_date' => $user->user_registered,
                         'role' => $user->roles[0] ?? '',
+                        'logo-empresa-home' => wp_get_attachment_url($user_meta['logo-empresa-home'][0] ?? ''),
                         'total_vehicles' => $total_vehicles,
                         'active_vehicles' => $active_vehicles
                     ];
