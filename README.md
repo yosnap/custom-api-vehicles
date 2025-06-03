@@ -2,7 +2,7 @@
 
 Plugin WordPress para gestionar vehículos a través de una API REST personalizada.
 
-**Versión actual:** 2.0  
+**Versión actual:** 2.2.0  
 **Namespace:** `api-motor/v1`  
 **Tipo de contenido:** `singlecar`
 
@@ -625,7 +625,7 @@ Puedes filtrar vehículos por los siguientes endpoints:
 
 **Ejemplo:**
 ```
-/wp-json/api-motor/v1/marques-cotxe/audi?page=2&per_page=5&orderby=price&order=ASC
+/wp-json/api-motor/v1/marques-cotxe/audi?page=1&per_page=10&orderby=price&order=ASC
 ```
 
 ## Filtros por modelo bajo marca
@@ -635,7 +635,7 @@ Puedes filtrar vehículos por los siguientes endpoints:
 
 **Ejemplo:**
 ```
-/wp-json/api-motor/v1/marques-cotxe/audi/a3
+/wp-json/api-motor/v1/marques-cotxe/audi/a3?page=1&per_page=10
 ```
 
 La respuesta es igual que el endpoint general de vehículos, incluyendo paginación, total de resultados y todos los campos de cada vehículo.
