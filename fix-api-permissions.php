@@ -48,9 +48,8 @@ function diagnose_rest_api_permissions() {
     // Añade esto para depuración
     add_filter('rest_request_before_callbacks', function($response, $handler, $request) {
         if (strpos($request->get_route(), 'api-motor/v1/vehicles/types-of-transport') !== false) {
-            Vehicle_Debug_Handler::log('REST API Debug - Request route: ' . $request->get_route());
-            Vehicle_Debug_Handler::log('REST API Debug - Current user: ' . get_current_user_id());
-            Vehicle_Debug_Handler::log('REST API Debug - User can read: ' . (current_user_can('read') ? 'true' : 'false'));
+            Vehicle_Debug_Handler::log_security_event('API Access to types-of-transport endpoint', get_current_user_id());
+            Vehicle_Debug_Handler::log('Verificando permisos para endpoint types-of-transport', 'debug');
             
             // Inspeccionar el handler para ver el callback de permisos
             if (isset($handler['permission_callback'])) {

@@ -310,7 +310,7 @@ class Vehicle_Controller {
                     
                     // Obtener el valor como array simple
                     $values = get_post_meta($post->ID, $api_field_name, true);
-                    Vehicle_Debug_Handler::log("Valor recuperado para extres-cotxe: " . print_r($values, true));
+                    Vehicle_Debug_Handler::log("Extrayendo valores de array para $api_field_name", 'debug');
                     
                     // Asegurarse de que values sea un array
                     if (!is_array($values)) {
@@ -359,7 +359,7 @@ class Vehicle_Controller {
                     
                     // Obtener el valor como array simple
                     $values = get_post_meta($post->ID, $api_field_name, true);
-                    Vehicle_Debug_Handler::log("Valor recuperado para extres-cotxe: " . print_r($values, true));
+                    Vehicle_Debug_Handler::log("Extrayendo valores de array para $api_field_name", 'debug');
                     
                     // Asegurarse de que values sea un array
                     if (!is_array($values)) {

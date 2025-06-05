@@ -2,9 +2,126 @@
 
 Plugin WordPress para gestionar vehículos a través de una API REST personalizada.
 
-**Versión actual:** 2.2.0  
+**Versión actual:** 2.3.0  
 **Namespace:** `api-motor/v1`  
-**Tipo de contenido:** `singlecar`
+**Tipo de contenido:** `singlecar`  
+**Última actualización:** 5 de junio de 2025
+
+## 🚀 Funcionalidades v2.3.0
+
+### Seguridad Restaurada ✅
+- **IMPORTANTE**: Se ha restaurado la seguridad de la API REST
+- Autenticación requerida para métodos POST, PUT, DELETE y PATCH
+- Acceso público mantenido solo para consultas GET específicas
+- Sistema de permisos inteligente que protege operaciones críticas
+
+### Sistema de Debug Mejorado 🔧
+- Debug handler completamente reescrito con niveles de logging
+- Solo registra errores críticos por defecto
+- Modo debug avanzado disponible para desarrollo
+- Logs específicos para errores de API y validaciones
+
+### Validación de Dependencias 📋
+- Verificación automática de JetEngine, WordPress y PHP
+- Mensajes informativos en lugar de errores genéricos
+- Avisos de administrador para dependencias faltantes
+- Información de diagnóstico detallada
+
+### Endpoint de Diagnóstico Avanzado 🔍
+- Nuevo endpoint `/diagnostic` con información completa del sistema
+- Pruebas de conectividad de la API
+- Análisis de rutas registradas
+- Verificación de tabla de logs y errores recientes
+
+## Configuración Opcional
+
+Para habilitar características avanzadas, puedes añadir estas constantes en `wp-config.php`:
+
+```php
+// Habilitar debug específico del plugin (requiere WP_DEBUG = true)
+define('VEHICLE_API_DEBUG', true);
+
+// Habilitar logging extendido (incluye info y debug, no solo errores)
+define('VEHICLE_API_EXTENDED_LOGGING', true);
+```
+
+## Nuevos Endpoints Administrativos
+
+### GET /wp-json/api-motor/v1/diagnostic
+**Requiere permisos de administrador**
+
+Endpoint de diagnóstico completo que incluye:
+- Información del sistema (WordPress, PHP, MySQL)
+- Estado de dependencias (JetEngine, versiones)
+- Pruebas de conectividad de la API
+- Información de la base de datos
+- Errores recientes del log
+
+**Ejemplo de respuesta:**
+```json
+{
+  "timestamp": "2025-06-05 10:30:00",
+  "plugin_version": "2.3.0",
+  "system_info": {
+    "wp_version": "6.5.2",
+    "php_version": "8.1.0",
+    "mysql_version": "8.0.35",
+    "server": "nginx/1.22.1"
+  },
+  "dependencies": {
+    "dependencies_ok": true,
+    "jetengine_ready": true,
+    "missing_dependencies": []
+  },
+  "api_endpoints": {
+    "test_connection": {
+      "status": "ok",
+      "status_code": 200
+    },
+    "registered_routes": [...]
+  }
+}
+```
+
+### GET /wp-json/api-motor/v1/installation-check
+**Solo disponible en modo debug - Temporal**
+
+Endpoint para verificar que todas las mejoras se han instalado correctamente.
+
+## Verificación Post-Instalación
+
+Después de implementar las mejoras, verifica que todo funciona correctamente:
+
+1. **Verificar seguridad**: Intenta crear un vehículo sin autenticación - debe fallar con error 401
+2. **Probar diagnóstico**: Visita `/wp-json/api-motor/v1/diagnostic` como administrador
+3. **Verificar logs**: Los errores críticos deben aparecer en los logs del plugin
+4. **Comprobar dependencias**: Debe mostrar avisos informativos si falta JetEngine
+
+## Migración desde v2.2.0
+
+### Cambios que Requieren Atención ⚠️
+
+1. **API REST Security**: 
+   - Las operaciones POST/PUT/DELETE ahora requieren autenticación
+   - Actualiza tus clientes de API para incluir tokens de autenticación
+   - Las consultas GET públicas siguen funcionando sin cambios
+
+2. **Debug Logging**:
+   - Los mensajes de debug ahora se filtran por nivel
+   - Solo errores críticos se registran por defecto
+   - Habilita `VEHICLE_API_DEBUG` para debug completo en desarrollo
+
+3. **Nuevas Dependencias**:
+   - Se han añadido nuevos archivos de clase
+   - Asegúrate de que todos los archivos se han copiado correctamente
+
+### Pasos de Migración
+
+1. Respalda tu instalación actual
+2. Actualiza todos los archivos del plugin
+3. Verifica el endpoint `/diagnostic` como administrador
+4. Opcional: Configura constantes de debug en `wp-config.php`
+5. Actualiza cualquier integración externa para incluir autenticación
 
 ## Endpoints Disponibles
 
@@ -639,3 +756,65 @@ Puedes filtrar vehículos por los siguientes endpoints:
 ```
 
 La respuesta es igual que el endpoint general de vehículos, incluyendo paginación, total de resultados y todos los campos de cada vehículo.
+
+## 📁 Estructura de Archivos
+
+### Archivos Principales
+```
+custom-api-vehicles/
+├── custom-api-vehicles.php          # Archivo principal del plugin
+├── README.md                       # Documentación principal
+├── CHANGELOG.md                    # Historial de cambios
+├── API-DOCUMENTATION.md            # Documentación detallada de la API
+├── VERIFICATION-GUIDE.md           # Guía de verificación
+└── .gitignore                      # Archivos ignorados por Git
+```
+
+### Directorio `/includes/` - Clases Principales
+```
+includes/
+├── class-api-logger.php            # Sistema de logging
+├── class-debug-handler.php         # Manejador de debug mejorado
+├── class-dependencies.php          # Validación de dependencias
+├── class-diagnostic-helpers.php    # Helpers para diagnóstico
+├── class-vehicle-fields.php        # Gestión de campos de vehículos
+├── class-glossary-fields.php       # Gestión de campos de glosario
+├── enhanced-diagnostic-endpoint.php # Endpoint de diagnóstico avanzado
+├── debug-management-endpoints.php  # Endpoints de gestión de debug
+├── taxonomy-endpoints.php          # Endpoints de taxonomías
+├── singlecar-endpoint.php          # Endpoint principal de vehículos
+└── author-endpoint.php             # Endpoint de autores
+```
+
+### Directorio `/includes/api/` - Controladores API
+```
+includes/api/
+├── class-vehicle-controller.php    # Controlador principal de vehículos
+└── get-glossary-options-endpoint.php # Opciones de glosario
+```
+
+### Directorio `/includes/singlecar-endpoints/` - Handlers Específicos
+```
+includes/singlecar-endpoints/
+├── routes.php                      # Definición de rutas
+├── get-handlers.php               # Manejadores GET
+├── post-handlers.php              # Manejadores POST
+├── put-handlers.php               # Manejadores PUT
+├── delete-handlers.php            # Manejadores DELETE
+├── field-processors.php           # Procesadores de campos
+├── validation.php                 # Validaciones
+├── utils.php                      # Utilidades
+├── media-handlers.php             # Gestión de medios
+└── meta-handlers.php              # Gestión de metadatos
+```
+
+### Directorio `/admin/` - Panel de Administración
+```
+admin/
+├── class-admin-menu.php           # Menú principal de administración
+├── class-glossary-mappings.php    # Mapeos de glosario
+└── views/                         # Vistas del panel
+    ├── main-page.php              # Página principal
+    ├── logs-page.php              # Página de logs
+    └── permissions-page.php       # Página de permisos
+```

@@ -88,6 +88,7 @@ function register_vehicle_routes() {
                 if (!is_user_logged_in()) {
                     return false;
                 }
+                $request['slug'] = strtolower($request['slug']);
                 return verify_post_ownership_by_slug($request['slug']);
             },
         ],
@@ -208,7 +209,7 @@ add_action('rest_api_init', function () {
 });
 
 function get_vehicles_by_estat($request) {
-    $estat = $request['estat'];
+    $estat = strtolower($request['estat']);
     $paged = $request->get_param('page') ?: 1;
     $per_page = $request->get_param('per_page') ?: 10;
     $orderby = $request->get_param('orderby') ?: 'date';
@@ -257,7 +258,7 @@ add_action('rest_api_init', function () {
         register_rest_route('api-motor/v1', '/' . $endpoint . '/(?P<slug>[\w-]+)', [
             'methods' => 'GET',
             'callback' => function($request) use ($taxonomy) {
-                $slug = $request['slug'];
+                $slug = strtolower($request['slug']);
                 $paged = $request->get_param('page') ?: 1;
                 $per_page = $request->get_param('per_page') ?: 10;
                 $orderby = $request->get_param('orderby') ?: 'date';
@@ -303,8 +304,8 @@ add_action('rest_api_init', function () {
     register_rest_route('api-motor/v1', '/marques-cotxe/(?P<marca>[\w-]+)/(?P<modelo>[\w-]+)', [
         'methods' => 'GET',
         'callback' => function($request) {
-            $marca = $request['marca'];
-            $modelo = $request['modelo'];
+            $marca = strtolower($request['marca']);
+            $modelo = strtolower($request['modelo']);
             $paged = $request->get_param('page') ?: 1;
             $per_page = $request->get_param('per_page') ?: 10;
             $orderby = $request->get_param('orderby') ?: 'date';
@@ -354,8 +355,8 @@ add_action('rest_api_init', function () {
     register_rest_route('api-motor/v1', '/marques-moto/(?P<marca>[\w-]+)/(?P<modelo>[\w-]+)', [
         'methods' => 'GET',
         'callback' => function($request) {
-            $marca = $request['marca'];
-            $modelo = $request['modelo'];
+            $marca = strtolower($request['marca']);
+            $modelo = strtolower($request['modelo']);
             $paged = $request->get_param('page') ?: 1;
             $per_page = $request->get_param('per_page') ?: 10;
             $orderby = $request->get_param('orderby') ?: 'date';

@@ -183,7 +183,7 @@ function validate_numeric_fields($params) {
             
             // Si después de la limpieza no es numérico, lanzar error
             if (!is_numeric($clean_value)) {
-                Vehicle_Debug_Handler::log("Error de validación numérica en {$field}: '{$value}' (limpiado: '{$clean_value}')");
+                Vehicle_Debug_Handler::log_validation_error($field, $value, 'valor numérico');
                 throw new Exception("El campo {$field} debe ser un valor numérico");
             }
         }

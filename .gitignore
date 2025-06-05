@@ -1,0 +1,24 @@
+# Archivos de sistema
+.DS_Store
+Thumbs.db
+# Archivos de configuración de editores
+*.sublime-workspace
+
+# Archivos de configuración de entornos virtuales
+.env
+.venv
+
+# Archivos de configuración de Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+
+# Archivos de configuración de Jupyter
+.ipynb_checkpoints
+*.ipynb
+
+
+
+

@@ -48,6 +48,7 @@ function get_brand_models_hierarchy($taxonomy, $marca = null) {
         Vehicle_Debug_Handler::log("Obteniendo jerarquía para $taxonomy" . ($marca ? " con marca: $marca" : ""));
         
         if ($marca) {
+            $marca = strtolower($marca); // Normalizar a minúsculas
             $parent_term = get_term_by('slug', $marca, $taxonomy);
             if (!$parent_term) {
                 return new WP_REST_Response([

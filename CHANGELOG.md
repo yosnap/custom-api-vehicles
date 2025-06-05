@@ -5,6 +5,62 @@ Todos los cambios notables en este proyecto serán documentados en este archivo.
 El formato está basado en [Keep a Changelog](https://keepachangelog.com/es/1.0.0/),
 y este proyecto adhiere a [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.3.0] - 2025-06-05
+
+### 🆕 Añadido
+- Sistema de validación de dependencias mejorado con clase `Vehicle_Plugin_Dependencies`
+- Endpoint de diagnóstico completamente renovado con información detallada del sistema
+- Clase `DiagnosticHelpers` para pruebas de conectividad y análisis de la API
+- **Debug handler completamente reescrito con métodos especializados:**
+  - `log_api_error()` para errores específicos de API
+  - `log_validation_error()` para fallos de validación
+  - `log_success()` para operaciones exitosas
+  - `log_security_event()` para eventos de seguridad
+  - `log_performance()` para medición de tiempos de ejecución
+  - `get_debug_stats()` para estadísticas de debug
+  - `cleanup_old_logs()` para limpieza automática
+- Endpoints administrativos para gestión de logs (`/debug/stats`, `/debug/cleanup`, `/debug/recent-logs`)
+- Limpieza automática de logs programada semanalmente
+- Sistema mejorado de carga de dependencias con verificación de archivos
+- Endpoint para opciones de glosario (`get-glossary-options-endpoint.php`)
+- Mejoras en la interfaz de administración con páginas específicas para logs y permisos
+
+### 🔧 Cambiado
+- **IMPORTANTE**: Restaurada la seguridad de la API REST con validación inteligente de permisos
+- Sistema de debug completamente reescrito con niveles de logging (error, warning, info, debug)
+- Refactorización del método `fix_rest_api_permissions()` con mayor granularidad
+- Mejores mensajes de error con información contextual para administradores
+- Estructura de archivos reorganizada para mejor mantenimiento
+- Documentación del código mejorada con comentarios detallados
+
+### 🐛 Corregido
+- Eliminadas referencias a archivos CSS/JS inexistentes que causaban errores 404
+- Implementación correcta de autenticación para métodos POST, PUT, DELETE y PATCH
+- Mantenimiento de acceso público solo para métodos GET en endpoints específicos
+- Validación de dependencias con avisos informativos en lugar de errores genéricos
+- Optimizada la carga de dependencias evitando includes duplicados
+
+### 🛡️ Seguridad
+- Restauración completa del sistema de permisos de la API REST
+- Verificación de autenticación obligatoria para operaciones que modifican datos
+- Logging de intentos de acceso no autorizados con IP del cliente
+- Control granular de permisos por namespace y método HTTP
+- Validación mejorada de rutas protegidas
+
+### 📝 Documentación
+- README.md actualizado con estructura de archivos completa
+- CHANGELOG.md detallado con categorización de cambios
+- Documentación de nuevos endpoints y funcionalidades
+- Guías de migración desde versiones anteriores
+- Comentarios de código mejorados y más descriptivos
+
+### 🔧 Técnico
+- Nueva estructura de archivos: `class-dependencies.php`, `class-diagnostic-helpers.php`, `enhanced-diagnostic-endpoint.php`
+- Compatibilidad mejorada con entornos de desarrollo y producción
+- Sistema de constantes para habilitar debug específico del plugin (`VEHICLE_API_DEBUG`)
+- Optimización de carga de dependencias con verificación de archivos
+- Estructura modular mejorada para mantenimiento y escalabilidad
+
 ## [2.0] - 2025-05-30
 
 ### Añadido
