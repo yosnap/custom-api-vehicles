@@ -247,10 +247,15 @@ function build_query_args($params) {
 
     // Filtro especial para anunci-destacat (is-vip)
     if (isset($params['anunci-destacat'])) {
+        $value = filter_var($params['anunci-destacat'], FILTER_VALIDATE_BOOLEAN) ? ['true'] : ['false'];
         $meta_query[] = [
             'key' => 'is-vip',
-            'value' => filter_var($params['anunci-destacat'], FILTER_VALIDATE_BOOLEAN) ? 'true' : 'false',
-            'compare' => '='
+            'value' => $value,
+            'compare' => 'IN'
+        ];
+        $meta_query[] = [
+            'key' => 'is-vip',
+            'compare' => 'EXISTS'
         ];
         $apply_meta_query = true;
     }
@@ -412,7 +417,7 @@ function process_query_results($query) {
                         }
                     }
                     // Convertir anunci-destacat a 1 o 0 siempre
-                    $response_data['anunci-destacat'] = ($response_data['anunci-destacat'] === 1) ? 1 : 0;
+                    $response_data['anunci-destacat'] = (trim(strtolower(get_post_meta($vehicle_id, 'is-vip', true))) == 'true') ? 1 : 0;
                     $vehicles[] = $response_data;
                 }
             } catch (Exception $e) {
@@ -483,7 +488,7 @@ function get_vehicle_details_common($vehicle_id) {
         'titol-anunci' => get_the_title($vehicle_id),
         'descripcio-anunci' => $post->post_content,
         'anunci-actiu' => get_post_meta($vehicle_id, 'anunci-actiu', true),
-        'anunci-destacat' => (get_post_meta($vehicle_id, 'is-vip', true) === 'true') ? 1 : 0
+        'anunci-destacat' => (trim(strtolower(get_post_meta($vehicle_id, 'is-vip', true))) == 'true') ? 1 : 0
     ];
 
     // Agregar tipus-vehicle primero
