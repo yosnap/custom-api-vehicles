@@ -673,3 +673,73 @@ Esta documentación está sujeta a actualizaciones. Última actualización: Mayo
 ```
 /wp-json/api-motor/v1/vehicles?marques-cotxe=audi&preu_min=10000&preu_max=30000&anunci-destacat=1&anunci-actiu=true&page=1&per_page=10
 ```
+
+## Endpoint: /wp-json/api-motor/v1/blog-posts
+
+Devuelve los posts del blog con los campos principales, taxonomías, tags, metadatos SEO, paginación y facetas (categorías, tags, fechas).
+
+### Parámetros de consulta
+
+| Parámetro   | Tipo     | Descripción                                                      | Ejemplo                |
+|-------------|----------|------------------------------------------------------------------|------------------------|
+| page        | integer  | Número de página (por defecto: 1)                                | page=2                 |
+| per_page    | integer  | Ítems por página (por defecto: 10)                               | per_page=20            |
+| orderby     | string   | Campo por el que ordenar (date, title)                           | orderby=title          |
+| order       | string   | Dirección de ordenación (ASC, DESC)                              | order=ASC              |
+| category    | string   | Slug o ID de categoría (opcional)                                | category=noticias      |
+| tag         | string   | Slug o ID de tag (opcional)                                      | tag=motor              |
+| search      | string   | Búsqueda por texto (opcional)                                    | search=coches          |
+
+### Estructura de respuesta
+
+```json
+{
+  "status": "success",
+  "items": [
+    {
+      "id": 123,
+      "title": "Título del post",
+      "slug": "titulo-del-post",
+      "featured_image": "https://...",
+      "categories": [
+        { "id": 1, "name": "Noticias", "slug": "noticias" }
+      ],
+      "tags": [
+        { "id": 5, "name": "Motor", "slug": "motor" }
+      ],
+      "date": "2024-06-01T12:00:00",
+      "author": "Nombre del autor",
+      "content": "...",
+      "excerpt": "...",
+      "seo": {
+        "meta_title": "...",
+        "meta_description": "...",
+        "og_image": "...",
+        "og_type": "article",
+        "twitter_card": "summary_large_image",
+        "canonical_url": "...",
+        "meta_keywords": "..."
+      }
+    }
+    // ...
+  ],
+  "total": 100,
+  "pages": 10,
+  "page": 1,
+  "per_page": 10,
+  "facets": {
+    "categories": { "noticias": 20, "eventos": 15 },
+    "tags": { "motor": 30, "coches": 10 },
+    "dates": { "2024-06": 5, "2024-05": 8 }
+  }
+}
+```
+
+### Ejemplo de uso
+
+```
+/wp-json/api-motor/v1/blog-posts?category=noticias&orderby=title&order=ASC&page=1&per_page=5
+```
+
+> **Nota sobre las facetas:**
+> Los conteos de las facetas (`facets`) siempre reflejan el total de resultados que cumplen los filtros activos, independientemente de la paginación. Es decir, aunque solo se muestren 10 ítems por página, los conteos de cada filtro corresponden al total global de la búsqueda.

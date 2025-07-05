@@ -24,12 +24,18 @@ function get_singlecar($request) {
     }
 
     $vehicles = process_query_results($query);
+    $total_items = $query->found_posts;
     wp_reset_postdata();
 
-    $total_items = $query->found_posts;
-
-    // Calcular facetas a partir de los resultados actuales
-    $facets = calculate_facets($vehicles);
+    // --- Facetas globales ---
+    // Hacemos una consulta idéntica pero sin paginación para calcular los conteos globales
+    $args_facets = $args;
+    $args_facets['posts_per_page'] = -1;
+    $args_facets['paged'] = 1;
+    $query_facets = new WP_Query($args_facets);
+    $vehicles_for_facets = process_query_results($query_facets);
+    wp_reset_postdata();
+    $facets = calculate_facets($vehicles_for_facets);
 
     $response = [
         'status' => 'success',
