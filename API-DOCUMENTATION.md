@@ -1,6 +1,6 @@
 # Documentación Oficial: Custom API Vehicles for Motoraldia
 
-**Versión:** 2.0  
+**Versión:** 2.2.1  
 **Namespace:** `api-motor/v1`  
 **Tipo de contenido:** `singlecar`
 
@@ -132,7 +132,7 @@ Crea un nuevo vehículo.
 | estat-vehicle | string | Estado del vehículo | Sí |
 | marques-cotxe | string | Marca del vehículo (para coches, autocaravanas y vehículos comerciales) | Condicional |
 | models-cotxe | string | Modelo del vehículo (para coches, autocaravanas y vehículos comerciales) | Condicional |
-| marques-de-moto | string | Marca de la moto (solo para motos) | Condicional |
+| marques-moto | string | Marca de la moto (solo para motos) | Condicional |
 | preu | string | Precio del vehículo | Sí |
 | quilometres | string | Kilometraje | Sí |
 | any | string | Año de fabricación | Sí |
@@ -628,7 +628,7 @@ Esta documentación está sujeta a actualizaciones. Última actualización: Mayo
 | estat-vehicle         | string    | Estado del vehículo (nou, seminou, etc.)                                                   | estat-vehicle=nou               |
 | marques-cotxe         | string    | Marca del coche (slug)                                                                     | marques-cotxe=audi              |
 | models-cotxe          | string    | Modelo del coche (slug)                                                                    | models-cotxe=a4                 |
-| marques-de-moto       | string    | Marca de la moto (slug)                                                                    | marques-de-moto=honda           |
+| marques-moto       | string    | Marca de la moto (slug)                                                                    | marques-moto=honda           |
 | models-moto           | string    | Modelo de la moto (slug)                                                                   | models-moto=cbr                 |
 | tipus-combustible     | string    | Tipo de combustible                                                                        | tipus-combustible=benzina       |
 | tipus-canvi           | string    | Tipo de cambio                                                                             | tipus-canvi=automatic           |
@@ -743,3 +743,6 @@ Devuelve los posts del blog con los campos principales, taxonomías, tags, metad
 
 > **Nota sobre las facetas:**
 > Los conteos de las facetas (`facets`) siempre reflejan el total de resultados que cumplen los filtros activos, independientemente de la paginación. Es decir, aunque solo se muestren 10 ítems por página, los conteos de cada filtro corresponden al total global de la búsqueda.
+
+> **Nota sobre los facets de modelos:**
+> Los conteos de modelos (`models-cotxe`, `models-moto`) solo se calculan y devuelven si el filtro de marca correspondiente (`marques-cotxe` o `marques-moto`) está presente en la consulta. Si no hay marca seleccionada, estos facets serán un array vacío.

@@ -1,11 +1,11 @@
 <?php
 /*
-Plugin Name: Custom API for Motoraldia
+Plugin Name: Custom API Vehicles
 Plugin URI: https://github.com/yosnap/custom-api-vehicles
 Description: API personalizada para gestión de vehículos en WordPress.
-Version: 2.2.1
-Author: Sn4p.dev    
-Author URI: https://sn4p.dev
+Version: 2.2.1.1
+Author: Yosnap
+Author URI: https://github.com/yosnap
 */
 
 // No direct access allowed

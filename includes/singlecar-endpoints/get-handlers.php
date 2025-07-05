@@ -35,7 +35,7 @@ function get_singlecar($request) {
     $query_facets = new WP_Query($args_facets);
     $vehicles_for_facets = process_query_results($query_facets);
     wp_reset_postdata();
-    $facets = calculate_facets($vehicles_for_facets);
+    $facets = calculate_facets($vehicles_for_facets, $params);
 
     $response = [
         'status' => 'success',
@@ -719,13 +719,13 @@ function debug_vehicle_fields(WP_REST_Request $request) {
     }
 }
 
-function calculate_facets($vehicles) {
+function calculate_facets($vehicles, $params = []) {
     $facets = [
         'tipus-vehicle' => [],
         'estat-vehicle' => [],
         'marques-cotxe' => [],
         'models-cotxe' => [],
-        'marques-de-moto' => [],
+        'marques-moto' => [],
         'models-moto' => [],
         'tipus-combustible' => [],
         'tipus-canvi' => [],
@@ -745,23 +745,47 @@ function calculate_facets($vehicles) {
         'cables-recarrega' => [],
         'connectors' => []
     ];
+
+    // Recorremos los vehículos para calcular los conteos de cada faceta
     foreach ($vehicles as $v) {
         foreach ($facets as $key => &$facet) {
-            if (isset($v[$key])) {
-                // Si es array (ej: extras), contar cada valor
-                if (is_array($v[$key])) {
-                    foreach ($v[$key] as $val) {
-                        if ($val !== '' && $val !== null) {
-                            $facet[$val] = isset($facet[$val]) ? $facet[$val] + 1 : 1;
-                        }
+            // Modelos de coche: solo si hay marca seleccionada
+            if ($key === 'models-cotxe') {
+                if (empty($params['marques-cotxe'])) {
+                    $facet = [];
+                    continue;
+                }
+                if (!empty($v['models-cotxe'])) {
+                    $model = is_array($v['models-cotxe']) ? $v['models-cotxe'] : [$v['models-cotxe']];
+                    foreach ($model as $m) {
+                        if (!empty($m)) $facet[$m] = isset($facet[$m]) ? $facet[$m] + 1 : 1;
                     }
-                } else {
-                    if ($v[$key] !== '' && $v[$key] !== null) {
-                        $facet[$v[$key]] = isset($facet[$v[$key]]) ? $facet[$v[$key]] + 1 : 1;
+                }
+                continue;
+            }
+            // Modelos de moto: solo si hay marca seleccionada
+            if ($key === 'models-moto') {
+                if (empty($params['marques-moto'])) {
+                    $facet = [];
+                    continue;
+                }
+                if (!empty($v['models-moto'])) {
+                    $model = is_array($v['models-moto']) ? $v['models-moto'] : [$v['models-moto']];
+                    foreach ($model as $m) {
+                        if (!empty($m)) $facet[$m] = isset($facet[$m]) ? $facet[$m] + 1 : 1;
                     }
+                }
+                continue;
+            }
+            // Facetas normales
+            if (!empty($v[$key])) {
+                $values = is_array($v[$key]) ? $v[$key] : [$v[$key]];
+                foreach ($values as $val) {
+                    if (!empty($val)) $facet[$val] = isset($facet[$val]) ? $facet[$val] + 1 : 1;
                 }
             }
         }
     }
+    unset($facet);
     return $facets;
 }

@@ -2,7 +2,7 @@
 
 Plugin WordPress para gestionar vehículos a través de una API REST personalizada.
 
-**Versión actual:** 2.2.0  
+**Versión actual:** 2.2.1.1  
 **Namespace:** `api-motor/v1`  
 **Tipo de contenido:** `singlecar`
 
