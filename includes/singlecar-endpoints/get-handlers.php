@@ -1,23 +1,15 @@
 <?php
 
 function get_singlecar($request) {
-    $cache_key = 'vehicles_list_' . md5(serialize($request->get_params()));
-    delete_transient($cache_key);
     $params = $request->get_params();
-    
-    // Construir y ejecutar consulta
-    $args = build_query_args($params);
-    
-    // Primero hacemos una consulta para obtener el total real
-    $count_args = array_merge($args, [
-        'posts_per_page' => -1,  // Obtener todos para contar
-        'fields' => 'ids',       // Solo obtener IDs para optimizar
-    ]);
-    $count_query = new WP_Query($count_args);
-    $total_items = $count_query->found_posts;
-    wp_reset_postdata();
+    $cache_key = 'vehicles_list_' . md5(serialize($params));
+    $cached_response = get_transient($cache_key);
 
-    // Ahora ejecutamos la consulta paginada
+    if (false !== $cached_response) {
+        return new WP_REST_Response($cached_response, 200);
+    }
+    
+    $args = build_query_args($params);
     $query = new WP_Query($args);
 
     if (!$query->have_posts()) {
@@ -31,25 +23,27 @@ function get_singlecar($request) {
         ], 200);
     }
 
-    // Procesar resultados
     $vehicles = process_query_results($query);
     wp_reset_postdata();
+
+    $total_items = $query->found_posts;
+
+    // Calcular facetas a partir de los resultados actuales
+    $facets = calculate_facets($vehicles);
 
     $response = [
         'status' => 'success',
         'items' => $vehicles,
-        'total' => $total_items,                    // Total real de items
-        'pages' => ceil($total_items / $args['posts_per_page']), // Total de páginas
+        'total' => $total_items,
+        'pages' => ceil($total_items / $args['posts_per_page']),
         'page' => (int) $args['paged'],
-        'per_page' => (int) $args['posts_per_page']
+        'per_page' => (int) $args['posts_per_page'],
+        'facets' => $facets
     ];
 
-    // Enviar headers para control de caché
-    return new WP_REST_Response($response, 200, [
-        'Cache-Control' => 'no-cache, must-revalidate, max-age=0',
-        'Pragma' => 'no-cache',
-        'Expires' => 'Wed, 11 Jan 1984 05:00:00 GMT'
-    ]);
+    set_transient($cache_key, $response, HOUR_IN_SECONDS);
+
+    return new WP_REST_Response($response, 200);
 }
 
 function build_query_args($params) {
@@ -393,40 +387,39 @@ function add_active_status_query(&$meta_query, $is_active) {
 
 function process_query_results($query) {
     $vehicles = [];
-    $params = $_GET; // Obtener los parámetros de la consulta actual
-    $filter_anunci_actiu = isset($params['anunci-actiu']);
-    $filter_value = null;
-    if ($filter_anunci_actiu) {
-        $filter_value = filter_var($params['anunci-actiu'], FILTER_VALIDATE_BOOLEAN);
+    $posts = $query->posts;
+    $post_ids = wp_list_pluck($posts, 'ID');
+
+    if (empty($post_ids)) {
+        return $vehicles;
     }
-    
-    while ($query->have_posts()) {
-        $query->the_post();
-        $vehicle_id = get_the_ID();
-        
-        // Solo procesar posts publicados y verificar estado activo
-        if (get_post_status($vehicle_id) === 'publish') {
-            try {
-                $vehicle_details = get_vehicle_details_common($vehicle_id);
-                if (!is_wp_error($vehicle_details)) {
-                    $response_data = $vehicle_details->get_data();
-                    // Filtrar por anunci-actiu si corresponde
-                    if ($filter_anunci_actiu) {
-                        if (filter_var($response_data['anunci-actiu'], FILTER_VALIDATE_BOOLEAN) !== $filter_value) {
-                            continue;
-                        }
-                    }
-                    // Convertir anunci-destacat a 1 o 0 siempre
-                    $response_data['anunci-destacat'] = (trim(strtolower(get_post_meta($vehicle_id, 'is-vip', true))) == 'true') ? 1 : 0;
-                    $vehicles[] = $response_data;
-                }
-            } catch (Exception $e) {
-            }
+
+    // Pre-fetch all post meta
+    $all_meta = get_post_meta_by_ids($post_ids);
+
+    // Pre-fetch all terms
+    $taxonomies = [
+        'types-of-transport',
+        'marques-coches',
+        'estat-vehicle',
+        'tipus-de-propulsor',
+        'tipus-combustible',
+        'marques-de-moto',
+        'tipus-de-canvi'
+    ];
+    $all_terms = wp_get_object_terms($post_ids, $taxonomies, ['fields' => 'all_with_object_id']);
+
+    foreach ($posts as $post) {
+        $vehicle_id = $post->ID;
+        $vehicle_details = get_vehicle_details_common($vehicle_id, $post, $all_meta[$vehicle_id], $all_terms);
+        if (!is_wp_error($vehicle_details)) {
+            $vehicles[] = $vehicle_details->get_data();
         }
     }
-    
+
     return $vehicles;
 }
+
 
 function get_vehicle_details($request) {
     $vehicle_id = $request['id'];
@@ -439,22 +432,33 @@ function get_vehicle_details_by_slug($request) {
     if (!$post) {
         return new WP_Error('no_vehicle', 'Vehicle not found', ['status' => 404]);
     }
-    return get_vehicle_details_common($post->ID);
+    return get_vehicle_details_common($post->ID, $post);
 }
 
-function get_vehicle_details_common($vehicle_id) {
-    // Verificar JetEngine y post
+function get_vehicle_details_common($vehicle_id, $post = null, $meta = null, $terms = null) {
+    $cache_key = 'vehicle_details_' . $vehicle_id;
+    $cached_vehicle = get_transient($cache_key);
+
+    if (false !== $cached_vehicle) {
+        return new WP_REST_Response($cached_vehicle, 200);
+    }
+
     if (!function_exists('jet_engine')) {
         return new WP_Error('jet_engine_missing', 'JetEngine no está activo');
     }
 
-    $post = get_post($vehicle_id);
+    if (null === $post) {
+        $post = get_post($vehicle_id);
+    }
+
     if (!$post || $post->post_type !== 'singlecar') {
         return new WP_Error('no_vehicle', 'Vehicle not found', ['status' => 404]);
     }
 
-    // Obtener datos
-    $meta = get_post_meta($vehicle_id);
+    if (null === $meta) {
+        $meta = get_post_meta($vehicle_id);
+    }
+
     $taxonomies = [
         'types-of-transport' => 'tipus-vehicle',
         'marques-coches' => 'marques-cotxe',
@@ -466,19 +470,27 @@ function get_vehicle_details_common($vehicle_id) {
     ];
 
     $terms_data = [];
-    foreach ($taxonomies as $taxonomy => $field_name) {
-        $terms = wp_get_post_terms($vehicle_id, $taxonomy, ['fields' => 'all']);
-        if (!is_wp_error($terms) && !empty($terms)) {
-            $terms_data[$field_name] = $terms[0];
+    if (null === $terms) {
+        foreach ($taxonomies as $taxonomy => $field_name) {
+            $post_terms = wp_get_post_terms($vehicle_id, $taxonomy, ['fields' => 'all']);
+            if (!is_wp_error($post_terms) && !empty($post_terms)) {
+                $terms_data[$field_name] = $post_terms[0];
+            }
+        }
+    } else {
+        foreach ($terms as $term) {
+            if ($term->object_id == $vehicle_id) {
+                $field_name = $taxonomies[$term->taxonomy];
+                $terms_data[$field_name] = $term;
+            }
         }
     }
+    
 
-    // Verificar permisos
     if (!verify_post_ownership($vehicle_id)) {
         return new WP_Error('forbidden_access', 'No tienes permiso para ver este vehículo', ['status' => 403]);
     }
 
-    // Construir respuesta base con orden específico
     $response = [
         'id' => $vehicle_id,
         'author_id' => $post->post_author,
@@ -487,17 +499,15 @@ function get_vehicle_details_common($vehicle_id) {
         'slug' => $post->post_name,
         'titol-anunci' => get_the_title($vehicle_id),
         'descripcio-anunci' => $post->post_content,
-        'anunci-actiu' => get_post_meta($vehicle_id, 'anunci-actiu', true),
-        'anunci-destacat' => (trim(strtolower(get_post_meta($vehicle_id, 'is-vip', true))) == 'true') ? 1 : 0
+        'anunci-actiu' => isset($meta['anunci-actiu'][0]) ? $meta['anunci-actiu'][0] : null,
+        'anunci-destacat' => (isset($meta['is-vip'][0]) && trim(strtolower($meta['is-vip'][0])) == 'true') ? 1 : 0
     ];
 
-    // Agregar tipus-vehicle primero
     if (isset($terms_data['tipus-vehicle'])) {
         $response['tipus-vehicle'] = $terms_data['tipus-vehicle']->name;
     }
 
-    // Agregar marca y modelo inmediatamente después
-    $marques_terms = wp_get_post_terms($vehicle_id, 'marques-coches', ['fields' => 'all']);
+    $marques_terms = isset($terms_data['marques-cotxe']) ? [$terms_data['marques-cotxe']] : [];
     if (!empty($marques_terms)) {
         foreach ($marques_terms as $term) {
             if ($term->parent === 0) {
@@ -513,14 +523,12 @@ function get_vehicle_details_common($vehicle_id) {
         }
     }
 
-    // Agregar resto de términos de taxonomías
     foreach ($terms_data as $field => $term) {
         if (!in_array($field, ['tipus-vehicle', 'marques-cotxe', 'models-cotxe'])) {
             $response[$field] = $term->name;
         }
     }
 
-    // --- Asegurar devolución de campos de carrocería ---
     $carroceria_fields = [
         'carroseria-cotxe',
         'carrosseria-cotxe',
@@ -531,7 +539,6 @@ function get_vehicle_details_common($vehicle_id) {
     foreach ($carroceria_fields as $field) {
         if (isset($meta[$field]) && !empty($meta[$field][0])) {
             $value = $meta[$field][0];
-            // Si es glosario, mostrar label
             if (function_exists('should_get_field_label') && should_get_field_label($field)) {
                 $response[$field] = get_field_label($field, $value);
             } else {
@@ -540,23 +547,42 @@ function get_vehicle_details_common($vehicle_id) {
         }
     }
 
-    // Procesar campos adicionales
     process_meta_fields($meta, $response);
-    add_image_data($vehicle_id, $response);
-
-    // Procesar caducidad
+    add_image_data($vehicle_id, $response, $meta);
     process_expiry($vehicle_id, $post, $response);
 
-    // Eliminar campos sensibles para no administradores
     if (!current_user_can('administrator')) {
         unset($response['dies-caducitat']);
     }
 
-    // Forzar que anunci-destacat sea 1 o 0 justo antes de devolver la respuesta
     $response['anunci-destacat'] = ($response['anunci-destacat'] === 1) ? 1 : 0;
+
+    set_transient($cache_key, $response, HOUR_IN_SECONDS);
 
     return new WP_REST_Response($response, 200);
 }
+
+function get_post_meta_by_ids($post_ids) {
+    global $wpdb;
+    $meta_cache = [];
+
+    if (empty($post_ids)) {
+        return $meta_cache;
+    }
+
+    $post_ids_placeholders = implode(',', array_fill(0, count($post_ids), '%d'));
+    $results = $wpdb->get_results($wpdb->prepare(
+        "SELECT post_id, meta_key, meta_value FROM {$wpdb->postmeta} WHERE post_id IN ($post_ids_placeholders)",
+        $post_ids
+    ), ARRAY_A);
+
+    foreach ($results as $row) {
+        $meta_cache[$row['post_id']][$row['meta_key']][] = $row['meta_value'];
+    }
+
+    return $meta_cache;
+}
+
 
 // Nueva función para manejar la caducidad
 function process_expiry($vehicle_id, $post, &$response) {
@@ -596,10 +622,14 @@ function process_meta_fields($meta, &$response) {
     }
 }
 
-function add_image_data($vehicle_id, &$response) {
+function add_image_data($vehicle_id, &$response, $meta = null) {
+    if (null === $meta) {
+        $meta = get_post_meta($vehicle_id);
+    }
+
     $response['imatge-destacada-url'] = get_the_post_thumbnail_url($vehicle_id, 'full');
 
-    $gallery_ids = get_post_meta($vehicle_id, 'ad_gallery', true);
+    $gallery_ids = isset($meta['ad_gallery'][0]) ? $meta['ad_gallery'][0] : null;
     $gallery_urls = [];
     
     if (!empty($gallery_ids)) {
@@ -681,4 +711,51 @@ function debug_vehicle_fields(WP_REST_Request $request) {
             'message' => $e->getMessage()
         ], 500);
     }
+}
+
+function calculate_facets($vehicles) {
+    $facets = [
+        'tipus-vehicle' => [],
+        'estat-vehicle' => [],
+        'marques-cotxe' => [],
+        'models-cotxe' => [],
+        'marques-de-moto' => [],
+        'models-moto' => [],
+        'tipus-combustible' => [],
+        'tipus-canvi' => [],
+        'tipus-propulsor' => [],
+        'anunci-destacat' => [],
+        'revisions-oficials' => [],
+        'impostos-deduibles' => [],
+        'vehicle-a-canvi' => [],
+        'garantia' => [],
+        'traccio' => [],
+        'roda-recanvi' => [],
+        'segment' => [],
+        'color-vehicle' => [],
+        'tipus-tapisseria' => [],
+        'color-tapisseria' => [],
+        'emissions-vehicle' => [],
+        'cables-recarrega' => [],
+        'connectors' => []
+    ];
+    foreach ($vehicles as $v) {
+        foreach ($facets as $key => &$facet) {
+            if (isset($v[$key])) {
+                // Si es array (ej: extras), contar cada valor
+                if (is_array($v[$key])) {
+                    foreach ($v[$key] as $val) {
+                        if ($val !== '' && $val !== null) {
+                            $facet[$val] = isset($facet[$val]) ? $facet[$val] + 1 : 1;
+                        }
+                    }
+                } else {
+                    if ($v[$key] !== '' && $v[$key] !== null) {
+                        $facet[$v[$key]] = isset($facet[$v[$key]]) ? $facet[$v[$key]] + 1 : 1;
+                    }
+                }
+            }
+        }
+    }
+    return $facets;
 }

@@ -63,6 +63,8 @@ function update_singlecar($request) {
 
         $wpdb->query('COMMIT');
 
+        clear_vehicle_cache($post_id);
+
         Vehicle_Debug_Handler::log('PUT - Valor final de anunci-actiu antes de prepare_update_response: ' . get_post_meta($post_id, 'anunci-actiu', true));
 
         // Preparar y enviar respuesta

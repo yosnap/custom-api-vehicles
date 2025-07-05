@@ -614,3 +614,62 @@ Para soporte técnico o consultas sobre la API, contacte con el equipo de desarr
 ---
 
 Esta documentación está sujeta a actualizaciones. Última actualización: Mayo 2025.
+
+## Parámetros de consulta disponibles para /wp-json/api-motor/v1/vehicles
+
+| Parámetro              | Tipo      | Descripción                                                                                 | Ejemplo                         |
+|-----------------------|-----------|--------------------------------------------------------------------------------------------|---------------------------------|
+| page                  | integer   | Número de página (por defecto: 1)                                                          | page=2                          |
+| per_page              | integer   | Ítems por página (por defecto: 10)                                                         | per_page=20                     |
+| orderby               | string    | Campo por el que ordenar (featured, price, date, title)                                    | orderby=price                   |
+| order                 | string    | Dirección de ordenación (ASC, DESC)                                                        | order=DESC                      |
+| search                | string    | Búsqueda por texto libre                                                                   | search=audi                     |
+| tipus-vehicle         | string    | Tipo de vehículo (cotxe, moto, etc.)                                                       | tipus-vehicle=cotxe             |
+| estat-vehicle         | string    | Estado del vehículo (nou, seminou, etc.)                                                   | estat-vehicle=nou               |
+| marques-cotxe         | string    | Marca del coche (slug)                                                                     | marques-cotxe=audi              |
+| models-cotxe          | string    | Modelo del coche (slug)                                                                    | models-cotxe=a4                 |
+| marques-de-moto       | string    | Marca de la moto (slug)                                                                    | marques-de-moto=honda           |
+| models-moto           | string    | Modelo de la moto (slug)                                                                   | models-moto=cbr                 |
+| tipus-combustible     | string    | Tipo de combustible                                                                        | tipus-combustible=benzina       |
+| tipus-canvi           | string    | Tipo de cambio                                                                             | tipus-canvi=automatic           |
+| tipus-propulsor       | string    | Tipo de propulsor                                                                          | tipus-propulsor=electric        |
+| preu_min              | number    | Precio mínimo                                                                              | preu_min=10000                  |
+| preu_max              | number    | Precio máximo                                                                              | preu_max=30000                  |
+| km_min                | number    | Kilometraje mínimo                                                                         | km_min=0                        |
+| km_max                | number    | Kilometraje máximo                                                                         | km_max=50000                    |
+| any_min               | number    | Año mínimo                                                                                 | any_min=2018                    |
+| any_max               | number    | Año máximo                                                                                 | any_max=2023                    |
+| potencia_cv_min       | number    | Potencia mínima (CV)                                                                       | potencia_cv_min=100             |
+| potencia_cv_max       | number    | Potencia máxima (CV)                                                                       | potencia_cv_max=200             |
+| anunci-actiu          | boolean   | Solo anuncios activos (true/false)                                                         | anunci-actiu=true               |
+| anunci-destacat       | boolean   | Solo destacados (true/false o 1/0)                                                         | anunci-destacat=1               |
+| venut                 | boolean   | Solo vendidos (true/false)                                                                 | venut=false                     |
+| llibre-manteniment    | boolean   | Con libro de mantenimiento (true/false)                                                    | llibre-manteniment=true         |
+| revisions-oficials    | boolean   | Con revisiones oficiales (true/false)                                                      | revisions-oficials=true         |
+| impostos-deduibles    | boolean   | Impuestos deducibles (true/false)                                                          | impostos-deduibles=true         |
+| vehicle-a-canvi       | boolean   | Vehículo a cambio (true/false)                                                             | vehicle-a-canvi=true            |
+| garantia              | boolean   | Con garantía (true/false)                                                                  | garantia=true                   |
+| vehicle-accidentat    | boolean   | Accidentado (true/false)                                                                   | vehicle-accidentat=false        |
+| aire-acondicionat     | boolean   | Aire acondicionado (true/false)                                                            | aire-acondicionat=true          |
+| climatitzacio         | boolean   | Climatización (true/false)                                                                 | climatitzacio=true              |
+| vehicle-fumador       | boolean   | Vehículo de fumador (true/false)                                                           | vehicle-fumador=false           |
+| venedor               | string    | Tipo de vendedor                                                                           | venedor=professional            |
+| traccio               | string    | Tracción                                                                                   | traccio=davant                  |
+| roda-recanvi          | string    | Rueda de recambio                                                                          | roda-recanvi=kit                |
+| segment               | string    | Segmento                                                                                   | segment=compacte                |
+| color-vehicle         | string    | Color del vehículo                                                                         | color-vehicle=blanco            |
+| tipus-tapisseria      | string    | Tipo de tapicería                                                                          | tipus-tapisseria=cuir           |
+| color-tapisseria      | string    | Color de tapicería                                                                         | color-tapisseria=negre          |
+| emissions-vehicle     | string    | Emisiones del vehículo                                                                     | emissions-vehicle=euro6         |
+| extres-cotxe          | string    | Extras del coche                                                                          | extres-cotxe=abs                |
+| cables-recarrega      | string    | Cables de recarga                                                                          | cables-recarrega=mennekes       |
+| connectors            | string    | Conectores                                                                                 | connectors=tipo2                |
+| user_id               | integer   | Filtrar por ID de usuario (requiere permisos)                                              | user_id=45                      |
+| post_id               | integer   | Filtrar por ID específico                                                                  | post_id=123                     |
+| post_name             | string    | Filtrar por slug                                                                           | post_name=ejemplo-vehiculo      |
+
+### Ejemplo de uso combinado
+
+```
+/wp-json/api-motor/v1/vehicles?marques-cotxe=audi&preu_min=10000&preu_max=30000&anunci-destacat=1&anunci-actiu=true&page=1&per_page=10
+```

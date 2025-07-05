@@ -25,6 +25,8 @@ function delete_singlecar($request) {
 
         $wpdb->query('COMMIT');
 
+        clear_vehicle_cache($post_id);
+
         return new WP_REST_Response([
             'status' => 'success',
             'message' => 'Vehículo y sus imágenes asociadas eliminados exitosamente',

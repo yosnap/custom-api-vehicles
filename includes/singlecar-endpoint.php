@@ -12,6 +12,7 @@ require_once $base_path . 'meta-handlers.php';
 require_once $base_path . 'media-handlers.php';
 require_once $base_path . 'validation.php';
 require_once $base_path . 'utils.php';
+require_once $base_path . 'cache-handlers.php';
 
 // Cargar endpoints de vendedores desde la ubicación correcta
 require_once plugin_dir_path(__FILE__) . 'seller-endpoints/get-handlers.php';

@@ -190,6 +190,8 @@ function create_singlecar($request) {
 
         $wpdb->query('COMMIT');
 
+        clear_vehicle_cache($post_id);
+
         // Preparar respuesta
         return prepare_vehicle_response($post_id, $params);
 

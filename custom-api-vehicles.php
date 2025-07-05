@@ -30,17 +30,35 @@ class Custom_API_Vehicles {
     /**
      * Elimina restricciones de la API REST que puedan causar error 403
      */
-    public function fix_rest_api_permissions($errors) {
-        // Permitir todas las solicitudes durante las pruebas
-        return null;
-        
-        /* Código original (descomentar cuando las pruebas estén completas)
+    public function fix_rest_api_permissions($result) {
+        // Si el usuario ya está autenticado, no hacer nada.
+        if (!empty($result)) {
+            return $result;
+        }
+
+        // Permitir que las solicitudes a nuestros endpoints específicos pasen
+        // para que los permission_callback de cada ruta se encarguen de la autorización.
         $current_route = isset($_SERVER['REQUEST_URI']) ? $_SERVER['REQUEST_URI'] : '';
         if (strpos($current_route, $this->get_api_namespace()) !== false) {
-            return null; // Permitir todas las solicitudes a nuestro namespace
+            // Si no hay un usuario logueado, y es una ruta de nuestra API,
+            // WordPress por defecto bloquearía la petición. Devolvemos null
+            // para que la comprobación de permisos se delegue al endpoint.
+            // Esto es necesario para que Basic Auth funcione.
+            if (!is_user_logged_in()) {
+                return null;
+            }
         }
-        return $errors;
-        */
+
+        // Para cualquier otra ruta de la API, si no hay usuario, se devuelve el error por defecto.
+        if (!is_user_logged_in()) {
+            return new WP_Error(
+                'rest_not_logged_in',
+                'No estás conectado.',
+                array('status' => 401)
+            );
+        }
+        
+        return $result;
     }
     
     /**
