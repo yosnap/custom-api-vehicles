@@ -76,5 +76,5 @@ y este proyecto adhiere a [Semantic Versioning](https://semver.org/spec/v2.0.0.h
   - `/marques-moto/{marca}/{modelo}`
 - Todos los endpoints permiten paginación, orden y devuelven la respuesta completa de vehículos.
 
-## [Unreleased]
+## [2.2.1] - 2024-07-04
 - Los conteos de facetas (facets) en el endpoint /vehicles ahora siempre son globales, reflejando el total de resultados filtrados, independientemente de la paginación.
