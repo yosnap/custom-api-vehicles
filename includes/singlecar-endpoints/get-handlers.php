@@ -35,7 +35,11 @@ function get_singlecar($request) {
     $query_facets = new WP_Query($args_facets);
     $vehicles_for_facets = process_query_results($query_facets);
     wp_reset_postdata();
+<<<<<<< HEAD
     $facets = calculate_facets($vehicles_for_facets, $params);
+=======
+    $facets = calculate_facets($vehicles_for_facets);
+>>>>>>> ce4e7f4 (docs: los conteos de facetas en /vehicles ahora siempre son globales (independientes de la paginación))
 
     $response = [
         'status' => 'success',

@@ -743,6 +743,9 @@ Devuelve los posts del blog con los campos principales, taxonomías, tags, metad
 
 > **Nota sobre las facetas:**
 > Los conteos de las facetas (`facets`) siempre reflejan el total de resultados que cumplen los filtros activos, independientemente de la paginación. Es decir, aunque solo se muestren 10 ítems por página, los conteos de cada filtro corresponden al total global de la búsqueda.
+<<<<<<< HEAD
 
 > **Nota sobre los facets de modelos:**
 > Los conteos de modelos (`models-cotxe`, `models-moto`) solo se calculan y devuelven si el filtro de marca correspondiente (`marques-cotxe` o `marques-moto`) está presente en la consulta. Si no hay marca seleccionada, estos facets serán un array vacío.
+=======
+>>>>>>> ce4e7f4 (docs: los conteos de facetas en /vehicles ahora siempre son globales (independientes de la paginación))
