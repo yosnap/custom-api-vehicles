@@ -35,11 +35,7 @@ function get_singlecar($request) {
     $query_facets = new WP_Query($args_facets);
     $vehicles_for_facets = process_query_results($query_facets);
     wp_reset_postdata();
-<<<<<<< HEAD
     $facets = calculate_facets($vehicles_for_facets, $params);
-=======
-    $facets = calculate_facets($vehicles_for_facets);
->>>>>>> ce4e7f4 (docs: los conteos de facetas en /vehicles ahora siempre son globales (independientes de la paginación))
 
     $response = [
         'status' => 'success',
@@ -95,7 +91,9 @@ function build_query_args($params) {
         'tipus-propulsor' => 'tipus-de-propulsor',
         'estat-vehicle' => 'estat-vehicle',
         'marques-cotxe' => 'marques-coches',
-        'marques-de-moto' => 'marques-de-moto'
+        'marques-autocaravana' => 'marques-coches',
+        'marques-comercial' => 'marques-coches',
+        'marques-moto' => 'marques-de-moto'
     ];
 
     foreach ($taxonomy_filters as $param => $taxonomy) {
@@ -137,16 +135,72 @@ function build_query_args($params) {
         $apply_tax_query = true;
     }
 
+    // Filtro específico para modelos de autocaravanas
+    if (isset($params['models-autocaravana']) && !empty($params['models-autocaravana'])) {
+        // Si también se especificó una marca de autocaravana, usamos una relación AND
+        if (isset($params['marques-autocaravana']) && !empty($params['marques-autocaravana'])) {
+            $tax_query[] = [
+                'relation' => 'AND',
+                [
+                    'taxonomy' => 'marques-coches',
+                    'field' => 'slug',
+                    'terms' => $params['marques-autocaravana']
+                ],
+                [
+                    'taxonomy' => 'marques-coches',
+                    'field' => 'slug',
+                    'terms' => $params['models-autocaravana']
+                ]
+            ];
+        } else {
+            // Si no se especificó marca, solo filtramos por modelo
+            $tax_query[] = [
+                'taxonomy' => 'marques-coches',
+                'field' => 'slug',
+                'terms' => $params['models-autocaravana']
+            ];
+        }
+        $apply_tax_query = true;
+    }
+
+    // Filtro específico para modelos de vehículos comerciales
+    if (isset($params['models-comercial']) && !empty($params['models-comercial'])) {
+        // Si también se especificó una marca comercial, usamos una relación AND
+        if (isset($params['marques-comercial']) && !empty($params['marques-comercial'])) {
+            $tax_query[] = [
+                'relation' => 'AND',
+                [
+                    'taxonomy' => 'marques-coches',
+                    'field' => 'slug',
+                    'terms' => $params['marques-comercial']
+                ],
+                [
+                    'taxonomy' => 'marques-coches',
+                    'field' => 'slug',
+                    'terms' => $params['models-comercial']
+                ]
+            ];
+        } else {
+            // Si no se especificó marca, solo filtramos por modelo
+            $tax_query[] = [
+                'taxonomy' => 'marques-coches',
+                'field' => 'slug',
+                'terms' => $params['models-comercial']
+            ];
+        }
+        $apply_tax_query = true;
+    }
+
     // Filtro específico para modelos de motos
     if (isset($params['models-moto']) && !empty($params['models-moto'])) {
         // Si también se especificó una marca de moto, usamos una relación AND
-        if (isset($params['marques-de-moto']) && !empty($params['marques-de-moto'])) {
+        if (isset($params['marques-moto']) && !empty($params['marques-moto'])) {
             $tax_query[] = [
                 'relation' => 'AND',
                 [
                     'taxonomy' => 'marques-de-moto',
                     'field' => 'slug',
-                    'terms' => $params['marques-de-moto']
+                    'terms' => $params['marques-moto']
                 ],
                 [
                     'taxonomy' => 'marques-de-moto',
@@ -517,14 +571,48 @@ function get_vehicle_details_common($vehicle_id, $post = null, $meta = null, $te
         $response['tipus-vehicle'] = $terms_data['tipus-vehicle']->name;
     }
 
-    $marques_terms = isset($terms_data['marques-cotxe']) ? [$terms_data['marques-cotxe']] : [];
-    if (!empty($marques_terms)) {
+    // Process car/caravan/commercial vehicle brands and models (all use marques-coches taxonomy)
+    $marques_terms = wp_get_post_terms($vehicle_id, 'marques-coches', ['fields' => 'all']);
+    if (!is_wp_error($marques_terms) && !empty($marques_terms)) {
         foreach ($marques_terms as $term) {
             if ($term->parent === 0) {
-                $response['marques-cotxe'] = $term->name;
+                // Determine vehicle type to assign correct field names
+                $vehicle_type = isset($response['tipus-vehicle']) ? $response['tipus-vehicle'] : '';
+                
+                if (strpos(strtolower($vehicle_type), 'autocaravana') !== false || strpos(strtolower($vehicle_type), 'camper') !== false) {
+                    $response['marques-autocaravana'] = $term->name;
+                    $marca_field = 'models-autocaravana';
+                } elseif (strpos(strtolower($vehicle_type), 'comercial') !== false) {
+                    $response['marques-comercial'] = $term->name;
+                    $marca_field = 'models-comercial';
+                } else {
+                    // Default to car
+                    $response['marques-cotxe'] = $term->name;
+                    $marca_field = 'models-cotxe';
+                }
+                
+                // Find child model terms
                 foreach ($marques_terms as $model_term) {
                     if ($model_term->parent === $term->term_id) {
-                        $response['models-cotxe'] = $model_term->name;
+                        $response[$marca_field] = $model_term->name;
+                        break;
+                    }
+                }
+                break;
+            }
+        }
+    }
+
+    // Process motorcycle brands and models
+    $moto_terms = wp_get_post_terms($vehicle_id, 'marques-de-moto', ['fields' => 'all']);
+    if (!is_wp_error($moto_terms) && !empty($moto_terms)) {
+        foreach ($moto_terms as $term) {
+            if ($term->parent === 0) {
+                $response['marques-moto'] = $term->name;
+                // Find child model terms
+                foreach ($moto_terms as $model_term) {
+                    if ($model_term->parent === $term->term_id) {
+                        $response['models-moto'] = $model_term->name;
                         break;
                     }
                 }
@@ -534,7 +622,7 @@ function get_vehicle_details_common($vehicle_id, $post = null, $meta = null, $te
     }
 
     foreach ($terms_data as $field => $term) {
-        if (!in_array($field, ['tipus-vehicle', 'marques-cotxe', 'models-cotxe'])) {
+        if (!in_array($field, ['tipus-vehicle', 'marques-cotxe', 'models-cotxe', 'marques-moto', 'models-moto'])) {
             $response[$field] = $term->name;
         }
     }
@@ -729,6 +817,10 @@ function calculate_facets($vehicles, $params = []) {
         'estat-vehicle' => [],
         'marques-cotxe' => [],
         'models-cotxe' => [],
+        'marques-autocaravana' => [],
+        'models-autocaravana' => [],
+        'marques-comercial' => [],
+        'models-comercial' => [],
         'marques-moto' => [],
         'models-moto' => [],
         'tipus-combustible' => [],
@@ -761,6 +853,34 @@ function calculate_facets($vehicles, $params = []) {
                 }
                 if (!empty($v['models-cotxe'])) {
                     $model = is_array($v['models-cotxe']) ? $v['models-cotxe'] : [$v['models-cotxe']];
+                    foreach ($model as $m) {
+                        if (!empty($m)) $facet[$m] = isset($facet[$m]) ? $facet[$m] + 1 : 1;
+                    }
+                }
+                continue;
+            }
+            // Modelos de autocaravana: solo si hay marca seleccionada
+            if ($key === 'models-autocaravana') {
+                if (empty($params['marques-autocaravana'])) {
+                    $facet = [];
+                    continue;
+                }
+                if (!empty($v['models-autocaravana'])) {
+                    $model = is_array($v['models-autocaravana']) ? $v['models-autocaravana'] : [$v['models-autocaravana']];
+                    foreach ($model as $m) {
+                        if (!empty($m)) $facet[$m] = isset($facet[$m]) ? $facet[$m] + 1 : 1;
+                    }
+                }
+                continue;
+            }
+            // Modelos de vehículo comercial: solo si hay marca seleccionada
+            if ($key === 'models-comercial') {
+                if (empty($params['marques-comercial'])) {
+                    $facet = [];
+                    continue;
+                }
+                if (!empty($v['models-comercial'])) {
+                    $model = is_array($v['models-comercial']) ? $v['models-comercial'] : [$v['models-comercial']];
                     foreach ($model as $m) {
                         if (!empty($m)) $facet[$m] = isset($facet[$m]) ? $facet[$m] + 1 : 1;
                     }

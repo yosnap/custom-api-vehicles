@@ -107,6 +107,28 @@ function register_diagnostic_endpoint() {
             return current_user_can('administrator');
         }
     ]);
+
+    // Endpoint para limpiar cache de transientes
+    register_rest_route('api-motor/v1', '/clear-cache', [
+        'methods' => 'DELETE',
+        'callback' => function() {
+            global $wpdb;
+            
+            // Eliminar transientes específicos del plugin
+            $wpdb->query("DELETE FROM {$wpdb->options} WHERE option_name LIKE '_transient_vehicles_list_%'");
+            $wpdb->query("DELETE FROM {$wpdb->options} WHERE option_name LIKE '_transient_timeout_vehicles_list_%'");
+            $wpdb->query("DELETE FROM {$wpdb->options} WHERE option_name LIKE '_transient_vehicle_details_%'");
+            $wpdb->query("DELETE FROM {$wpdb->options} WHERE option_name LIKE '_transient_timeout_vehicle_details_%'");
+            
+            return new WP_REST_Response([
+                'status' => 'success',
+                'message' => 'Cache de vehículos eliminado correctamente'
+            ], 200);
+        },
+        'permission_callback' => function() {
+            return current_user_can('administrator');
+        }
+    ]);
 }
 add_action('rest_api_init', 'register_diagnostic_endpoint');
 

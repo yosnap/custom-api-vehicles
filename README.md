@@ -2,7 +2,7 @@
 
 Plugin WordPress para gestionar vehículos a través de una API REST personalizada.
 
-**Versión actual:** 2.2.1.1  
+**Versión actual:** 2.2.1.2  
 **Namespace:** `api-motor/v1`  
 **Tipo de contenido:** `singlecar`
 
@@ -639,3 +639,119 @@ Puedes filtrar vehículos por los siguientes endpoints:
 ```
 
 La respuesta es igual que el endpoint general de vehículos, incluyendo paginación, total de resultados y todos los campos de cada vehículo.
+
+# Sistema de Marcas y Modelos por Tipo de Vehículo
+
+## Campos de marca y modelo según tipo de vehículo
+
+El sistema asigna automáticamente los campos de marca y modelo según el tipo de vehículo (`tipus-vehicle`):
+
+### Coches
+- **Campos:** `marques-cotxe` y `models-cotxe`
+- **Taxonomía:** `marques-coches`
+- **Ejemplo de respuesta:**
+```json
+{
+  "tipus-vehicle": "Cotxe",
+  "marques-cotxe": "Audi",
+  "models-cotxe": "A3"
+}
+```
+
+### Autocaravanas y Campers
+- **Campos:** `marques-autocaravana` y `models-autocaravana`
+- **Taxonomía:** `marques-coches`
+- **Detección:** Cuando `tipus-vehicle` contiene "autocaravana" o "camper"
+- **Ejemplo de respuesta:**
+```json
+{
+  "tipus-vehicle": "Autocaravana",
+  "marques-autocaravana": "Hymer",
+  "models-autocaravana": "B-Class"
+}
+```
+
+### Vehículos comerciales
+- **Campos:** `marques-comercial` y `models-comercial`
+- **Taxonomía:** `marques-coches`
+- **Detección:** Cuando `tipus-vehicle` contiene "comercial"
+- **Ejemplo de respuesta:**
+```json
+{
+  "tipus-vehicle": "Vehicle comercial",
+  "marques-comercial": "Mercedes",
+  "models-comercial": "Sprinter"
+}
+```
+
+### Motos, Quadbikes y ATVs
+- **Campos:** `marques-moto` y `models-moto`
+- **Taxonomía:** `marques-de-moto`
+- **Ejemplo de respuesta:**
+```json
+{
+  "tipus-vehicle": "Moto",
+  "marques-moto": "Yamaha",
+  "models-moto": "YZF-R1"
+}
+```
+
+## Filtros por marca y modelo
+
+Puedes filtrar vehículos usando los parámetros correspondientes a cada tipo:
+
+### Filtros para coches
+```
+GET /wp-json/api-motor/v1/vehicles?marques-cotxe=audi
+GET /wp-json/api-motor/v1/vehicles?marques-cotxe=audi&models-cotxe=a3
+```
+
+### Filtros para autocaravanas
+```
+GET /wp-json/api-motor/v1/vehicles?marques-autocaravana=hymer
+GET /wp-json/api-motor/v1/vehicles?marques-autocaravana=hymer&models-autocaravana=b-class
+```
+
+### Filtros para vehículos comerciales
+```
+GET /wp-json/api-motor/v1/vehicles?marques-comercial=mercedes
+GET /wp-json/api-motor/v1/vehicles?marques-comercial=mercedes&models-comercial=sprinter
+```
+
+### Filtros para motos
+```
+GET /wp-json/api-motor/v1/vehicles?marques-moto=yamaha
+GET /wp-json/api-motor/v1/vehicles?marques-moto=yamaha&models-moto=yzf-r1
+```
+
+## Facetas inteligentes
+
+Las facetas de modelos solo se calculan y muestran cuando hay una marca seleccionada:
+
+- Sin marca seleccionada: `"models-cotxe": {}`
+- Con marca seleccionada: `"models-cotxe": {"a3": 5, "a4": 3}`
+
+Esto aplica para todos los tipos de vehículo:
+- `models-cotxe` (solo si hay `marques-cotxe`)
+- `models-autocaravana` (solo si hay `marques-autocaravana`)
+- `models-comercial` (solo si hay `marques-comercial`)
+- `models-moto` (solo si hay `marques-moto`)
+
+## Endpoint de limpieza de caché
+
+### DELETE /wp-json/api-motor/v1/clear-cache
+
+Elimina todos los transientes de caché del plugin (solo administradores):
+
+```bash
+curl -X DELETE "/wp-json/api-motor/v1/clear-cache" \
+  -H "Authorization: Bearer YOUR_TOKEN"
+```
+
+**Respuesta:**
+```json
+{
+  "status": "success",
+  "message": "Cache de vehículos eliminado correctamente"
+}
+```

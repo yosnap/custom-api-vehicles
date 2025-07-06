@@ -76,13 +76,32 @@ y este proyecto adhiere a [Semantic Versioning](https://semver.org/spec/v2.0.0.h
   - `/marques-moto/{marca}/{modelo}`
 - Todos los endpoints permiten paginación, orden y devuelven la respuesta completa de vehículos.
 
-<<<<<<< HEAD
-## [2.2.1] - 2024-07-04
-- Los conteos de facetas (facets) en el endpoint /vehicles ahora siempre son globales, reflejando el total de resultados filtrados, independientemente de la paginación.
+## [2.2.1.2] - 2025-01-06
+### Añadido
+- Sistema completo de marcas y modelos por tipo de vehículo:
+  - **Coches**: `marques-cotxe` y `models-cotxe` (taxonomía: `marques-coches`)
+  - **Autocaravanas**: `marques-autocaravana` y `models-autocaravana` (taxonomía: `marques-coches`)
+  - **Vehículos comerciales**: `marques-comercial` y `models-comercial` (taxonomía: `marques-coches`)
+  - **Motos**: `marques-moto` y `models-moto` (taxonomía: `marques-de-moto`)
+- Filtros por parámetros para cada tipo de vehículo:
+  - `marques-cotxe` y `models-cotxe` para coches
+  - `marques-autocaravana` y `models-autocaravana` para autocaravanas
+  - `marques-comercial` y `models-comercial` para vehículos comerciales
+  - `marques-moto` y `models-moto` para motos
+- Endpoint `/clear-cache` (DELETE) para limpiar transientes del cache
+- Facetas inteligentes: los modelos solo se muestran cuando hay una marca seleccionada
+
+### Mejorado
+- Asignación automática de campos de marca/modelo según el tipo de vehículo
+- Los conteos de facetas son globales (independientes de la paginación)
+- Optimización de consultas para marcas y modelos
+
+### Corregido
+- Filtrado correcto por marca de moto (`marques-moto` en lugar de `marques-de-moto`)
+- Conflictos de merge en el código de facetas
 
 ## [2.2.1.1] - 2024-07-04
 - Los facets de modelos (`models-cotxe`, `models-moto`) solo se calculan y devuelven si hay una marca seleccionada (`marques-cotxe` o `marques-moto`).
-=======
-## [Unreleased]
+
+## [2.2.1] - 2024-07-04
 - Los conteos de facetas (facets) en el endpoint /vehicles ahora siempre son globales, reflejando el total de resultados filtrados, independientemente de la paginación.
->>>>>>> ce4e7f4 (docs: los conteos de facetas en /vehicles ahora siempre son globales (independientes de la paginación))
