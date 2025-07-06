@@ -646,9 +646,20 @@ La respuesta es igual que el endpoint general de vehículos, incluyendo paginaci
 
 El sistema asigna automáticamente los campos de marca y modelo según el tipo de vehículo (`tipus-vehicle`):
 
-### Coches
+## Lógica de detección de tipos de vehículo
+
+El sistema utiliza detección por contenido de texto en el campo `tipus-vehicle` para asignar los campos correctos:
+
+1. **Autocaravanas/Campers**: Si `tipus-vehicle` contiene "autocaravana" o "camper" (case-insensitive)
+2. **Vehículos comerciales**: Si `tipus-vehicle` contiene "comercial" (case-insensitive)  
+3. **Motos**: Utiliza la taxonomía `marques-de-moto` específica
+4. **Coches**: Cualquier otro tipo que no coincida con los anteriores
+
+### Coches (por defecto)
 - **Campos:** `marques-cotxe` y `models-cotxe`
 - **Taxonomía:** `marques-coches`
+- **Detección:** Cualquier vehículo que no sea autocaravana, comercial o moto
+- **Tipos incluidos:** Cotxe, Berlina, SUV, Descapotable, etc.
 - **Ejemplo de respuesta:**
 ```json
 {
@@ -662,6 +673,7 @@ El sistema asigna automáticamente los campos de marca y modelo según el tipo d
 - **Campos:** `marques-autocaravana` y `models-autocaravana`
 - **Taxonomía:** `marques-coches`
 - **Detección:** Cuando `tipus-vehicle` contiene "autocaravana" o "camper"
+- **Mapeo configurado:** "AUTOCARAVANA-CAMPER"
 - **Ejemplo de respuesta:**
 ```json
 {
@@ -675,6 +687,8 @@ El sistema asigna automáticamente los campos de marca y modelo según el tipo d
 - **Campos:** `marques-comercial` y `models-comercial`
 - **Taxonomía:** `marques-coches`
 - **Detección:** Cuando `tipus-vehicle` contiene "comercial"
+- **Mapeo configurado:** "VEHICLE-COMERCIAL"
+- **Tipos incluidos:** Furgonetas, camiones, vehículos de trabajo
 - **Ejemplo de respuesta:**
 ```json
 {
@@ -687,6 +701,8 @@ El sistema asigna automáticamente los campos de marca y modelo según el tipo d
 ### Motos, Quadbikes y ATVs
 - **Campos:** `marques-moto` y `models-moto`
 - **Taxonomía:** `marques-de-moto`
+- **Mapeo configurado:** "MOTO-QUAD-ATV"
+- **Tipos incluidos:** Motos, Scooters, Quadbikes, ATVs
 - **Ejemplo de respuesta:**
 ```json
 {

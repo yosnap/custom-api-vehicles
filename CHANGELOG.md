@@ -78,11 +78,11 @@ y este proyecto adhiere a [Semantic Versioning](https://semver.org/spec/v2.0.0.h
 
 ## [2.2.1.2] - 2025-01-06
 ### Añadido
-- Sistema completo de marcas y modelos por tipo de vehículo:
-  - **Coches**: `marques-cotxe` y `models-cotxe` (taxonomía: `marques-coches`)
-  - **Autocaravanas**: `marques-autocaravana` y `models-autocaravana` (taxonomía: `marques-coches`)
-  - **Vehículos comerciales**: `marques-comercial` y `models-comercial` (taxonomía: `marques-coches`)
-  - **Motos**: `marques-moto` y `models-moto` (taxonomía: `marques-de-moto`)
+- Sistema completo de marcas y modelos por tipo de vehículo con detección automática:
+  - **Coches** (por defecto): `marques-cotxe` y `models-cotxe` (taxonomía: `marques-coches`)
+  - **Autocaravanas** (cuando `tipus-vehicle` contiene "autocaravana" o "camper"): `marques-autocaravana` y `models-autocaravana` (taxonomía: `marques-coches`)
+  - **Vehículos comerciales** (cuando `tipus-vehicle` contiene "comercial"): `marques-comercial` y `models-comercial` (taxonomía: `marques-coches`)
+  - **Motos/Quad/ATV** (taxonomía específica): `marques-moto` y `models-moto` (taxonomía: `marques-de-moto`)
 - Filtros por parámetros para cada tipo de vehículo:
   - `marques-cotxe` y `models-cotxe` para coches
   - `marques-autocaravana` y `models-autocaravana` para autocaravanas
