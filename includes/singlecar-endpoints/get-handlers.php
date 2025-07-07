@@ -530,7 +530,7 @@ function get_vehicle_details_common($vehicle_id, $post = null, $meta = null, $te
         'tipus-de-propulsor' => 'tipus-propulsor',
         'tipus-combustible' => 'tipus-combustible',
         'marques-de-moto' => 'tipus-de-moto',
-        'tipus-de-canvi' => 'tipus-canvi-cotxe'
+        'tipus-de-canvi' => 'tipus-canvi'
     ];
 
     $terms_data = [];
@@ -543,7 +543,7 @@ function get_vehicle_details_common($vehicle_id, $post = null, $meta = null, $te
         }
     } else {
         foreach ($terms as $term) {
-            if ($term->object_id == $vehicle_id) {
+            if ($term->object_id == $vehicle_id && isset($taxonomies[$term->taxonomy])) {
                 $field_name = $taxonomies[$term->taxonomy];
                 $terms_data[$field_name] = $term;
             }
@@ -627,21 +627,52 @@ function get_vehicle_details_common($vehicle_id, $post = null, $meta = null, $te
         }
     }
 
+    // Process segment field based on vehicle type
+    if (isset($meta['segment']) && !empty($meta['segment'][0])) {
+        $segment_value = $meta['segment'][0];
+        $vehicle_type = isset($response['tipus-vehicle']) ? $response['tipus-vehicle'] : '';
+        
+        if (strpos(strtolower($vehicle_type), 'comercial') !== false) {
+            $segment_field = 'carroseria-comercial';
+        } else {
+            // Default to car
+            $segment_field = 'carroseria-cotxe';
+        }
+        
+        if (function_exists('should_get_field_label') && should_get_field_label('segment')) {
+            $response[$segment_field] = get_field_label('segment', $segment_value);
+        } else {
+            $response[$segment_field] = $segment_value;
+        }
+    }
+    
+    // Process other carroceria fields
     $carroceria_fields = [
-        'carroseria-cotxe',
-        'carrosseria-cotxe',
-        'carroseria-vehicle-comercial',
-        'carrosseria-caravana',
-        'tipus-carroseria-caravana'
+        'carroseria-cotxe' => 'carroseria-cotxe',
+        'carrosseria-cotxe' => 'carrosseria-cotxe',
+        'carroseria-vehicle-comercial' => 'carroseria-comercial',
+        'carrosseria-caravana' => 'carrosseria-caravana',
+        'tipus-carroseria-caravana' => 'carroseria-caravana'
     ];
-    foreach ($carroceria_fields as $field) {
+    foreach ($carroceria_fields as $field => $output_field) {
         if (isset($meta[$field]) && !empty($meta[$field][0])) {
             $value = $meta[$field][0];
+            
             if (function_exists('should_get_field_label') && should_get_field_label($field)) {
-                $response[$field] = get_field_label($field, $value);
+                $response[$output_field] = get_field_label($field, $value);
             } else {
-                $response[$field] = $value;
+                $response[$output_field] = $value;
             }
+        }
+    }
+    
+    // Process tipus-de-moto separately
+    if (isset($meta['tipus-de-moto']) && !empty($meta['tipus-de-moto'][0])) {
+        $value = $meta['tipus-de-moto'][0];
+        if (function_exists('should_get_field_label') && should_get_field_label('tipus-de-moto')) {
+            $response['tipus-de-moto'] = get_field_label('tipus-de-moto', $value);
+        } else {
+            $response['tipus-de-moto'] = $value;
         }
     }
 
@@ -703,7 +734,11 @@ function process_meta_fields($meta, &$response) {
         'tipus-de-moto',
         'tipus-canvi-cotxe',
         'marques-cotxe',
-        'models-cotxe'
+        'models-cotxe',
+        'segment',
+        'carroseria-vehicle-comercial',
+        'tipus-carroseria-caravana',
+        'carroseria-camions'
     ];
 
     foreach ($meta as $key => $value) {
@@ -825,6 +860,7 @@ function calculate_facets($vehicles, $params = []) {
         'models-moto' => [],
         'tipus-combustible' => [],
         'tipus-canvi' => [],
+        'tipus-de-canvi-moto' => [],
         'tipus-propulsor' => [],
         'anunci-destacat' => [],
         'revisions-oficials' => [],
@@ -833,7 +869,10 @@ function calculate_facets($vehicles, $params = []) {
         'garantia' => [],
         'traccio' => [],
         'roda-recanvi' => [],
-        'segment' => [],
+        'carroseria-cotxe' => [],
+        'carroseria-comercial' => [],
+        'carroseria-caravana' => [],
+        'tipus-de-moto' => [],
         'color-vehicle' => [],
         'tipus-tapisseria' => [],
         'color-tapisseria' => [],
