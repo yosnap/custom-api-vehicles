@@ -18,11 +18,10 @@ class Vehicle_Debug_Handler {
      * @return bool Siempre devuelve true
      */
     public static function log($message) {
-        // Temporalmente habilitamos logging para debug del filtro anunci-actiu
-        if (strpos($message, 'anunci-actiu') !== false) {
+        // Debug temporal para filtro anunci-actiu
+        if (strpos($message, 'anunci-actiu') !== false || strpos($message, 'Query') !== false) {
             error_log('[Vehicle Debug] ' . $message);
         }
-        
         return true;
     }
 }

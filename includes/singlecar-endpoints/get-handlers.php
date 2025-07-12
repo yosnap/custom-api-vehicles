@@ -3,22 +3,27 @@
 function get_singlecar($request) {
     $params = $request->get_params();
     
-    // Debug para verificar que estamos en la función correcta
-    Vehicle_Debug_Handler::log('get_singlecar called with params: ' . print_r($params, true));
-    
-    $cache_key = 'vehicles_list_' . md5(serialize($params));
-    $cached_response = get_transient($cache_key);
-
-    // Temporalmente desactivamos cache para debug del filtro anunci-actiu
-    if (false !== $cached_response && !isset($params['anunci-actiu'])) {
-        Vehicle_Debug_Handler::log('Returning cached response (no anunci-actiu filter)');
-        return new WP_REST_Response($cached_response, 200);
-    } else if (isset($params['anunci-actiu'])) {
-        Vehicle_Debug_Handler::log('Skipping cache due to anunci-actiu filter present');
-    }
+    // DESACTIVAR CACHE COMPLETAMENTE hasta que el filtro anunci-actiu funcione bien
+    // $cache_key = 'vehicles_list_' . md5(serialize($params));
+    // $cached_response = get_transient($cache_key);
+    // if (false !== $cached_response && !isset($params['anunci-actiu'])) {
+    //     return new WP_REST_Response($cached_response, 200);
+    // }
     
     $args = build_query_args($params);
+    
+    // Debug de la query final
+    if (isset($params['anunci-actiu'])) {
+        Vehicle_Debug_Handler::log('Final WP_Query args: ' . json_encode($args));
+    }
+    
     $query = new WP_Query($args);
+    
+    // Debug de los resultados
+    if (isset($params['anunci-actiu'])) {
+        $post_ids = wp_list_pluck($query->posts, 'ID');
+        Vehicle_Debug_Handler::log('Query returned ' . count($post_ids) . ' posts: ' . implode(', ', $post_ids));
+    }
 
     if (!$query->have_posts()) {
         return new WP_REST_Response([
@@ -55,7 +60,10 @@ function get_singlecar($request) {
         'facets' => $facets
     ];
 
-    set_transient($cache_key, $response, HOUR_IN_SECONDS);
+    // CACHE DESACTIVADO temporalmente hasta que el filtro funcione bien
+    // if (!isset($params['anunci-actiu'])) {
+    //     set_transient($cache_key, $response, HOUR_IN_SECONDS);
+    // }
 
     return new WP_REST_Response($response, 200);
 }
@@ -409,7 +417,7 @@ function build_query_args($params) {
     if (isset($params['anunci-actiu']) && $params['anunci-actiu'] !== '') {
         // Convertir string 'true'/'false' a boolean
         $is_active = $params['anunci-actiu'] === 'true' || $params['anunci-actiu'] === true;
-        Vehicle_Debug_Handler::log('Parámetro anunci-actiu recibido: ' . var_export($params['anunci-actiu'], true) . ', convertido a: ' . var_export($is_active, true));
+        Vehicle_Debug_Handler::log('anunci-actiu filter: param=' . $params['anunci-actiu'] . ', is_active=' . ($is_active ? 'true' : 'false'));
         add_active_status_query($meta_query, $is_active);
         $apply_meta_query = true;
     }
@@ -433,8 +441,7 @@ function add_active_status_query(&$meta_query, $is_active) {
             'value' => 'true',
             'compare' => '='
         ];
-        // Debug log
-        Vehicle_Debug_Handler::log('Filtro activo aplicado: solo anuncios con anunci-actiu = true');
+        Vehicle_Debug_Handler::log('Query meta added for active: anunci-actiu = true');
     } else {
         // Filtrar por anuncios inactivos o sin el campo definido
         $meta_query[] = [
@@ -449,8 +456,7 @@ function add_active_status_query(&$meta_query, $is_active) {
                 'compare' => 'NOT EXISTS'
             ]
         ];
-        // Debug log
-        Vehicle_Debug_Handler::log('Filtro inactivo aplicado: anunci-actiu = false o NOT EXISTS');
+        Vehicle_Debug_Handler::log('Query meta added for inactive: anunci-actiu = false OR NOT EXISTS');
     }
 }
 
