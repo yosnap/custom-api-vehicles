@@ -264,7 +264,7 @@ function prepare_update_response($post_id) {
     }
 
     // Obtener los valores exactos de los campos booleanos
-    $response['anunci-actiu'] = get_post_meta($post_id, 'anunci-actiu', true);
+    $response['anunci-actiu'] = get_post_meta($post_id, 'anunci-actiu', true) === 'true' ? 'true' : 'false';
     $response['anunci-destacat'] = (get_post_meta($post_id, 'is-vip', true) === 'true') ? 1 : 0;
 
     return new WP_REST_Response($response, 200);

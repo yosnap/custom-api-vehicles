@@ -3,18 +3,23 @@
 function get_singlecar($request) {
     $params = $request->get_params();
     
-    // DESACTIVAR CACHE COMPLETAMENTE hasta que el filtro anunci-actiu funcione bien
-    // $cache_key = 'vehicles_list_' . md5(serialize($params));
-    // $cached_response = get_transient($cache_key);
-    // if (false !== $cached_response && !isset($params['anunci-actiu'])) {
-    //     return new WP_REST_Response($cached_response, 200);
-    // }
+    // Cache condicional basado en configuración
+    $cache_enabled = get_option('vehicles_api_cache_enabled', '0');
+    if ($cache_enabled === '1') {
+        $cache_key = 'vehicles_list_' . md5(serialize($params));
+        $cached_response = get_transient($cache_key);
+        if (false !== $cached_response) {
+            return new WP_REST_Response($cached_response, 200);
+        }
+    }
     
     $args = build_query_args($params);
     
     // Debug de la query final
     if (isset($params['anunci-actiu'])) {
         Vehicle_Debug_Handler::log('Final WP_Query args: ' . json_encode($args));
+        Vehicle_Debug_Handler::log('Order parameter: ' . (isset($params['order']) ? $params['order'] : 'not set'));
+        Vehicle_Debug_Handler::log('Orderby parameter: ' . (isset($params['orderby']) ? $params['orderby'] : 'not set'));
     }
     
     $query = new WP_Query($args);
@@ -60,10 +65,12 @@ function get_singlecar($request) {
         'facets' => $facets
     ];
 
-    // CACHE DESACTIVADO temporalmente hasta que el filtro funcione bien
-    // if (!isset($params['anunci-actiu'])) {
-    //     set_transient($cache_key, $response, HOUR_IN_SECONDS);
-    // }
+    // Cache condicional basado en configuración
+    $cache_enabled = get_option('vehicles_api_cache_enabled', '0');
+    if ($cache_enabled === '1') {
+        $cache_duration = intval(get_option('vehicles_api_cache_duration', 3600));
+        set_transient($cache_key, $response, $cache_duration);
+    }
 
     return new WP_REST_Response($response, 200);
 }
@@ -374,7 +381,7 @@ function build_query_args($params) {
                     'key' => 'is-vip',
                     'compare' => 'EXISTS'
                 ];
-                $args['meta_query'] = $meta_query;
+                $apply_meta_query = true;
                 $args['orderby'] = [
                     'meta_value' => 'DESC', // is-vip 'true' primero
                     'date' => 'DESC'
@@ -406,6 +413,12 @@ function build_query_args($params) {
         }
     } else {
         // Por defecto, destacados primero
+        // Asegurar que todos los vehículos tengan el campo is-vip para poder ordenar
+        $meta_query[] = [
+            'key' => 'is-vip',
+            'compare' => 'EXISTS'
+        ];
+        $apply_meta_query = true;
         $args['orderby'] = [
             'meta_value_num' => 'DESC',
             'date' => 'DESC'
@@ -511,11 +524,15 @@ function get_vehicle_details_by_slug($request) {
 }
 
 function get_vehicle_details_common($vehicle_id, $post = null, $meta = null, $terms = null) {
-    $cache_key = 'vehicle_details_' . $vehicle_id;
-    $cached_vehicle = get_transient($cache_key);
+    // Cache condicional basado en configuración
+    $cache_enabled = get_option('vehicles_api_cache_enabled', '0');
+    if ($cache_enabled === '1') {
+        $cache_key = 'vehicle_details_' . $vehicle_id;
+        $cached_vehicle = get_transient($cache_key);
 
-    if (false !== $cached_vehicle) {
-        return new WP_REST_Response($cached_vehicle, 200);
+        if (false !== $cached_vehicle) {
+            return new WP_REST_Response($cached_vehicle, 200);
+        }
     }
 
     if (!function_exists('jet_engine')) {
@@ -574,7 +591,7 @@ function get_vehicle_details_common($vehicle_id, $post = null, $meta = null, $te
         'slug' => $post->post_name,
         'titol-anunci' => get_the_title($vehicle_id),
         'descripcio-anunci' => $post->post_content,
-        'anunci-actiu' => isset($meta['anunci-actiu'][0]) ? ($meta['anunci-actiu'][0] === 'true' ? 'true' : 'false') : 'false',
+        'anunci-actiu' => 'false', // Valor temporal, se sobrescribirá en process_expiry()
         'anunci-destacat' => (isset($meta['is-vip'][0]) && trim(strtolower($meta['is-vip'][0])) == 'true') ? 1 : 0
     ];
 
@@ -697,7 +714,12 @@ function get_vehicle_details_common($vehicle_id, $post = null, $meta = null, $te
 
     $response['anunci-destacat'] = ($response['anunci-destacat'] === 1) ? 1 : 0;
 
-    set_transient($cache_key, $response, HOUR_IN_SECONDS);
+    // Cache condicional basado en configuración
+    $cache_enabled = get_option('vehicles_api_cache_enabled', '0');
+    if ($cache_enabled === '1') {
+        $cache_duration = intval(get_option('vehicles_api_cache_duration', 3600));
+        set_transient($cache_key, $response, $cache_duration);
+    }
 
     return new WP_REST_Response($response, 200);
 }
@@ -726,13 +748,49 @@ function get_post_meta_by_ids($post_ids) {
 
 // Nueva función para manejar la caducidad
 function process_expiry($vehicle_id, $post, &$response) {
+    // Obtener el valor original del campo anunci-actiu
+    $anunci_actiu_original = get_post_meta($vehicle_id, 'anunci-actiu', true);
+    
+    Vehicle_Debug_Handler::log("Vehicle $vehicle_id: anunci-actiu original = '$anunci_actiu_original'");
+    
+    // Si el anuncio ya está marcado como inactivo, mantenerlo así
+    if ($anunci_actiu_original !== 'true') {
+        $response['anunci-actiu'] = 'false';
+        Vehicle_Debug_Handler::log("Vehicle $vehicle_id: marcado como inactivo (original no era 'true')");
+        return;
+    }
+    
+    // Verificar si la caducidad está habilitada
+    $expiry_enabled = get_option('vehicles_api_expiry_enabled', '1');
+    if ($expiry_enabled !== '1') {
+        // Si la caducidad está deshabilitada, mantener el valor original
+        $response['anunci-actiu'] = 'true';
+        Vehicle_Debug_Handler::log("Vehicle $vehicle_id: manteniéndolo activo (caducidad deshabilitada)");
+        return;
+    }
+    
+    // Si está marcado como activo, verificar si ha expirado
     $dies_caducitat = intval(get_post_meta($vehicle_id, 'dies-caducitat', true));
+    
+    // Si no hay dies-caducitat configurado o es 0, usar valor por defecto
+    if ($dies_caducitat <= 0) {
+        $dies_caducitat = intval(get_option('vehicles_api_default_expiry_days', 365));
+    }
+    
     $data_creacio = strtotime($post->post_date);
     $data_actual = current_time('timestamp');
     $dies_transcorreguts = floor(($data_actual - $data_creacio) / (60 * 60 * 24));
     
+    Vehicle_Debug_Handler::log("Vehicle $vehicle_id: dies_caducitat=$dies_caducitat, dies_transcorreguts=$dies_transcorreguts");
+    
+    // Solo marcar como inactivo si estaba activo pero ha expirado
     if ($dies_transcorreguts > $dies_caducitat) {
-        $response['anunci-actiu'] = false;
+        $response['anunci-actiu'] = 'false';
+        Vehicle_Debug_Handler::log("Vehicle $vehicle_id: marcado como inactivo (expirado)");
+    } else {
+        // Si está activo y no ha expirado, mantenerlo activo
+        $response['anunci-actiu'] = 'true';
+        Vehicle_Debug_Handler::log("Vehicle $vehicle_id: manteniéndolo activo");
     }
 }
 

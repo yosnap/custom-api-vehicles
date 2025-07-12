@@ -432,8 +432,56 @@ class Vehicle_Controller {
             $data['imatge-destacada-url'] = $featured_image_url;
         }
         
+        // Procesar estado activo del anuncio con la misma lógica que get_vehicle_details_common
+        $this->process_anunci_actiu($post, $data);
+        
         return rest_ensure_response($data);
     } // Cierre del método prepare_item_for_response
+    
+    /**
+     * Procesa el estado activo del anuncio aplicando la lógica de caducidad
+     * 
+     * @param WP_Post $post
+     * @param array &$data
+     */
+    private function process_anunci_actiu($post, &$data) {
+        // Obtener el valor original del campo anunci-actiu
+        $anunci_actiu_original = get_post_meta($post->ID, 'anunci-actiu', true);
+        
+        // Si el anuncio ya está marcado como inactivo, mantenerlo así
+        if ($anunci_actiu_original !== 'true') {
+            $data['anunci-actiu'] = 'false';
+            return;
+        }
+        
+        // Verificar si la caducidad está habilitada
+        $expiry_enabled = get_option('vehicles_api_expiry_enabled', '1');
+        if ($expiry_enabled !== '1') {
+            // Si la caducidad está deshabilitada, mantener el valor original
+            $data['anunci-actiu'] = 'true';
+            return;
+        }
+        
+        // Si está marcado como activo, verificar si ha expirado
+        $dies_caducitat = intval(get_post_meta($post->ID, 'dies-caducitat', true));
+        
+        // Si no hay dies-caducitat configurado o es 0, usar valor por defecto
+        if ($dies_caducitat <= 0) {
+            $dies_caducitat = intval(get_option('vehicles_api_default_expiry_days', 365));
+        }
+        
+        $data_creacio = strtotime($post->post_date);
+        $data_actual = current_time('timestamp');
+        $dies_transcorreguts = floor(($data_actual - $data_creacio) / (60 * 60 * 24));
+        
+        // Solo marcar como inactivo si estaba activo pero ha expirado
+        if ($dies_transcorreguts > $dies_caducitat) {
+            $data['anunci-actiu'] = 'false';
+        } else {
+            // Si está activo y no ha expirado, mantenerlo activo
+            $data['anunci-actiu'] = 'true';
+        }
+    }
     
     /**
      * Prepara un elemento para la colección

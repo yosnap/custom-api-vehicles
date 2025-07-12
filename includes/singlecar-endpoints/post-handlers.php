@@ -344,7 +344,7 @@ function prepare_vehicle_response($post_id, $params) {
         }
     }
 
-    $response['anunci-actiu'] = get_post_meta($post_id, 'anunci-actiu', true);
+    $response['anunci-actiu'] = get_post_meta($post_id, 'anunci-actiu', true) === 'true' ? 'true' : 'false';
     $response['anunci-destacat'] = (get_post_meta($post_id, 'is-vip', true) === 'true') ? 1 : 0;
 
     return new WP_REST_Response($response, 201);

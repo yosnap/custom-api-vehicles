@@ -5,6 +5,37 @@ Todos los cambios notables en este proyecto serán documentados en este archivo.
 El formato está basado en [Keep a Changelog](https://keepachangelog.com/es/1.0.0/),
 y este proyecto adhiere a [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.2.2] - 2025-07-12
+
+### Añadido
+- **Página de configuración en admin** - Nueva sección "API Motoraldia" en wp-admin para gestionar cache y caducidad
+- **Control de cache configurable** - Activar/desactivar cache desde la interfaz admin sin tocar código
+- **Gestión de caducidad de anuncios** - Control completo sobre la caducidad automática de vehículos
+- **Botón de limpieza de cache** - Herramienta para limpiar transients desde la interfaz
+- **Configuración de duración de cache** - Opciones desde 5 minutos hasta 24 horas
+- **Configuración de días de caducidad** - Personalizar días por defecto para expiración de anuncios
+
+### Corregido
+- **CRÍTICO: Filtro anunci-actiu funcionando correctamente** - Solucionado problema donde `anunci-actiu=true` no filtraba correctamente
+- **Inconsistencia de tipos en anunci-actiu** - Normalizado para devolver siempre strings ('true'/'false') en lugar de boolean mixto
+- **Problema de caducidad prematura** - Corregida lógica que marcaba como inactivos vehículos que deberían estar activos
+- **Cache interfiriendo con desarrollo** - Ahora desactivado por defecto para permitir ver cambios inmediatamente
+- **Endpoints individuales con lógica incorrecta** - Los endpoints `/vehicles/{id}` ahora usan la misma lógica que el listado
+- **Problemas de codificación UTF-8** - Caracteres especiales en interfaz admin ahora se muestran correctamente
+
+### Cambiado
+- **Sistema de cache más inteligente** - Cache ahora respeta configuración desde admin en lugar de estar hardcodeado
+- **Lógica de caducidad mejorada** - Puede desactivarse completamente o configurar días por defecto
+- **Gestión unificada de anunci-actiu** - Misma lógica aplicada en todos los endpoints (listado, individual, por slug)
+- **Mejor experiencia de desarrollo** - No más necesidad de limpiar transients manualmente
+
+### Técnico
+- Refactorizado sistema de cache para usar `get_option()` en lugar de constantes
+- Añadida función `process_expiry()` unificada para manejo de caducidad
+- Creado método `process_anunci_actiu()` en vehicle controller para consistencia
+- Mejorado debug logging para filtro anunci-actiu
+- Eliminado archivo config.php a favor de opciones de WordPress
+
 ## [2.0] - 2025-05-30
 
 ### Añadido

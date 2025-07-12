@@ -1,6 +1,6 @@
 # Documentación Oficial: Custom API Vehicles for Motoraldia
 
-**Versión:** 2.2.1  
+**Versión:** 2.2.2  
 **Namespace:** `api-motor/v1`  
 **Tipo de contenido:** `singlecar`
 
@@ -13,6 +13,27 @@ Custom API Vehicles for Motoraldia es un plugin de WordPress que proporciona una
 - WordPress 5.0 o superior
 - Plugin JetEngine activado
 - Permisos adecuados para cada tipo de operación
+
+## Configuración y Cache
+
+### Página de Administración
+
+A partir de la versión 2.2.2, el plugin incluye una página de configuración en el área de administración de WordPress:
+
+**Ubicación:** WP Admin → API Motoraldia
+
+**Funcionalidades disponibles:**
+- **Control de Cache:** Activar/desactivar sistema de cache
+- **Duración de Cache:** Configurar tiempo de vida (5 minutos a 24 horas)
+- **Limpieza de Cache:** Botón para limpiar todos los transients
+- **Caducidad de Anuncios:** Activar/desactivar caducidad automática
+- **Días de Caducidad:** Configurar días por defecto para expiración
+
+### Recomendaciones de Cache
+
+- **Desarrollo:** Desactivar cache para ver cambios inmediatamente
+- **Producción:** Activar cache con duración de 1-6 horas para mejor rendimiento
+- **Debug:** Usar botón "Limpiar Cache Ahora" cuando se realizan cambios
 
 ## Autenticación
 
@@ -82,7 +103,7 @@ Obtiene una lista de vehículos.
 | user_id | integer | Filtrar por ID de usuario | No | - |
 | post_id | integer | Filtrar por ID específico | No | - |
 | post_name | string | Filtrar por slug | No | - |
-| anunci-actiu | boolean | Filtrar por estado de activación (true: solo anuncios activos, false: solo anuncios inactivos, omitir: todos) | No | Todos |
+| anunci-actiu | boolean | Filtrar por estado de activación (true: solo anuncios activos, false: solo anuncios inactivos, omitir: todos) - **CORREGIDO en v2.2.2** | No | Todos |
 
 **Respuesta:**
 

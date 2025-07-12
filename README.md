@@ -2,9 +2,28 @@
 
 Plugin WordPress para gestionar vehículos a través de una API REST personalizada.
 
-**Versión actual:** 2.2.1.2  
+**Versión actual:** 2.2.2  
 **Namespace:** `api-motor/v1`  
 **Tipo de contenido:** `singlecar`
+
+## 🚀 Novedades v2.2.2
+
+### ✅ Correcciones Críticas
+- **Filtro `anunci-actiu` funcionando correctamente** - Solucionado problema donde no filtraba adecuadamente
+- **Consistencia de tipos** - Campo `anunci-actiu` ahora devuelve siempre strings ('true'/'false')
+- **Endpoints individuales** - Lógica unificada para todos los endpoints
+
+### 🎛️ Nueva Página de Administración
+- **Ubicación:** WP Admin → API Motoraldia
+- **Control de Cache:** Activar/desactivar desde interfaz
+- **Gestión de Caducidad:** Configurar expiración automática de anuncios
+- **Limpieza de Cache:** Botón para limpiar transients
+- **Sin código:** Todo configurable desde WordPress admin
+
+### 📈 Mejoras de Rendimiento
+- Cache inteligente basado en configuración
+- Desactivado por defecto para desarrollo
+- Opciones de duración desde 5 minutos a 24 horas
 
 ## Endpoints Disponibles
 
