@@ -96,7 +96,7 @@ class Vehicle_Controller {
      * @return bool
      */
     public function get_items_permissions_check($request) {
-        // Temporalmente permitir todas las solicitudes para pruebas
+        // Permitir lectura pública de vehículos (GET request)
         return true;
     }
     
@@ -106,10 +106,10 @@ class Vehicle_Controller {
      * @return bool
      */
     public function get_item_permissions_check($request) {
-        // Temporalmente permitir todas las solicitudes para pruebas
+        // Permitir lectura pública de vehículos individuales (GET request)
         return true;
         
-        // Código original (descomentar cuando las pruebas estén completas)
+        // Código original comentado para referencia futura
         /*
         $post_id = (int) $request['id'];
         $post = get_post($post_id);

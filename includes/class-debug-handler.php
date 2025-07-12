@@ -18,13 +18,10 @@ class Vehicle_Debug_Handler {
      * @return bool Siempre devuelve true
      */
     public static function log($message) {
-        // No hacer nada - los mensajes de debug son ignorados
-        // O redirigir a nuestro propio sistema de registro si es necesario
-        
-        // Si quieres registrar mensajes críticos, puedes usar el logger del plugin:
-        // if (strpos($message, 'ERROR CRÍTICO') !== false) {
-        //     Vehicle_API_Logger::get_instance()->log_action(0, 'error', $message);
-        // }
+        // Temporalmente habilitamos logging para debug del filtro anunci-actiu
+        if (strpos($message, 'anunci-actiu') !== false) {
+            error_log('[Vehicle Debug] ' . $message);
+        }
         
         return true;
     }

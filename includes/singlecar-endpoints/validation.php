@@ -18,36 +18,58 @@ add_filter('rest_pre_dispatch', function($result, $server, $request) {
     // Interceptar los campos problemáticos y establecer valores por defecto
     $params = $request->get_params();
     
-    // Establecer valores por defecto para estos campos
-    $_POST['frenada-regenerativa'] = 'no';
-    $_POST['one-pedal'] = 'no';
-    $_POST['aire-acondicionat'] = 'no'; // Añadido nuevo campo
-    $_POST['portes-cotxe'] = '5'; // Añadir valor predeterminado para puertas de coche
-    $_POST['climatitzacio'] = 'no'; // Añadido nuevo campo climatitzacio
-    $_POST['vehicle-fumador'] = 'no'; // Añadido nuevo campo vehicle-fumador
-    $_POST['vehicle-accidentat'] = 'no'; // Añadido vehicle-accidentat
-    $_POST['llibre-manteniment'] = 'no'; // Añadido llibre-manteniment
-    $_POST['revisions-oficials'] = 'no'; // Añadido revisions-oficials
-    $_POST['impostos-deduibles'] = 'no'; // Añadido impostos-deduibles
-    $_POST['vehicle-a-canvi'] = 'no'; // Añadido vehicle-a-canvi
+    // Establecer valores por defecto solo si no están definidos (no sobrescribir datos del usuario)
+    $defaults = [
+        'frenada-regenerativa' => 'no',
+        'one-pedal' => 'no',
+        'aire-acondicionat' => 'no',
+        'portes-cotxe' => '5',
+        'climatitzacio' => 'no',
+        'vehicle-fumador' => 'no',
+        'vehicle-accidentat' => 'no',
+        'llibre-manteniment' => 'no',
+        'revisions-oficials' => 'no',
+        'impostos-deduibles' => 'no',
+        'vehicle-a-canvi' => 'no'
+    ];
+    
+    // Solo establecer defaults si el campo no existe en POST y sanitizar entrada
+    foreach ($defaults as $field => $default_value) {
+        if (!isset($_POST[$field]) || empty($_POST[$field])) {
+            $_POST[$field] = sanitize_text_field($default_value);
+        } else {
+            $_POST[$field] = sanitize_text_field($_POST[$field]);
+        }
+    }
     
     return $result;
 }, 10, 3);
 
 function validate_all_fields($params, $is_update = false) {
     try {
-        // SOLUCIÓN TEMPORAL: Establecer valores por defecto para estos campos antes de cualquier validación
-        $params['frenada-regenerativa'] = 'no';
-        $params['one-pedal'] = 'no';
-        $params['aire-acondicionat'] = 'no'; // Añadido nuevo campo
-        $params['portes-cotxe'] = '5'; // Añadir valor predeterminado para puertas de coche
-        $params['climatitzacio'] = 'no'; // Añadido nuevo campo climatitzacio
-        $params['vehicle-fumador'] = 'no'; // Añadido nuevo campo vehicle-fumador
-        $params['vehicle-accidentat'] = 'no'; // Añadido vehicle-accidentat
-        $params['llibre-manteniment'] = 'no'; // Añadido llibre-manteniment
-        $params['revisions-oficials'] = 'no'; // Añadido revisions-oficials
-        $params['impostos-deduibles'] = 'no'; // Añadido impostos-deduibles
-        $params['vehicle-a-canvi'] = 'no'; // Añadido vehicle-a-canvi
+        // Establecer valores por defecto solo si no están definidos (no sobrescribir datos del usuario)
+        $defaults = [
+            'frenada-regenerativa' => 'no',
+            'one-pedal' => 'no',
+            'aire-acondicionat' => 'no',
+            'portes-cotxe' => '5',
+            'climatitzacio' => 'no',
+            'vehicle-fumador' => 'no',
+            'vehicle-accidentat' => 'no',
+            'llibre-manteniment' => 'no',
+            'revisions-oficials' => 'no',
+            'impostos-deduibles' => 'no',
+            'vehicle-a-canvi' => 'no'
+        ];
+        
+        // Solo establecer defaults si el campo no existe en params y sanitizar
+        foreach ($defaults as $field => $default_value) {
+            if (!isset($params[$field]) || empty($params[$field])) {
+                $params[$field] = sanitize_text_field($default_value);
+            } else {
+                $params[$field] = sanitize_text_field($params[$field]);
+            }
+        }
         
         // Verificar si es MOTO y normalizar
         if (isset($params['tipus-vehicle'])) {

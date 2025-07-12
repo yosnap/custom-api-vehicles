@@ -398,8 +398,10 @@ function build_query_args($params) {
     }
 
     // Estado activo del anuncio
-    if (isset($params['anunci-actiu'])) {
-        $is_active = filter_var($params['anunci-actiu'], FILTER_VALIDATE_BOOLEAN);
+    if (isset($params['anunci-actiu']) && $params['anunci-actiu'] !== '') {
+        // Convertir string 'true'/'false' a boolean
+        $is_active = $params['anunci-actiu'] === 'true' || $params['anunci-actiu'] === true;
+        Vehicle_Debug_Handler::log('Parámetro anunci-actiu recibido: ' . var_export($params['anunci-actiu'], true) . ', convertido a: ' . var_export($is_active, true));
         add_active_status_query($meta_query, $is_active);
         $apply_meta_query = true;
     }
@@ -417,21 +419,16 @@ function build_query_args($params) {
 
 function add_active_status_query(&$meta_query, $is_active) {
     if ($is_active) {
+        // Solo filtrar por anuncios activos
         $meta_query[] = [
-            'relation' => 'AND',
-            [
-                'key' => 'anunci-actiu',
-                'value' => 'true',
-                'compare' => '='
-            ],
-            [
-                'key' => 'dies-caducitat',
-                'value' => 0,
-                'compare' => '>',
-                'type' => 'NUMERIC'
-            ]
+            'key' => 'anunci-actiu',
+            'value' => 'true',
+            'compare' => '='
         ];
+        // Debug log
+        Vehicle_Debug_Handler::log('Filtro activo aplicado: solo anuncios con anunci-actiu = true');
     } else {
+        // Filtrar por anuncios inactivos o sin el campo definido
         $meta_query[] = [
             'relation' => 'OR',
             [
@@ -440,12 +437,12 @@ function add_active_status_query(&$meta_query, $is_active) {
                 'compare' => '='
             ],
             [
-                'key' => 'dies-caducitat',
-                'value' => 0,
-                'compare' => '<=',
-                'type' => 'NUMERIC'
+                'key' => 'anunci-actiu',
+                'compare' => 'NOT EXISTS'
             ]
         ];
+        // Debug log
+        Vehicle_Debug_Handler::log('Filtro inactivo aplicado: anunci-actiu = false o NOT EXISTS');
     }
 }
 
@@ -563,7 +560,7 @@ function get_vehicle_details_common($vehicle_id, $post = null, $meta = null, $te
         'slug' => $post->post_name,
         'titol-anunci' => get_the_title($vehicle_id),
         'descripcio-anunci' => $post->post_content,
-        'anunci-actiu' => isset($meta['anunci-actiu'][0]) ? $meta['anunci-actiu'][0] : null,
+        'anunci-actiu' => isset($meta['anunci-actiu'][0]) ? ($meta['anunci-actiu'][0] === 'true' ? 'true' : 'false') : 'false',
         'anunci-destacat' => (isset($meta['is-vip'][0]) && trim(strtolower($meta['is-vip'][0])) == 'true') ? 1 : 0
     ];
 
