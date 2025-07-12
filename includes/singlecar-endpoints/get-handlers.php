@@ -2,11 +2,19 @@
 
 function get_singlecar($request) {
     $params = $request->get_params();
+    
+    // Debug para verificar que estamos en la función correcta
+    Vehicle_Debug_Handler::log('get_singlecar called with params: ' . print_r($params, true));
+    
     $cache_key = 'vehicles_list_' . md5(serialize($params));
     $cached_response = get_transient($cache_key);
 
-    if (false !== $cached_response) {
+    // Temporalmente desactivamos cache para debug del filtro anunci-actiu
+    if (false !== $cached_response && !isset($params['anunci-actiu'])) {
+        Vehicle_Debug_Handler::log('Returning cached response (no anunci-actiu filter)');
         return new WP_REST_Response($cached_response, 200);
+    } else if (isset($params['anunci-actiu'])) {
+        Vehicle_Debug_Handler::log('Skipping cache due to anunci-actiu filter present');
     }
     
     $args = build_query_args($params);
