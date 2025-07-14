@@ -176,7 +176,8 @@ function process_standard_field($field_name, $value) {
     $field_type = get_field_type($field_name);
     
     if ($field_type === 'boolean' || $field_type === 'switch') {
-        return filter_var($value, FILTER_VALIDATE_BOOLEAN);
+        // Custom boolean processing for better handling
+        return process_boolean_value($value);
     }
     
     if ($field_type === 'number') {
@@ -184,6 +185,37 @@ function process_standard_field($field_name, $value) {
     }
     
     return $value;
+}
+
+function process_boolean_value($value) {
+    // Handle null, empty values
+    if (is_null($value) || $value === '') {
+        return false;
+    }
+    
+    // Handle boolean values
+    if (is_bool($value)) {
+        return $value;
+    }
+    
+    // Handle string values
+    if (is_string($value)) {
+        $value_lower = strtolower(trim($value));
+        if (in_array($value_lower, ['true', 'yes', 'si', 'on', '1'])) {
+            return true;
+        }
+        if (in_array($value_lower, ['false', 'no', 'off', '0'])) {
+            return false;
+        }
+    }
+    
+    // Handle numeric values
+    if (is_numeric($value)) {
+        return intval($value) !== 0;
+    }
+    
+    // Default to false for unknown values
+    return false;
 }
 
 function deserialize_if_needed($value) {
@@ -237,6 +269,16 @@ function map_field_key($key) {
     ];
 
     return isset($mapping[$key]) ? $mapping[$key] : $key;
+}
+
+function map_field_value($key, $value) {
+    // Special handling for is-vip field
+    if ($key === 'is-vip') {
+        $processed_value = process_boolean_value($value);
+        return $processed_value ? 1 : 0;
+    }
+    
+    return $value;
 }
 
 function is_array_field($field_name) {

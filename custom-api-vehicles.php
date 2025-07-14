@@ -3,7 +3,7 @@
 Plugin Name: Custom API Vehicles
 Plugin URI: https://github.com/yosnap/custom-api-vehicles
 Description: API personalizada para gestión de vehículos en WordPress.
-Version: 2.2.2
+Version: 2.2.2.1
 Author: Yosnap
 Author URI: https://github.com/yosnap
 */
@@ -127,6 +127,7 @@ add_action('plugins_loaded', function () {
         Vehicle_Debug_Handler::log('Error: JetEngine no está disponible');
     }
 }, 20);
+
 
 // Inicializar el menú de administración
 if (is_admin()) {

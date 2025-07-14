@@ -219,6 +219,11 @@ class Vehicle_Controller {
      * @return WP_REST_Response Response object.
      */
     public function prepare_item_for_response($post, $request) {
+        // Debug para verificar que se ejecuta el método
+        if ($post->ID == 278524) {
+            Vehicle_Debug_Handler::log("DEBUG Controller 278524 - Ejecutando prepare_item_for_response");
+        }
+        
         // Obtener todos los campos personalizados
         $meta_fields = get_post_meta($post->ID);
         
@@ -435,8 +440,134 @@ class Vehicle_Controller {
         // Procesar estado activo del anuncio con la misma lógica que get_vehicle_details_common
         $this->process_anunci_actiu($post, $data);
         
+        // Procesar campo anunci-destacat
+        $this->process_anunci_destacat($post, $data, $meta_fields);
+        
+        // Procesar taxonomías
+        $this->process_taxonomies($post, $data);
+        
         return rest_ensure_response($data);
     } // Cierre del método prepare_item_for_response
+    
+    /**
+     * Procesa el campo anunci-destacat con la misma lógica que get_vehicle_details_common
+     * 
+     * @param WP_Post $post
+     * @param array &$data
+     * @param array $meta_fields
+     */
+    private function process_anunci_destacat($post, &$data, $meta_fields) {
+        // Usar la misma lógica que get_anunci_destacat_value
+        $vehicle_id = $post->ID;
+        
+        // Debug específico para vehículo 278524
+        if ($vehicle_id == 278524) {
+            Vehicle_Debug_Handler::log("DEBUG Controller 278524 - Meta fields is-vip: " . (isset($meta_fields['is-vip']) ? print_r($meta_fields['is-vip'], true) : 'NO EXISTE'));
+        }
+        
+        // Verificar si existe el campo is-vip
+        if (isset($meta_fields['is-vip'][0])) {
+            $is_vip_value = $meta_fields['is-vip'][0];
+            $is_vip_value_str = (string)$is_vip_value;
+            $is_vip_value_lower = strtolower(trim($is_vip_value_str));
+            
+            if ($vehicle_id == 278524) {
+                Vehicle_Debug_Handler::log("DEBUG Controller 278524 - is-vip value: '{$is_vip_value}' (tipo: " . gettype($is_vip_value) . ") (string: '{$is_vip_value_str}') (lowercase: '{$is_vip_value_lower}')");
+            }
+            
+            // Considerar varios valores como "destacado"
+            $is_destacado = false;
+            
+            // Verificar strings comunes
+            if ($is_vip_value_lower === 'true' || $is_vip_value_lower === 'yes' || 
+                $is_vip_value_lower === 'si' || $is_vip_value_lower === 'on') {
+                $is_destacado = true;
+            }
+            
+            // Verificar valores numéricos
+            if (!$is_destacado && is_numeric($is_vip_value_str) && intval($is_vip_value_str) > 0) {
+                $is_destacado = true;
+            }
+            
+            // Verificar valores booleanos
+            if (!$is_destacado && is_bool($is_vip_value) && $is_vip_value === true) {
+                $is_destacado = true;
+            }
+            
+            if ($vehicle_id == 278524) {
+                Vehicle_Debug_Handler::log("DEBUG Controller 278524 - is_destacado: " . ($is_destacado ? 'true' : 'false'));
+            }
+            
+            if ($is_destacado) {
+                if ($vehicle_id == 278524) {
+                    Vehicle_Debug_Handler::log("DEBUG Controller 278524 - Estableciendo anunci-destacat a 1");
+                }
+                $data['anunci-destacat'] = 1;
+                return;
+            }
+        } else {
+            if ($vehicle_id == 278524) {
+                Vehicle_Debug_Handler::log("DEBUG Controller 278524 - is-vip no existe en meta_fields");
+            }
+        }
+        
+        // Verificar si existe data-vip (campo de fecha de VIP)
+        if (isset($meta_fields['data-vip'][0]) && !empty($meta_fields['data-vip'][0])) {
+            $data_vip = $meta_fields['data-vip'][0];
+            // Si tiene fecha VIP y no está vacía, considerar como destacado
+            if ($data_vip !== '0000-00-00' && $data_vip !== '') {
+                // Verificar si la fecha VIP no ha expirado
+                $data_vip_timestamp = strtotime($data_vip);
+                $current_timestamp = time();
+                if ($data_vip_timestamp > $current_timestamp) {
+                    $data['anunci-destacat'] = 1;
+                    return;
+                }
+            }
+        }
+        
+        // Verificar también otros campos que podrían indicar destacado
+        $destacado_fields = ['destacado', 'featured', 'vip', 'premium'];
+        foreach ($destacado_fields as $field) {
+            if (isset($meta_fields[$field][0])) {
+                $value = trim(strtolower($meta_fields[$field][0]));
+                if ($value === 'true' || $value === '1' || $value === 'yes' || $value === 'si') {
+                    $data['anunci-destacat'] = 1;
+                    return;
+                }
+            }
+        }
+        
+        if ($vehicle_id == 278524) {
+            Vehicle_Debug_Handler::log("DEBUG Controller 278524 - Estableciendo anunci-destacat a 0 (no se encontraron campos destacados)");
+        }
+        $data['anunci-destacat'] = 0;
+    }
+    
+    /**
+     * Procesa las taxonomías del vehículo
+     * 
+     * @param WP_Post $post
+     * @param array &$data
+     */
+    private function process_taxonomies($post, &$data) {
+        $taxonomies = [
+            'types-of-transport' => 'tipus-vehicle',
+            'marques-coches' => 'marques-cotxe',
+            'estat-vehicle' => 'estat-vehicle',
+            'tipus-de-propulsor' => 'tipus-propulsor',
+            'tipus-combustible' => 'tipus-combustible',
+            'marques-de-moto' => 'marques-moto',
+            'tipus-de-canvi' => 'tipus-canvi'
+        ];
+        
+        foreach ($taxonomies as $taxonomy => $field_name) {
+            $terms = wp_get_post_terms($post->ID, $taxonomy, ['fields' => 'names']);
+            if (!is_wp_error($terms) && !empty($terms)) {
+                $data[$field_name] = $terms[0];
+            }
+        }
+    }
     
     /**
      * Procesa el estado activo del anuncio aplicando la lógica de caducidad

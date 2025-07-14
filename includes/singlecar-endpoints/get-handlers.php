@@ -499,7 +499,7 @@ function process_query_results($query) {
 
     foreach ($posts as $post) {
         $vehicle_id = $post->ID;
-        $vehicle_details = get_vehicle_details_common($vehicle_id, $post, $all_meta[$vehicle_id], $all_terms);
+        $vehicle_details = get_vehicle_details_common($vehicle_id, $post, $all_meta[$vehicle_id], $all_terms, true);
         if (!is_wp_error($vehicle_details)) {
             $vehicles[] = $vehicle_details->get_data();
         }
@@ -523,7 +523,7 @@ function get_vehicle_details_by_slug($request) {
     return get_vehicle_details_common($post->ID, $post);
 }
 
-function get_vehicle_details_common($vehicle_id, $post = null, $meta = null, $terms = null) {
+function get_vehicle_details_common($vehicle_id, $post = null, $meta = null, $terms = null, $skip_permission_check = false) {
     // Cache condicional basado en configuración
     $cache_enabled = get_option('vehicles_api_cache_enabled', '0');
     if ($cache_enabled === '1') {
@@ -579,10 +579,12 @@ function get_vehicle_details_common($vehicle_id, $post = null, $meta = null, $te
     }
     
 
-    if (!verify_post_ownership($vehicle_id)) {
+    if (!$skip_permission_check && !verify_post_ownership($vehicle_id)) {
         return new WP_Error('forbidden_access', 'No tienes permiso para ver este vehículo', ['status' => 403]);
     }
 
+    Vehicle_Debug_Handler::log('About to create response for vehicle ' . $vehicle_id);
+    
     $response = [
         'id' => $vehicle_id,
         'author_id' => $post->post_author,
@@ -592,7 +594,10 @@ function get_vehicle_details_common($vehicle_id, $post = null, $meta = null, $te
         'titol-anunci' => get_the_title($vehicle_id),
         'descripcio-anunci' => $post->post_content,
         'anunci-actiu' => 'false', // Valor temporal, se sobrescribirá en process_expiry()
-        'anunci-destacat' => (isset($meta['is-vip'][0]) && trim(strtolower($meta['is-vip'][0])) == 'true') ? 1 : 0
+        'anunci-destacat' => (function() use ($meta, $vehicle_id) {
+            Vehicle_Debug_Handler::log('Processing anunci-destacat for vehicle ' . $vehicle_id);
+            return get_anunci_destacat_value($meta, $vehicle_id);
+        })()
     ];
 
     if (isset($terms_data['tipus-vehicle'])) {
@@ -818,9 +823,14 @@ function process_meta_fields($meta, &$response) {
         $meta_value = is_array($value) ? $value[0] : $value;
         $mapped_key = map_field_key($key);
         
-        $response[$mapped_key] = should_get_field_label($mapped_key) ? 
-            get_field_label($key, $meta_value) : 
+        // Apply field-specific value processing
+        $processed_value = function_exists('map_field_value') ? 
+            map_field_value($key, $meta_value) : 
             $meta_value;
+        
+        $response[$mapped_key] = should_get_field_label($mapped_key) ? 
+            get_field_label($key, $processed_value) : 
+            $processed_value;
     }
 }
 
@@ -1020,4 +1030,77 @@ function calculate_facets($vehicles, $params = []) {
     }
     unset($facet);
     return $facets;
+}
+
+function get_anunci_destacat_value($meta, $vehicle_id = null) {
+    
+    if ($vehicle_id) {
+        Vehicle_Debug_Handler::log('get_anunci_destacat_value called for vehicle ' . $vehicle_id);
+    }
+    
+    // Verificar si existe el campo is-vip
+    if (isset($meta['is-vip'][0])) {
+        $is_vip_value = $meta['is-vip'][0];
+        $is_vip_value_str = (string)$is_vip_value;
+        $is_vip_value_lower = strtolower(trim($is_vip_value_str));
+        
+        if ($vehicle_id) {
+            Vehicle_Debug_Handler::log('Vehicle ' . $vehicle_id . ' - is-vip raw: ' . var_export($is_vip_value, true) . ', processed: ' . $is_vip_value_lower);
+        }
+        
+        
+        // Considerar varios valores como "destacado"
+        $is_destacado = false;
+        
+        // Verificar strings comunes
+        if ($is_vip_value_lower === 'true' || $is_vip_value_lower === 'yes' || 
+            $is_vip_value_lower === 'si' || $is_vip_value_lower === 'on') {
+            $is_destacado = true;
+        }
+        
+        // Verificar valores numéricos
+        if (!$is_destacado && is_numeric($is_vip_value_str) && intval($is_vip_value_str) > 0) {
+            $is_destacado = true;
+        }
+        
+        // Verificar valores booleanos
+        if (!$is_destacado && is_bool($is_vip_value) && $is_vip_value === true) {
+            $is_destacado = true;
+        }
+        
+        if ($is_destacado) {
+            return 1;
+        }
+    }
+    
+    // Verificar si existe data-vip (campo de fecha de VIP)
+    if (isset($meta['data-vip'][0]) && !empty($meta['data-vip'][0])) {
+        $data_vip = $meta['data-vip'][0];
+        // Si tiene fecha VIP y no está vacía, considerar como destacado
+        if ($data_vip !== '0000-00-00' && $data_vip !== '') {
+            // Verificar si la fecha VIP no ha expirado
+            $data_vip_timestamp = strtotime($data_vip);
+            $current_timestamp = time();
+            if ($data_vip_timestamp > $current_timestamp) {
+                return 1;
+            }
+        }
+    }
+    
+    // Verificar también otros campos que podrían indicar destacado
+    $destacado_fields = ['destacado', 'featured', 'vip', 'premium'];
+    foreach ($destacado_fields as $field) {
+        if (isset($meta[$field][0])) {
+            $value = trim(strtolower($meta[$field][0]));
+            if ($value === 'true' || $value === '1' || $value === 'yes' || $value === 'si') {
+                return 1;
+            }
+        }
+    }
+    
+    if ($vehicle_id) {
+        Vehicle_Debug_Handler::log('Vehicle ' . $vehicle_id . ' - Final anunci-destacat result: 0');
+    }
+    
+    return 0;
 }

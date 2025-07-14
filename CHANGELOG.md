@@ -5,6 +5,22 @@ Todos los cambios notables en este proyecto serán documentados en este archivo.
 El formato está basado en [Keep a Changelog](https://keepachangelog.com/es/1.0.0/),
 y este proyecto adhiere a [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.2.2.1] - 2025-07-14
+
+### Corregido
+- **CRÍTICO: Campo anunci-destacat funcionando correctamente** - Solucionado problema donde campo `anunci-destacat` siempre devolvía 0 para todos los vehículos
+- **Procesamiento de valores booleanos mejorado** - El campo `is-vip` ahora se procesa correctamente independientemente del formato ('true', 'false', boolean, etc.)
+- **Función process_boolean_value()** - Nueva función para manejar diferentes formatos de valores booleanos ('true', 'yes', 'si', 'on', '1', etc.)
+- **Mapeo de campos específicos** - Función `map_field_value()` para procesamiento específico de campos como `is-vip`
+- **Campo tipus-canvi visible en listado** - Corregido cambio de tipo de campo de glossary a taxonomy
+
+### Técnico
+- Refactorizado procesamiento de campos booleanos en `field-processors.php`
+- Añadida función `process_boolean_value()` para manejo robusto de valores booleanos
+- Creada función `map_field_value()` para mapeo específico de campos
+- Modificado `process_standard_field()` para usar el nuevo sistema de procesamiento
+- Actualizado `class-vehicle-fields.php` para marcar `tipus-canvi` como taxonomy
+
 ## [2.2.2] - 2025-07-12
 
 ### Añadido

@@ -184,7 +184,7 @@ class Vehicle_Fields
             'color-vehicle' => 'glossary',
             'tipus-vehicle' => 'glossary',
             'tipus-combustible' => 'glossary',
-            'tipus-canvi' => 'glossary',
+            'tipus-canvi' => 'taxonomy',
             'tipus-propulsor' => 'glossary',
             'estat-vehicle' => 'glossary',
             'tipus-tapisseria' => 'glossary',
