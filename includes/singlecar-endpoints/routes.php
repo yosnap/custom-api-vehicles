@@ -33,6 +33,33 @@ function register_vehicle_routes() {
         ]
     ]);
 
+    // Nuevo endpoint para obtener TODOS los vehículos sin filtros por defecto
+    register_rest_route('api-motor/v1', '/vehicles-all', [
+        [
+            'methods' => 'GET',
+            'callback' => 'get_all_singlecar',
+            'permission_callback' => '__return_true', // Public endpoint for listing all vehicles
+            'args' => [
+                'page' => [
+                    'default' => 1,
+                    'sanitize_callback' => 'absint'
+                ],
+                'per_page' => [
+                    'default' => 10,
+                    'sanitize_callback' => 'absint'
+                ],
+                'orderby' => [
+                    'default' => 'date',
+                    'sanitize_callback' => 'sanitize_text_field'
+                ],
+                'order' => [
+                    'default' => 'DESC',
+                    'sanitize_callback' => 'sanitize_text_field'
+                ]
+            ]
+        ]
+    ]);
+
     register_rest_route('api-motor/v1', '/vehicles/(?P<id>\d+)', [
         [
             'methods' => 'GET',

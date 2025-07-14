@@ -2,9 +2,25 @@
 
 Plugin WordPress para gestionar vehículos a través de una API REST personalizada.
 
-**Versión actual:** 2.2.2  
+**Versión actual:** 2.2.2.2  
 **Namespace:** `api-motor/v1`  
 **Tipo de contenido:** `singlecar`
+
+## 🚀 Novedades v2.2.2.2
+
+### 🆕 Nuevo Endpoint `/vehicles-all`
+- **Nuevo endpoint:** `/wp-json/api-motor/v1/vehicles-all`
+- **Funcionalidad:** Devuelve TODOS los vehículos sin filtros por defecto
+- **Diferencia con `/vehicles`:** No aplica filtros automáticos de `venut` (vendidos) ni `anunci-actiu` (activos)
+- **Estado de posts:** Incluye cualquier `post_status` (publish, draft, etc.)
+- **Compatibilidad:** Mantiene la misma estructura de respuesta que `/vehicles`
+- **Filtros opcionales:** Permite aplicar filtros si se pasan explícitamente como parámetros
+
+### 📊 Comparativa de Endpoints
+| Endpoint | Descripción | Filtros por defecto |
+|----------|-------------|-------------------|
+| `/vehicles` | Vehículos filtrados | ❌ Excluye vendidos, ✅ Incluye activos/inactivos |
+| `/vehicles-all` | Todos los vehículos | ✅ Incluye vendidos y no vendidos, ✅ Incluye activos/inactivos |
 
 ## 🚀 Novedades v2.2.2
 
@@ -46,7 +62,11 @@ Obtiene los tipos de vehículos disponibles.
 
 #### GET /wp-json/api-motor/v1/vehicles
 
-Obtiene una lista de vehículos.
+Obtiene una lista de vehículos **con filtros por defecto**.
+
+**Filtros automáticos aplicados:**
+- ❌ **Excluye vehículos vendidos** (`venut=false` por defecto)
+- ✅ **Incluye activos e inactivos** (sin filtro `anunci-actiu` por defecto)
 
 **Parámetros:**
 
@@ -57,6 +77,26 @@ Obtiene una lista de vehículos.
 - `post_id`: Filtrar por ID específico
 - `post_name`: Filtrar por slug
 - `anunci-actiu`: Filtrar por estado de activación (true: solo anuncios activos, false: solo anuncios inactivos, omitir: todos)
+- `venut`: Filtrar por estado de venta (debe pasarse explícitamente para ver vendidos)
+
+#### GET /wp-json/api-motor/v1/vehicles-all
+
+Obtiene una lista de **TODOS** los vehículos **sin filtros por defecto**.
+
+**Características:**
+- ✅ **Incluye vehículos vendidos y no vendidos**
+- ✅ **Incluye activos e inactivos**
+- ✅ **Incluye cualquier post_status** (publish, draft, etc.)
+- 🎛️ **Filtros opcionales** disponibles si se pasan como parámetros
+
+**Parámetros:**
+
+- `page`: Número de página (opcional, por defecto: 1)
+- `per_page`: Items por página (opcional, por defecto: 10)
+- `orderby`: Campo de ordenamiento (opcional, por defecto: date)
+- `order`: Dirección del ordenamiento (ASC/DESC, opcional, por defecto: DESC)
+- `venut`: Filtrar por estado de venta (opcional - solo si se pasa explícitamente)
+- `anunci-actiu`: Filtrar por estado activo (opcional - solo si se pasa explícitamente)
 
 **Respuesta:**
 

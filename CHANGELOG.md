@@ -5,6 +5,24 @@ Todos los cambios notables en este proyecto serán documentados en este archivo.
 El formato está basado en [Keep a Changelog](https://keepachangelog.com/es/1.0.0/),
 y este proyecto adhiere a [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.2.2.2] - 2025-07-14
+
+### Añadido
+- **Nuevo endpoint `/vehicles-all`** - Endpoint que devuelve TODOS los vehículos sin filtros por defecto
+- **Acceso completo a datos** - Incluye vehículos vendidos, no vendidos, activos e inactivos
+- **Compatibilidad total** - Mantiene la misma estructura de respuesta que `/vehicles`
+- **Post status completo** - Incluye cualquier estado de post (publish, draft, etc.)
+- **Filtros opcionales** - Permite aplicar filtros solo si se pasan explícitamente como parámetros
+
+### Comparativa de endpoints
+- `/vehicles`: 23 vehículos (con filtros por defecto - excluye vendidos)
+- `/vehicles-all`: 47 vehículos (sin filtros - incluye todos)
+
+### Técnico
+- Creada función `get_all_singlecar()` en `get-handlers.php`
+- Registrada ruta `/vehicles-all` en `routes.php`
+- Documentación actualizada en README.md con comparativa de endpoints
+
 ## [2.2.2.1] - 2025-07-14
 
 ### Corregido

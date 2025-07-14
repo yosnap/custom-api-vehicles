@@ -1,5 +1,93 @@
 <?php
 
+function get_all_singlecar($request) {
+    $params = $request->get_params();
+    
+    // Cache condicional basado en configuración
+    $cache_enabled = get_option('vehicles_api_cache_enabled', '0');
+    if ($cache_enabled === '1') {
+        $cache_key = 'vehicles_all_list_' . md5(serialize($params));
+        $cached_response = get_transient($cache_key);
+        if (false !== $cached_response) {
+            return new WP_REST_Response($cached_response, 200);
+        }
+    }
+    
+    // Construir argumentos básicos SIN filtros por defecto
+    $args = [
+        'post_type' => 'singlecar',
+        'posts_per_page' => isset($params['per_page']) ? (int) $params['per_page'] : 10,
+        'paged' => isset($params['page']) ? (int) $params['page'] : 1,
+        'post_status' => 'any', // Incluir todos los estados de posts
+        'no_found_rows' => false,
+        'update_post_term_cache' => true,
+        'update_post_meta_cache' => true
+    ];
+    
+    // Agregar ordenamiento si se especifica
+    if (isset($params['orderby'])) {
+        $args['orderby'] = $params['orderby'];
+    }
+    if (isset($params['order'])) {
+        $args['order'] = $params['order'];
+    }
+    
+    // Solo aplicar filtros si se pasan explícitamente en los parámetros
+    if (isset($params['venut'])) {
+        $args['meta_query'] = [
+            [
+                'key' => 'venut',
+                'value' => filter_var($params['venut'], FILTER_VALIDATE_BOOLEAN) ? 'true' : 'false',
+                'compare' => '='
+            ]
+        ];
+    }
+    
+    if (isset($params['anunci-actiu'])) {
+        if (!isset($args['meta_query'])) {
+            $args['meta_query'] = [];
+        }
+        $args['meta_query'][] = [
+            'key' => 'anunci-actiu',
+            'value' => filter_var($params['anunci-actiu'], FILTER_VALIDATE_BOOLEAN) ? 'true' : 'false',
+            'compare' => '='
+        ];
+    }
+    
+    $query = new WP_Query($args);
+
+    if (!$query->have_posts()) {
+        return new WP_REST_Response([
+            'status' => 'success',
+            'items' => [],
+            'total' => 0,
+            'pages' => 0,
+            'page' => $args['paged'],
+            'per_page' => $args['posts_per_page']
+        ], 200);
+    }
+
+    $vehicles = process_query_results($query);
+    $total_items = $query->found_posts;
+    wp_reset_postdata();
+
+    $response = [
+        'status' => 'success',
+        'items' => $vehicles,
+        'total' => $total_items,
+        'pages' => ceil($total_items / $args['posts_per_page']),
+        'page' => (int) $args['paged'],
+        'per_page' => (int) $args['posts_per_page']
+    ];
+
+    // Guardar en cache si está habilitado
+    if ($cache_enabled === '1') {
+        set_transient($cache_key, $response, 300); // 5 minutos
+    }
+
+    return new WP_REST_Response($response, 200);
+}
+
 function get_singlecar($request) {
     $params = $request->get_params();
     
