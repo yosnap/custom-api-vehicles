@@ -13,6 +13,9 @@ if (!defined('ABSPATH')) {
 // Incluir funciones de manejo de medios
 require_once plugin_dir_path(dirname(dirname(__FILE__))) . 'includes/singlecar-endpoints/media-handlers.php';
 
+// Incluir funciones de procesamiento de campos
+require_once plugin_dir_path(dirname(dirname(__FILE__))) . 'includes/singlecar-endpoints/field-processors.php';
+
 class Vehicle_Controller {
     
     /**
@@ -307,35 +310,31 @@ class Vehicle_Controller {
                 
                 // Verificar si es un campo de glosario
                 if (function_exists('is_glossary_field') && is_glossary_field($api_field_name)) {
-                    // Obtener el ID del glosario
-                    $glossary_id = Vehicle_Glossary_Mappings::get_glossary_id($api_field_name);
-                    
-                    // Obtener las opciones del glosario
-                    $options = $this->get_glossary_options($api_field_name);
-                    
                     // Obtener el valor como array simple
                     $values = get_post_meta($post->ID, $api_field_name, true);
-                    Vehicle_Debug_Handler::log("Valor recuperado para extres-cotxe: " . print_r($values, true));
+                    Vehicle_Debug_Handler::log("Valor recuperado para extres-autocaravana: " . print_r($values, true));
+                    
+                    // Deserializar si es necesario (manejar formato serializado de PHP)
+                    if (is_string($values) && strpos($values, 'a:') === 0) {
+                        $values = unserialize($values);
+                        Vehicle_Debug_Handler::log("Valor deserializado para extres-autocaravana: " . print_r($values, true));
+                    }
                     
                     // Asegurarse de que values sea un array
                     if (!is_array($values)) {
                         $values = [$values];
                     }
                     
-                    // Procesar cada valor del array
-                    $labels = array();
-                    foreach ($values as $single_value) {
-                        // Buscar etiqueta en las opciones del glosario
-                        if (isset($options[$single_value])) {
-                            $labels[] = $options[$single_value];
-                            Vehicle_Debug_Handler::log("Label encontrado para extres-cotxe: " . $options[$single_value]);
-                        } else {
-                            $labels[] = $single_value; // Si no hay etiqueta, usar el valor original
-                            Vehicle_Debug_Handler::log("No se encontró label para extres-cotxe: " . $single_value);
-                        }
-                    }
+                    // Limpiar valores vacíos
+                    $values = array_filter($values, function($value) {
+                        return !empty($value) && $value !== '';
+                    });
                     
-                    $data[$api_field_name] = $labels;
+                    // Reindexar el array para obtener un array simple sin índices
+                    $values = array_values($values);
+                    
+                    // Devolver directamente los values en lugar de los labels
+                    $data[$api_field_name] = $values;
                     continue; // Importante: salir del bucle para este campo
                 } else {
                     // Obtener el valor directamente
@@ -356,35 +355,31 @@ class Vehicle_Controller {
                 
                 // Verificar si es un campo de glosario
                 if (function_exists('is_glossary_field') && is_glossary_field($api_field_name)) {
-                    // Obtener el ID del glosario
-                    $glossary_id = Vehicle_Glossary_Mappings::get_glossary_id($api_field_name);
-                    
-                    // Obtener las opciones del glosario
-                    $options = $this->get_glossary_options($api_field_name);
-                    
                     // Obtener el valor como array simple
                     $values = get_post_meta($post->ID, $api_field_name, true);
                     Vehicle_Debug_Handler::log("Valor recuperado para extres-cotxe: " . print_r($values, true));
+                    
+                    // Deserializar si es necesario (manejar formato serializado de PHP)
+                    if (is_string($values) && strpos($values, 'a:') === 0) {
+                        $values = unserialize($values);
+                        Vehicle_Debug_Handler::log("Valor deserializado para extres-cotxe: " . print_r($values, true));
+                    }
                     
                     // Asegurarse de que values sea un array
                     if (!is_array($values)) {
                         $values = [$values];
                     }
                     
-                    // Procesar cada valor del array
-                    $labels = array();
-                    foreach ($values as $single_value) {
-                        // Buscar etiqueta en las opciones del glosario
-                        if (isset($options[$single_value])) {
-                            $labels[] = $options[$single_value];
-                            Vehicle_Debug_Handler::log("Label encontrado para extres-cotxe: " . $options[$single_value]);
-                        } else {
-                            $labels[] = $single_value; // Si no hay etiqueta, usar el valor original
-                            Vehicle_Debug_Handler::log("No se encontró label para extres-cotxe: " . $single_value);
-                        }
-                    }
+                    // Limpiar valores vacíos
+                    $values = array_filter($values, function($value) {
+                        return !empty($value) && $value !== '';
+                    });
                     
-                    $data[$api_field_name] = $labels;
+                    // Reindexar el array para obtener un array simple sin índices
+                    $values = array_values($values);
+                    
+                    // Devolver directamente los values en lugar de los labels
+                    $data[$api_field_name] = $values;
                     continue; // Importante: salir del bucle para este campo
                 } else {
                     // Obtener el valor directamente
@@ -426,8 +421,36 @@ class Vehicle_Controller {
                 }
             }
             
-            // Para el resto de campos, simplemente añadirlos al array de datos
-            $data[$field_name] = maybe_unserialize($field_values[0]);
+            // Verificar si es un campo de extras que debe procesarse especialmente
+            $extras_fields = ['extres-cotxe', 'extres-autocaravana', 'extres-moto', 'extres-habitacle'];
+            if (in_array($field_name, $extras_fields)) {
+                // Procesar campo de extras
+                $value = $field_values[0];
+                
+                // Deserializar si es necesario (manejar formato serializado de PHP)
+                if (is_string($value) && strpos($value, 'a:') === 0) {
+                    $value = unserialize($value);
+                    Vehicle_Debug_Handler::log("Valor deserializado para {$field_name}: " . print_r($value, true));
+                }
+                
+                // Asegurarse de que sea un array
+                if (!is_array($value)) {
+                    $value = [$value];
+                }
+                
+                // Limpiar valores vacíos
+                $value = array_filter($value, function($val) {
+                    return !empty($val) && $val !== '';
+                });
+                
+                // Reindexar el array para obtener un array simple sin índices
+                $value = array_values($value);
+                
+                $data[$field_name] = $value;
+            } else {
+                // Para el resto de campos, simplemente añadirlos al array de datos
+                $data[$field_name] = maybe_unserialize($field_values[0]);
+            }
         }
         
         // Añadir URL de imagen destacada si existe

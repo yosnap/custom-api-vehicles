@@ -278,6 +278,30 @@ function map_field_value($key, $value) {
         return $processed_value ? 1 : 0;
     }
     
+    // Special handling for array fields (extras)
+    if (is_array_field($key)) {
+        // Deserializar si es necesario
+        if (is_string($value) && strpos($value, 'a:') === 0) {
+            $value = unserialize($value);
+            Vehicle_Debug_Handler::log("Deserializado campo {$key}: " . print_r($value, true));
+        }
+        
+        // Asegurarse de que sea un array
+        if (!is_array($value)) {
+            $value = [$value];
+        }
+        
+        // Limpiar valores vacíos
+        $value = array_filter($value, function($val) {
+            return !empty($val) && $val !== '';
+        });
+        
+        // Reindexar el array
+        $value = array_values($value);
+        
+        return $value;
+    }
+    
     return $value;
 }
 
@@ -320,6 +344,19 @@ function is_glossary_field($field_name) {
 }
 
 function should_get_field_label($field_name) {
+    // Lista de campos que deben devolver values en lugar de labels
+    $return_values_fields = [
+        'extres-cotxe',
+        'extres-autocaravana',
+        'extres-moto',
+        'extres-habitacle'
+    ];
+    
+    // Si es un campo que debe devolver values, devolver false
+    if (in_array($field_name, $return_values_fields)) {
+        return false;
+    }
+    
     return is_glossary_field($field_name) || is_taxonomy_field($field_name);
 }
 
