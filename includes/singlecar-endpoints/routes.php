@@ -27,7 +27,7 @@ function register_vehicle_routes() {
         [
             'methods' => 'POST',
             'callback' => 'create_singlecar',
-            'permission_callback' => function() {
+            'permission_callback' => function () {
                 return is_user_logged_in(); // Any logged-in user can create a vehicle
             }
         ]
@@ -64,21 +64,21 @@ function register_vehicle_routes() {
         [
             'methods' => 'GET',
             'callback' => 'get_vehicle_details',
-            'permission_callback' => function($request) {
+            'permission_callback' => function ($request) {
                 return verify_post_ownership($request['id']);
             }
         ],
         [
             'methods' => 'PUT',
             'callback' => 'update_singlecar',
-            'permission_callback' => function($request) {
+            'permission_callback' => function ($request) {
                 return verify_post_ownership($request['id']);
             }
         ],
         [
             'methods' => 'DELETE',
             'callback' => 'delete_singlecar',
-            'permission_callback' => function($request) {
+            'permission_callback' => function ($request) {
                 return verify_post_ownership($request['id']);
             }
         ],
@@ -95,7 +95,7 @@ function register_vehicle_routes() {
         [
             'methods' => 'GET',
             'callback' => 'get_vehicle_details_by_slug',
-            'permission_callback' => function($request) {
+            'permission_callback' => function ($request) {
                 return verify_post_ownership_by_slug($request['slug']);
             }
         ],
@@ -104,7 +104,7 @@ function register_vehicle_routes() {
     register_rest_route('api-motor/v1', '/debug-fields', [
         'methods' => 'GET',
         'callback' => 'debug_vehicle_fields',
-        'permission_callback' => function() {
+        'permission_callback' => function () {
             return current_user_can('administrator');
         }
     ]);
@@ -115,7 +115,7 @@ add_action('rest_api_init', 'register_vehicle_routes');
 function register_diagnostic_endpoint() {
     register_rest_route('api-motor/v1', '/diagnostic', [
         'methods' => 'GET',
-        'callback' => function() {
+        'callback' => function () {
             if (!current_user_can('administrator')) {
                 return new WP_REST_Response(['error' => 'No autorizado'], 403);
             }
@@ -130,7 +130,7 @@ function register_diagnostic_endpoint() {
                 'wp_version' => get_bloginfo('version')
             ]);
         },
-        'permission_callback' => function() { // Restricted to administrators
+        'permission_callback' => function () { // Restricted to administrators
             return current_user_can('administrator');
         }
     ]);
@@ -138,21 +138,21 @@ function register_diagnostic_endpoint() {
     // Endpoint para limpiar cache de transientes
     register_rest_route('api-motor/v1', '/clear-cache', [
         'methods' => 'DELETE',
-        'callback' => function() {
+        'callback' => function () {
             global $wpdb;
-            
+
             // Eliminar transientes específicos del plugin
             $wpdb->query("DELETE FROM {$wpdb->options} WHERE option_name LIKE '_transient_vehicles_list_%'");
             $wpdb->query("DELETE FROM {$wpdb->options} WHERE option_name LIKE '_transient_timeout_vehicles_list_%'");
             $wpdb->query("DELETE FROM {$wpdb->options} WHERE option_name LIKE '_transient_vehicle_details_%'");
             $wpdb->query("DELETE FROM {$wpdb->options} WHERE option_name LIKE '_transient_timeout_vehicle_details_%'");
-            
+
             return new WP_REST_Response([
                 'status' => 'success',
                 'message' => 'Cache de vehículos eliminado correctamente'
             ], 200);
         },
-        'permission_callback' => function() {
+        'permission_callback' => function () {
             return current_user_can('administrator');
         }
     ]);
@@ -242,7 +242,7 @@ add_action('rest_api_init', function () {
     foreach ($taxonomies as $endpoint => $taxonomy) {
         register_rest_route('api-motor/v1', '/' . $endpoint . '/(?P<slug>[\w-]+)', [
             'methods' => 'GET',
-            'callback' => function($request) use ($taxonomy) {
+            'callback' => function ($request) use ($taxonomy) {
                 $slug = $request['slug'];
                 $paged = $request->get_param('page') ?: 1;
                 $per_page = $request->get_param('per_page') ?: 10;
@@ -277,10 +277,10 @@ add_action('rest_api_init', function () {
             },
             'permission_callback' => '__return_true',
             'args' => [
-                'page' => [ 'default' => 1, 'sanitize_callback' => 'absint' ],
-                'per_page' => [ 'default' => 10, 'sanitize_callback' => 'absint' ],
-                'orderby' => [ 'default' => 'date', 'sanitize_callback' => 'sanitize_text_field' ],
-                'order' => [ 'default' => 'DESC', 'sanitize_callback' => 'sanitize_text_field' ]
+                'page' => ['default' => 1, 'sanitize_callback' => 'absint'],
+                'per_page' => ['default' => 10, 'sanitize_callback' => 'absint'],
+                'orderby' => ['default' => 'date', 'sanitize_callback' => 'sanitize_text_field'],
+                'order' => ['default' => 'DESC', 'sanitize_callback' => 'sanitize_text_field']
             ]
         ]);
     }
@@ -288,7 +288,7 @@ add_action('rest_api_init', function () {
     // Endpoints anidados para modelos bajo marca (coches)
     register_rest_route('api-motor/v1', '/marques-cotxe/(?P<marca>[\w-]+)/(?P<modelo>[\w-]+)', [
         'methods' => 'GET',
-        'callback' => function($request) {
+        'callback' => function ($request) {
             $marca = $request['marca'];
             $modelo = $request['modelo'];
             $paged = $request->get_param('page') ?: 1;
@@ -330,16 +330,16 @@ add_action('rest_api_init', function () {
         },
         'permission_callback' => '__return_true',
         'args' => [
-            'page' => [ 'default' => 1, 'sanitize_callback' => 'absint' ],
-            'per_page' => [ 'default' => 10, 'sanitize_callback' => 'absint' ],
-            'orderby' => [ 'default' => 'date', 'sanitize_callback' => 'sanitize_text_field' ],
-            'order' => [ 'default' => 'DESC', 'sanitize_callback' => 'sanitize_text_field' ]
+            'page' => ['default' => 1, 'sanitize_callback' => 'absint'],
+            'per_page' => ['default' => 10, 'sanitize_callback' => 'absint'],
+            'orderby' => ['default' => 'date', 'sanitize_callback' => 'sanitize_text_field'],
+            'order' => ['default' => 'DESC', 'sanitize_callback' => 'sanitize_text_field']
         ]
     ]);
     // Endpoints anidados para modelos bajo marca (motos)
     register_rest_route('api-motor/v1', '/marques-moto/(?P<marca>[\w-]+)/(?P<modelo>[\w-]+)', [
         'methods' => 'GET',
-        'callback' => function($request) {
+        'callback' => function ($request) {
             $marca = $request['marca'];
             $modelo = $request['modelo'];
             $paged = $request->get_param('page') ?: 1;
@@ -381,13 +381,77 @@ add_action('rest_api_init', function () {
         },
         'permission_callback' => '__return_true',
         'args' => [
-            'page' => [ 'default' => 1, 'sanitize_callback' => 'absint' ],
-            'per_page' => [ 'default' => 10, 'sanitize_callback' => 'absint' ],
-            'orderby' => [ 'default' => 'date', 'sanitize_callback' => 'sanitize_text_field' ],
-            'order' => [ 'default' => 'DESC', 'sanitize_callback' => 'sanitize_text_field' ]
+            'page' => ['default' => 1, 'sanitize_callback' => 'absint'],
+            'per_page' => ['default' => 10, 'sanitize_callback' => 'absint'],
+            'orderby' => ['default' => 'date', 'sanitize_callback' => 'sanitize_text_field'],
+            'order' => ['default' => 'DESC', 'sanitize_callback' => 'sanitize_text_field']
+        ]
+    ]);
+
+    // ==================== NUEVOS ENDPOINTS PARA DEVOLVER LABELS ====================
+
+    // Endpoint para listado de vehículos con labels
+    register_rest_route('api-motor/v1', '/vehicles-labels', [
+        [
+            'methods' => 'GET',
+            'callback' => 'get_singlecar_with_labels',
+            'permission_callback' => '__return_true',
+            'args' => [
+                'page' => [
+                    'default' => 1,
+                    'sanitize_callback' => 'absint'
+                ],
+                'per_page' => [
+                    'default' => 10,
+                    'sanitize_callback' => 'absint'
+                ],
+                'orderby' => [
+                    'default' => 'date',
+                    'sanitize_callback' => 'sanitize_text_field'
+                ],
+                'order' => [
+                    'default' => 'DESC',
+                    'sanitize_callback' => 'sanitize_text_field'
+                ]
+            ]
+        ]
+    ]);
+
+    // Endpoint para todos los vehículos con labels
+    register_rest_route('api-motor/v1', '/vehicles-all-labels', [
+        [
+            'methods' => 'GET',
+            'callback' => 'get_all_singlecar_with_labels',
+            'permission_callback' => '__return_true',
+            'args' => [
+                'page' => [
+                    'default' => 1,
+                    'sanitize_callback' => 'absint'
+                ],
+                'per_page' => [
+                    'default' => 10,
+                    'sanitize_callback' => 'absint'
+                ],
+                'orderby' => [
+                    'default' => 'date',
+                    'sanitize_callback' => 'sanitize_text_field'
+                ],
+                'order' => [
+                    'default' => 'DESC',
+                    'sanitize_callback' => 'sanitize_text_field'
+                ]
+            ]
+        ]
+    ]);
+
+    // Endpoint para vehículo individual con labels
+    register_rest_route('api-motor/v1', '/vehicles-labels/(?P<id>\d+)', [
+        [
+            'methods' => 'GET',
+            'callback' => 'get_vehicle_details_with_labels',
+            'permission_callback' => function ($request) {
+                return verify_post_ownership($request['id']);
+            }
         ]
     ]);
 });
-
-
-

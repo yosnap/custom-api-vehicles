@@ -2,7 +2,7 @@
 
 function get_all_singlecar($request) {
     $params = $request->get_params();
-    
+
     // Cache condicional basado en configuración
     $cache_enabled = get_option('vehicles_api_cache_enabled', '0');
     if ($cache_enabled === '1') {
@@ -12,7 +12,7 @@ function get_all_singlecar($request) {
             return new WP_REST_Response($cached_response, 200);
         }
     }
-    
+
     // Construir argumentos básicos SIN filtros por defecto
     $args = [
         'post_type' => 'singlecar',
@@ -23,7 +23,7 @@ function get_all_singlecar($request) {
         'update_post_term_cache' => true,
         'update_post_meta_cache' => true
     ];
-    
+
     // Agregar ordenamiento si se especifica
     if (isset($params['orderby'])) {
         $args['orderby'] = $params['orderby'];
@@ -31,7 +31,7 @@ function get_all_singlecar($request) {
     if (isset($params['order'])) {
         $args['order'] = $params['order'];
     }
-    
+
     // Solo aplicar filtros si se pasan explícitamente en los parámetros
     if (isset($params['venut'])) {
         $args['meta_query'] = [
@@ -42,7 +42,7 @@ function get_all_singlecar($request) {
             ]
         ];
     }
-    
+
     if (isset($params['anunci-actiu'])) {
         if (!isset($args['meta_query'])) {
             $args['meta_query'] = [];
@@ -53,7 +53,7 @@ function get_all_singlecar($request) {
             'compare' => '='
         ];
     }
-    
+
     $query = new WP_Query($args);
 
     if (!$query->have_posts()) {
@@ -90,7 +90,7 @@ function get_all_singlecar($request) {
 
 function get_singlecar($request) {
     $params = $request->get_params();
-    
+
     // Cache condicional basado en configuración
     $cache_enabled = get_option('vehicles_api_cache_enabled', '0');
     if ($cache_enabled === '1') {
@@ -100,18 +100,18 @@ function get_singlecar($request) {
             return new WP_REST_Response($cached_response, 200);
         }
     }
-    
+
     $args = build_query_args($params);
-    
+
     // Debug de la query final
     if (isset($params['anunci-actiu'])) {
         Vehicle_Debug_Handler::log('Final WP_Query args: ' . json_encode($args));
         Vehicle_Debug_Handler::log('Order parameter: ' . (isset($params['order']) ? $params['order'] : 'not set'));
         Vehicle_Debug_Handler::log('Orderby parameter: ' . (isset($params['orderby']) ? $params['orderby'] : 'not set'));
     }
-    
+
     $query = new WP_Query($args);
-    
+
     // Debug de los resultados
     if (isset($params['anunci-actiu'])) {
         $post_ids = wp_list_pluck($query->posts, 'ID');
@@ -184,15 +184,15 @@ function build_query_args($params) {
     if (!empty($params['user_id'])) {
         $user_id = (int) $params['user_id'];
         if (!current_user_can('administrator') && get_current_user_id() != $user_id) {
-                throw new Exception('No autorizado para ver vehículos de otros usuarios');
+            throw new Exception('No autorizado para ver vehículos de otros usuarios');
         }
         $args['author'] = $user_id;
     } elseif (!current_user_can('administrator')) {
-            $current_user_id = get_current_user_id();
-            if ($current_user_id) {
-                $args['author'] = $current_user_id;
-            }
+        $current_user_id = get_current_user_id();
+        if ($current_user_id) {
+            $args['author'] = $current_user_id;
         }
+    }
 
     // Filtros de taxonomías
     $taxonomy_filters = [
@@ -479,20 +479,20 @@ function build_query_args($params) {
             case 'price':
                 $args['orderby'] = 'meta_value_num';
                 $args['meta_key'] = 'preu';
-                $args['order'] = isset($params['order']) && in_array(strtoupper($params['order']), ['ASC', 'DESC']) 
-                    ? strtoupper($params['order']) 
+                $args['order'] = isset($params['order']) && in_array(strtoupper($params['order']), ['ASC', 'DESC'])
+                    ? strtoupper($params['order'])
                     : 'ASC';
                 break;
             case 'date':
                 $args['orderby'] = 'date';
-                $args['order'] = isset($params['order']) && in_array(strtoupper($params['order']), ['ASC', 'DESC']) 
-                    ? strtoupper($params['order']) 
+                $args['order'] = isset($params['order']) && in_array(strtoupper($params['order']), ['ASC', 'DESC'])
+                    ? strtoupper($params['order'])
                     : 'DESC';
                 break;
             case 'title':
                 $args['orderby'] = 'title';
-                $args['order'] = isset($params['order']) && in_array(strtoupper($params['order']), ['ASC', 'DESC']) 
-                    ? strtoupper($params['order']) 
+                $args['order'] = isset($params['order']) && in_array(strtoupper($params['order']), ['ASC', 'DESC'])
+                    ? strtoupper($params['order'])
                     : 'ASC';
                 break;
             default:
@@ -530,7 +530,7 @@ function build_query_args($params) {
     if ($apply_tax_query) {
         $args['tax_query'] = $tax_query;
     }
-    
+
     return $args;
 }
 
@@ -665,14 +665,14 @@ function get_vehicle_details_common($vehicle_id, $post = null, $meta = null, $te
             }
         }
     }
-    
+
 
     if (!$skip_permission_check && !verify_post_ownership($vehicle_id)) {
         return new WP_Error('forbidden_access', 'No tienes permiso para ver este vehículo', ['status' => 403]);
     }
 
     Vehicle_Debug_Handler::log('About to create response for vehicle ' . $vehicle_id);
-    
+
     $response = [
         'id' => $vehicle_id,
         'author_id' => $post->post_author,
@@ -682,14 +682,19 @@ function get_vehicle_details_common($vehicle_id, $post = null, $meta = null, $te
         'titol-anunci' => get_the_title($vehicle_id),
         'descripcio-anunci' => $post->post_content,
         'anunci-actiu' => 'false', // Valor temporal, se sobrescribirá en process_expiry()
-        'anunci-destacat' => (function() use ($meta, $vehicle_id) {
+        'anunci-destacat' => (function () use ($meta, $vehicle_id) {
             Vehicle_Debug_Handler::log('Processing anunci-destacat for vehicle ' . $vehicle_id);
             return get_anunci_destacat_value($meta, $vehicle_id);
         })()
     ];
 
     if (isset($terms_data['tipus-vehicle'])) {
-        $response['tipus-vehicle'] = $terms_data['tipus-vehicle']->slug;
+        // Verificar si se debe devolver label o value
+        if (function_exists('should_get_field_label') && should_get_field_label('tipus-vehicle')) {
+            $response['tipus-vehicle'] = $terms_data['tipus-vehicle']->name; // Usar el nombre/label del término
+        } else {
+            $response['tipus-vehicle'] = $terms_data['tipus-vehicle']->slug; // Usar el slug/value del término
+        }
     }
 
     // Process car/caravan/commercial vehicle brands and models (all use marques-coches taxonomy)
@@ -699,23 +704,23 @@ function get_vehicle_details_common($vehicle_id, $post = null, $meta = null, $te
             if ($term->parent === 0) {
                 // Determine vehicle type to assign correct field names
                 $vehicle_type = isset($response['tipus-vehicle']) ? $response['tipus-vehicle'] : '';
-                
+
                 if (strpos(strtolower($vehicle_type), 'autocaravana') !== false || strpos(strtolower($vehicle_type), 'camper') !== false) {
-                    $response['marques-autocaravana'] = $term->slug;
+                    $response['marques-autocaravana'] = function_exists('should_get_field_label') && should_get_field_label('marques-autocaravana') ? $term->name : $term->slug;
                     $marca_field = 'models-autocaravana';
                 } elseif (strpos(strtolower($vehicle_type), 'comercial') !== false) {
-                    $response['marques-comercial'] = $term->slug;
+                    $response['marques-comercial'] = function_exists('should_get_field_label') && should_get_field_label('marques-comercial') ? $term->name : $term->slug;
                     $marca_field = 'models-comercial';
                 } else {
                     // Default to car
-                    $response['marques-cotxe'] = $term->slug;
+                    $response['marques-cotxe'] = function_exists('should_get_field_label') && should_get_field_label('marques-cotxe') ? $term->name : $term->slug;
                     $marca_field = 'models-cotxe';
                 }
-                
+
                 // Find child model terms
                 foreach ($marques_terms as $model_term) {
                     if ($model_term->parent === $term->term_id) {
-                        $response[$marca_field] = $model_term->slug;
+                        $response[$marca_field] = function_exists('should_get_field_label') && should_get_field_label($marca_field) ? $model_term->name : $model_term->slug;
                         break;
                     }
                 }
@@ -729,11 +734,12 @@ function get_vehicle_details_common($vehicle_id, $post = null, $meta = null, $te
     if (!is_wp_error($moto_terms) && !empty($moto_terms)) {
         foreach ($moto_terms as $term) {
             if ($term->parent === 0) {
-                $response['marques-moto'] = $term->slug;
+                $response['marques-moto'] = function_exists('should_get_field_label') && should_get_field_label('marques-moto') ? $term->name : $term->slug;
+
                 // Find child model terms
                 foreach ($moto_terms as $model_term) {
                     if ($model_term->parent === $term->term_id) {
-                        $response['models-moto'] = $model_term->slug;
+                        $response['models-moto'] = function_exists('should_get_field_label') && should_get_field_label('models-moto') ? $model_term->name : $model_term->slug;
                         break;
                     }
                 }
@@ -744,7 +750,12 @@ function get_vehicle_details_common($vehicle_id, $post = null, $meta = null, $te
 
     foreach ($terms_data as $field => $term) {
         if (!in_array($field, ['tipus-vehicle', 'marques-cotxe', 'models-cotxe', 'marques-moto', 'models-moto'])) {
-            $response[$field] = $term->slug;
+            // Verificar si se debe devolver label o value
+            if (function_exists('should_get_field_label') && should_get_field_label($field)) {
+                $response[$field] = $term->name; // Usar el nombre/label del término
+            } else {
+                $response[$field] = $term->slug; // Usar el slug/value del término
+            }
         }
     }
 
@@ -752,21 +763,21 @@ function get_vehicle_details_common($vehicle_id, $post = null, $meta = null, $te
     if (isset($meta['segment']) && !empty($meta['segment'][0])) {
         $segment_value = $meta['segment'][0];
         $vehicle_type = isset($response['tipus-vehicle']) ? $response['tipus-vehicle'] : '';
-        
+
         if (strpos(strtolower($vehicle_type), 'comercial') !== false) {
             $segment_field = 'carroseria-comercial';
         } else {
             // Default to car
             $segment_field = 'carroseria-cotxe';
         }
-        
+
         if (function_exists('should_get_field_label') && should_get_field_label('segment')) {
             $response[$segment_field] = get_field_label('segment', $segment_value);
         } else {
             $response[$segment_field] = $segment_value;
         }
     }
-    
+
     // Process other carroceria fields
     $carroceria_fields = [
         'carroseria-cotxe' => 'carroseria-cotxe',
@@ -778,7 +789,7 @@ function get_vehicle_details_common($vehicle_id, $post = null, $meta = null, $te
     foreach ($carroceria_fields as $field => $output_field) {
         if (isset($meta[$field]) && !empty($meta[$field][0])) {
             $value = $meta[$field][0];
-            
+
             if (function_exists('should_get_field_label') && should_get_field_label($field)) {
                 $response[$output_field] = get_field_label($field, $value);
             } else {
@@ -786,7 +797,7 @@ function get_vehicle_details_common($vehicle_id, $post = null, $meta = null, $te
             }
         }
     }
-    
+
     // Process tipus-de-moto separately
     if (isset($meta['tipus-de-moto']) && !empty($meta['tipus-de-moto'][0])) {
         $value = $meta['tipus-de-moto'][0];
@@ -794,6 +805,16 @@ function get_vehicle_details_common($vehicle_id, $post = null, $meta = null, $te
             $response['tipus-de-moto'] = get_field_label('tipus-de-moto', $value);
         } else {
             $response['tipus-de-moto'] = $value;
+        }
+    }
+
+    // Process tipus-canvi separately
+    if (isset($meta['tipus-canvi']) && !empty($meta['tipus-canvi'][0])) {
+        $value = $meta['tipus-canvi'][0];
+        if (function_exists('should_get_field_label') && should_get_field_label('tipus-canvi')) {
+            $response['tipus-canvi'] = get_field_label('tipus-canvi', $value);
+        } else {
+            $response['tipus-canvi'] = $value;
         }
     }
 
@@ -843,16 +864,16 @@ function get_post_meta_by_ids($post_ids) {
 function process_expiry($vehicle_id, $post, &$response) {
     // Obtener el valor original del campo anunci-actiu
     $anunci_actiu_original = get_post_meta($vehicle_id, 'anunci-actiu', true);
-    
+
     Vehicle_Debug_Handler::log("Vehicle $vehicle_id: anunci-actiu original = '$anunci_actiu_original'");
-    
+
     // Si el anuncio ya está marcado como inactivo, mantenerlo así
     if ($anunci_actiu_original !== 'true') {
         $response['anunci-actiu'] = 'false';
         Vehicle_Debug_Handler::log("Vehicle $vehicle_id: marcado como inactivo (original no era 'true')");
         return;
     }
-    
+
     // Verificar si la caducidad está habilitada
     $expiry_enabled = get_option('vehicles_api_expiry_enabled', '1');
     if ($expiry_enabled !== '1') {
@@ -861,21 +882,21 @@ function process_expiry($vehicle_id, $post, &$response) {
         Vehicle_Debug_Handler::log("Vehicle $vehicle_id: manteniéndolo activo (caducidad deshabilitada)");
         return;
     }
-    
+
     // Si está marcado como activo, verificar si ha expirado
     $dies_caducitat = intval(get_post_meta($vehicle_id, 'dies-caducitat', true));
-    
+
     // Si no hay dies-caducitat configurado o es 0, usar valor por defecto
     if ($dies_caducitat <= 0) {
         $dies_caducitat = intval(get_option('vehicles_api_default_expiry_days', 365));
     }
-    
+
     $data_creacio = strtotime($post->post_date);
     $data_actual = current_time('timestamp');
     $dies_transcorreguts = floor(($data_actual - $data_creacio) / (60 * 60 * 24));
-    
+
     Vehicle_Debug_Handler::log("Vehicle $vehicle_id: dies_caducitat=$dies_caducitat, dies_transcorreguts=$dies_transcorreguts");
-    
+
     // Solo marcar como inactivo si estaba activo pero ha expirado
     if ($dies_transcorreguts > $dies_caducitat) {
         $response['anunci-actiu'] = 'false';
@@ -910,14 +931,14 @@ function process_meta_fields($meta, &$response) {
 
         $meta_value = is_array($value) ? $value[0] : $value;
         $mapped_key = map_field_key($key);
-        
+
         // Apply field-specific value processing
-        $processed_value = function_exists('map_field_value') ? 
-            map_field_value($key, $meta_value) : 
+        $processed_value = function_exists('map_field_value') ?
+            map_field_value($key, $meta_value) :
             $meta_value;
-        
-        $response[$mapped_key] = should_get_field_label($mapped_key) ? 
-            get_field_label($key, $processed_value) : 
+
+        $response[$mapped_key] = should_get_field_label($mapped_key) ?
+            get_field_label($key, $processed_value) :
             $processed_value;
     }
 }
@@ -931,7 +952,7 @@ function add_image_data($vehicle_id, &$response, $meta = null) {
 
     $gallery_ids = isset($meta['ad_gallery'][0]) ? $meta['ad_gallery'][0] : null;
     $gallery_urls = [];
-    
+
     if (!empty($gallery_ids)) {
         $gallery_ids = is_array($gallery_ids) ? $gallery_ids : explode(',', $gallery_ids);
         foreach ($gallery_ids as $gallery_id) {
@@ -941,7 +962,7 @@ function add_image_data($vehicle_id, &$response, $meta = null) {
             }
         }
     }
-    
+
     if (!empty($gallery_urls)) {
         $response['galeria-vehicle-urls'] = $gallery_urls;
     }
@@ -1004,7 +1025,6 @@ function debug_vehicle_fields(WP_REST_Request $request) {
             'total' => count($all_fields),
             'data' => $all_fields
         ], 200);
-
     } catch (Exception $e) {
         return new WP_REST_Response([
             'status' => 'error',
@@ -1121,46 +1141,48 @@ function calculate_facets($vehicles, $params = []) {
 }
 
 function get_anunci_destacat_value($meta, $vehicle_id = null) {
-    
+
     if ($vehicle_id) {
         Vehicle_Debug_Handler::log('get_anunci_destacat_value called for vehicle ' . $vehicle_id);
     }
-    
+
     // Verificar si existe el campo is-vip
     if (isset($meta['is-vip'][0])) {
         $is_vip_value = $meta['is-vip'][0];
         $is_vip_value_str = (string)$is_vip_value;
         $is_vip_value_lower = strtolower(trim($is_vip_value_str));
-        
+
         if ($vehicle_id) {
             Vehicle_Debug_Handler::log('Vehicle ' . $vehicle_id . ' - is-vip raw: ' . var_export($is_vip_value, true) . ', processed: ' . $is_vip_value_lower);
         }
-        
-        
+
+
         // Considerar varios valores como "destacado"
         $is_destacado = false;
-        
+
         // Verificar strings comunes
-        if ($is_vip_value_lower === 'true' || $is_vip_value_lower === 'yes' || 
-            $is_vip_value_lower === 'si' || $is_vip_value_lower === 'on') {
+        if (
+            $is_vip_value_lower === 'true' || $is_vip_value_lower === 'yes' ||
+            $is_vip_value_lower === 'si' || $is_vip_value_lower === 'on'
+        ) {
             $is_destacado = true;
         }
-        
+
         // Verificar valores numéricos
         if (!$is_destacado && is_numeric($is_vip_value_str) && intval($is_vip_value_str) > 0) {
             $is_destacado = true;
         }
-        
+
         // Verificar valores booleanos
         if (!$is_destacado && is_bool($is_vip_value) && $is_vip_value === true) {
             $is_destacado = true;
         }
-        
+
         if ($is_destacado) {
             return 1;
         }
     }
-    
+
     // Verificar si existe data-vip (campo de fecha de VIP)
     if (isset($meta['data-vip'][0]) && !empty($meta['data-vip'][0])) {
         $data_vip = $meta['data-vip'][0];
@@ -1174,7 +1196,7 @@ function get_anunci_destacat_value($meta, $vehicle_id = null) {
             }
         }
     }
-    
+
     // Verificar también otros campos que podrían indicar destacado
     $destacado_fields = ['destacado', 'featured', 'vip', 'premium'];
     foreach ($destacado_fields as $field) {
@@ -1185,10 +1207,49 @@ function get_anunci_destacat_value($meta, $vehicle_id = null) {
             }
         }
     }
-    
+
     if ($vehicle_id) {
         Vehicle_Debug_Handler::log('Vehicle ' . $vehicle_id . ' - Final anunci-destacat result: 0');
     }
-    
+
     return 0;
+}
+
+/**
+ * Endpoint para obtener vehículos con LABELS en lugar de values
+ * GET /wp-json/api-motor/v1/vehicles-labels
+ */
+function get_singlecar_with_labels($request) {
+    // Forzar el uso de labels
+    global $force_labels_mode;
+    $force_labels_mode = true;
+
+    // Reutilizar la función existente pero con labels activados
+    return get_singlecar($request);
+}
+
+/**
+ * Endpoint para obtener todos los vehículos con LABELS en lugar de values
+ * GET /wp-json/api-motor/v1/vehicles-all-labels
+ */
+function get_all_singlecar_with_labels($request) {
+    // Forzar el uso de labels
+    global $force_labels_mode;
+    $force_labels_mode = true;
+
+    // Reutilizar la función existente pero con labels activados
+    return get_all_singlecar($request);
+}
+
+/**
+ * Endpoint para obtener un vehículo individual con LABELS en lugar de values
+ * GET /wp-json/api-motor/v1/vehicles-labels/{id}
+ */
+function get_vehicle_details_with_labels($request) {
+    // Forzar el uso de labels
+    global $force_labels_mode;
+    $force_labels_mode = true;
+
+    // Reutilizar la función existente pero con labels activados
+    return get_vehicle_details($request);
 }

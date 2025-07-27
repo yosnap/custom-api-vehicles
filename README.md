@@ -8,21 +8,29 @@ Plugin WordPress para gestionar vehículos a través de una API REST personaliza
 
 ## 🚀 Novedades v2.2.3
 
-### 🔄 Cambio Importante: API devuelve Values en lugar de Labels
+### ✅ Mapeos de Glosarios Automáticos
 
-- **BREAKING CHANGE**: Todos los campos ahora devuelven valores/slugs en lugar de etiquetas traducidas
-- **Campos de taxonomía**: Devuelven slugs (`cotxe` en lugar de `Coche`)
-- **Campos de glosario**: Devuelven values (`aire-acondicionat` en lugar de `Aire acondicionado`)
-- **Campos de arrays**: Devuelven arrays de values en lugar de labels
-- **Motivo**: Mejora la consistencia de la API y facilita el procesamiento en frontend
-- **Migración**: Los frontends deben actualizar para manejar values y hacer la traducción localmente
+- **Configuración automática**: Más de 20 campos de glosario pre-configurados
+- **Campo `tipus-de-moto`**: Corregida categorización y procesamiento
+- **Mapeos por defecto**: Funcionamiento inmediato sin configuración manual
+- **Sistema unificado**: Eliminada lógica hardcodeada conflictiva
+- **Consistencia total**: Todos los campos usan el mismo sistema de procesamiento
 
-### 💡 Flexibilidad en POST/PUT
+### 📋 Campos Corregidos
 
-- **Entrada flexible**: Los endpoints POST/PUT aceptan tanto values como labels
-- **Ejemplo válido con values**: `"combustible": "gasolina"`
-- **Ejemplo válido con labels**: `"combustible": "Gasolina"`
-- **Ventaja**: Facilita la migración y desarrollo sin romper integraciones existentes
+| Campo               | Endpoint Regular    | Endpoint Labels     |
+| ------------------- | ------------------- | ------------------- |
+| `tipus-de-moto`     | `"escuter"`         | `"Escúter"`         |
+| `carrosseria-cotxe` | `"sedan"`           | `"Sedan"`           |
+| `color-vehicle`     | `"bicolor"`         | `"Bicolor"`         |
+| `extres-cotxe`      | `["abs", "airbag"]` | `["Abs", "Airbag"]` |
+
+### 🔄 Recordatorio: API devuelve Values por defecto
+
+- **Endpoints regulares** (`/vehicles`): Devuelven values/slugs para procesamiento
+- **Endpoints con labels** (`/vehicles-labels`): Devuelven labels para visualización
+- **`/vehicles-labels/{id}`**: Vehículo individual con etiquetas traducidas
+- **Uso**: Perfecto para mostrar datos directamente al usuario sin traducción frontend
 
 ### 📊 Comparativa de Respuestas (Antes vs Ahora)
 
@@ -235,6 +243,64 @@ Elimina (mueve a papelera) un vehículo.
 
 **Requiere autenticación y ser propietario**
 
+### 📋 Endpoints con Labels (Para mostrar datos al usuario)
+
+Estos endpoints especiales devuelven todos los campos con **labels** (etiquetas traducidas) en lugar de values/slugs, perfectos para mostrar datos directamente al usuario sin necesidad de traducción en el frontend.
+
+#### GET /wp-json/api-motor/v1/vehicles-labels
+
+Obtiene una lista de vehículos con labels (igual que `/vehicles` pero con etiquetas traducidas).
+
+**Diferencia clave:**
+
+```json
+// Endpoint normal (/vehicles)
+{
+  "tipus-vehicle": "cotxe",
+  "combustible": "gasolina",
+  "extres-cotxe": ["aire-acondicionat", "bluetooth"]
+}
+
+// Endpoint con labels (/vehicles-labels)
+{
+  "tipus-vehicle": "Coche",
+  "combustible": "Gasolina",
+  "extres-cotxe": ["Aire acondicionado", "Bluetooth"]
+}
+```
+
+**Parámetros:** Los mismos que `/vehicles`
+
+#### GET /wp-json/api-motor/v1/vehicles-all-labels
+
+Obtiene **todos** los vehículos con labels (igual que `/vehicles-all` pero con etiquetas traducidas).
+
+**Parámetros:** Los mismos que `/vehicles-all`
+
+#### GET /wp-json/api-motor/v1/vehicles-labels/{id}
+
+Obtiene detalles de un vehículo específico con labels.
+
+**Parámetros:**
+
+- `id`: ID del vehículo (requerido)
+
+**Ejemplo de uso:**
+
+```bash
+# Para mostrar datos al usuario final
+curl "/wp-json/api-motor/v1/vehicles-labels/123"
+
+# Para procesamiento/filtrado en aplicaciones
+curl "/wp-json/api-motor/v1/vehicles/123"
+```
+
+> **💡 Cuándo usar cada endpoint:**
+>
+> - **`/vehicles`**: Para aplicaciones que necesitan procesar datos, filtros, búsquedas
+> - **`/vehicles-labels`**: Para mostrar datos directamente al usuario final
+> - **POST/PUT**: Siguen aceptando tanto values como labels (flexibilidad máxima)
+
 ### Taxonomías y Glosarios
 
 #### Vehículos
@@ -383,12 +449,12 @@ La API utiliza glosarios para validar ciertos campos. Cada glosario tiene un ID 
 
 ## Validación de Campos
 
-La API implementa validación flexible para los campos, especialmente para aquellos asociados a glosarios. 
+La API implementa validación flexible para los campos, especialmente para aquellos asociados a glosarios.
 
 ### 🔧 Flexibilidad de Entrada
 
 - **Acepta values**: `"combustible": "gasolina"` ✅
-- **Acepta labels**: `"combustible": "Gasolina"` ✅  
+- **Acepta labels**: `"combustible": "Gasolina"` ✅
 - **Arrays mixtos**: `["aire-acondicionat", "Bluetooth"]` ✅
 - **Validación inteligente**: La API reconoce automáticamente si es value o label
 
@@ -498,6 +564,193 @@ Authorization: Bearer YOUR_TOKEN
   "extres-cotxe": ["Aire acondicionado", "Navegador GPS", "Bluetooth"]
 }
 ```
+
+### 📋 Payload Completo - Todos los Campos Disponibles
+
+```http
+POST /wp-json/api-motor/v1/vehicles
+Content-Type: application/json
+Authorization: Bearer YOUR_TOKEN
+
+{
+  // ==================== CAMPOS BÁSICOS REQUERIDOS ====================
+  "title": "Tesla Model S Plaid - Vehículo eléctrico premium",
+  "content": "Descripción completa del vehículo con todas sus características y equipamiento",
+  "tipus-vehicle": "cotxe",
+  "marca": "Tesla",
+  "model": "Model S",
+  "preu": "120000",
+  "quilometres": "15000",
+  "any": "2023",
+  "combustible": "electric",
+  "potencia": "1020",
+
+  // ==================== CAMPOS DE IDENTIFICACIÓN ====================
+  "slug": "tesla-model-s-plaid-2023",
+  "numero-bastidor": "5YJSA1E26MF123456",
+  "matricula": "1234ABC",
+  "data-matriculacio": "2023-01-15",
+
+  // ==================== PRECIOS Y FINANCIACIÓN ====================
+  "preu-antic": "140000",
+  "preu-mensual": "850",
+  "preu-diari": "28",
+  "dies-caducitat": "90",
+  "data-vip": "2025-12-31",
+
+  // ==================== ESPECIFICACIONES TÉCNICAS ====================
+  "cilindrada": "0",
+  "potencia-cv": "1020",
+  "potencia-kw": "750",
+  "velocitat-maxima": "322",
+  "acceleracio-0-100": "2.1",
+  "canvi": "automatic",
+  "traccio": "4x4",
+
+  // ==================== DIMENSIONES Y CAPACIDAD ====================
+  "portes-cotxe": "4",
+  "places-cotxe": "5",
+  "capacitat-total": "894",
+  "maleters": "709",
+  "capacitat-total-l": "894",
+
+  // ==================== VEHÍCULOS ELÉCTRICOS/HÍBRIDOS ====================
+  "autonomia-wltp": "637",
+  "autonomia-urbana-wltp": "720",
+  "autonomia-extraurbana-wltp": "580",
+  "autonomia-electrica": "637",
+  "temps-recarrega-total": "480",
+  "temps-recarrega-fins-80": "25",
+  "frenada-regenerativa": "true",
+  "one-pedal": "true",
+  "cables-recarrega": ["type2", "ccs"],
+  "connectors": ["type2", "ccs-combo"],
+
+  // ==================== MOTORES (ELÉCTRICOS/HÍBRIDOS) ====================
+  "n-motors": "3",
+  "potencia-combinada": "1020",
+  "kw-motor-davant": "250",
+  "cv-motor-davant": "340",
+  "kw-motor-darrere": "500",
+  "cv-motor-darrere": "680",
+  "kw-motor-3": "0",
+  "cv-motor-3": "0",
+  "kw-motor-4": "0",
+  "cv-motor-4": "0",
+
+  // ==================== CARROCERÍA Y DISEÑO ====================
+  "color-vehicle": "blanc",
+  "tipus-tapisseria": "pell",
+  "color-tapisseria": "negre",
+  "segment": "luxury",
+  "emissions-vehicle": "euro6",
+  "roda-recanvi": "kit-reparacio",
+
+  // ==================== EXTRAS Y EQUIPAMIENTO ====================
+  "extres-cotxe": [
+    "aire-acondicionat",
+    "climatitzacio",
+    "navegador-gps",
+    "bluetooth",
+    "pantalla-tactil",
+    "camara-marxa-enrere",
+    "sensores-aparcament",
+    "xenon",
+    "led",
+    "sostre-solar",
+    "seients-escalfats",
+    "pilot-automatic",
+    "control-creuer",
+    "assistencia-canvi-carril",
+    "frenada-emergencia"
+  ],
+
+  // ==================== CAMPOS BOOLEANOS DE ESTADO ====================
+  "anunci-actiu": "true",
+  "anunci-destacat": "false",
+  "venut": "false",
+  "aire-acondicionat": "true",
+  "climatitzacio": "true",
+  "vehicle-fumador": "false",
+  "vehicle-accidentat": "false",
+  "llibre-manteniment": "true",
+  "revisions-oficials": "true",
+  "impostos-deduibles": "false",
+  "vehicle-a-canvi": "true",
+  "garantia": "true",
+
+  // ==================== CAMPOS ESPECÍFICOS PARA MOTOS ====================
+  // (Usar solo si tipus-vehicle es "moto")
+  "extres-moto": ["abs", "control-traccio", "pantalla-digital"],
+  "tipus-de-moto": "sport",
+  "tipus-canvi-moto": "manual",
+  "places-moto": "2",
+
+  // ==================== CAMPOS ESPECÍFICOS PARA AUTOCARAVANAS ====================
+  // (Usar solo si tipus-vehicle es "autocaravana")
+  "extres-autocaravana": ["nevera", "forn", "dutxa", "wc"],
+  "carrosseria-caravana": "c-integral",
+  "extres-habitacle": ["llits-dobles", "taula-convertible", "armaris"],
+
+  // ==================== CAMPOS ESPECÍFICOS PARA VEHÍCULOS COMERCIALES ====================
+  // (Usar solo si tipus-vehicle es "vehicle-comercial")
+  "carroseria-vehicle-comercial": "c-furgon-industrial",
+
+  // ==================== CAMPOS DE VEHÍCULOS ELÉCTRICOS ESPECÍFICOS ====================
+  "tipus-canvi-electric": "automatic",
+
+  // ==================== TAXONOMÍAS (MARCAS Y MODELOS POR TIPO) ====================
+  // Para coches (por defecto)
+  "marques-cotxe": "tesla",
+  "models-cotxe": "model-s",
+
+  // Para motos (si tipus-vehicle contiene "moto")
+  "marques-moto": "yamaha",
+  "models-moto": "yzf-r1",
+
+  // Para autocaravanas (si tipus-vehicle contiene "autocaravana")
+  "marques-autocaravana": "hymer",
+  "models-autocaravana": "b-class",
+
+  // Para vehículos comerciales (si tipus-vehicle contiene "comercial")
+  "marques-comercial": "mercedes",
+  "models-comercial": "sprinter",
+
+  // ==================== IMÁGENES ====================
+  "featured_image": "https://example.com/imagen-principal.jpg",
+  "gallery": [
+    "https://example.com/imagen1.jpg",
+    "https://example.com/imagen2.jpg",
+    "https://example.com/imagen3.jpg",
+    "https://example.com/imagen4.jpg"
+  ],
+  "galeria-vehicle": [
+    "https://example.com/interior1.jpg",
+    "https://example.com/interior2.jpg"
+  ],
+
+  // ==================== CAMPOS DE VENDEDOR/PROPIETARIO ====================
+  "venedor": "professional",
+  "nom-contacte": "Juan",
+  "cognoms-contacte": "García",
+  "telefon-contacte": "600123456",
+  "email-contacte": "contacto@ejemplo.com",
+
+  // ==================== CAMPOS ADICIONALES DE METADATA ====================
+  "observacions": "Vehículo en perfecto estado, mantenimiento al día",
+  "històric-vehicle": "Un solo propietario, sin accidentes",
+  "data-creacio": "2025-01-15",
+  "data-modificacio": "2025-01-20"
+}
+```
+
+> **💡 Notas importantes sobre el payload completo:**
+>
+> - **Campos por tipo de vehículo**: Solo usar los campos específicos del tipo seleccionado
+> - **Flexibilidad de valores**: Puedes usar tanto values (`"aire-acondicionat"`) como labels (`"Aire acondicionado"`)
+> - **Campos opcionales**: La mayoría de campos son opcionales, solo son requeridos los básicos
+> - **Arrays**: Los campos de array como `extres-cotxe` aceptan múltiples valores
+> - **Validación**: Todos los valores de glosario son validados automáticamente
 
 ## Endpoint: /vehicles
 

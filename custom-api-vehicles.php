@@ -3,7 +3,7 @@
 Plugin Name: Custom API Vehicles
 Plugin URI: https://github.com/yosnap/custom-api-vehicles
 Description: API personalizada para gestión de vehículos en WordPress.
-Version: 2.2.2.3
+Version: 2.2.3
 Author: Yosnap
 Author URI: https://github.com/yosnap
 */
@@ -24,11 +24,11 @@ class Custom_API_Vehicles {
     public function __construct() {
         // Asegurarnos de que los endpoints REST son accesibles
         add_filter('rest_authentication_errors', array($this, 'fix_rest_api_permissions'), 100);
-        
+
         // Cargar dependencias
         $this->load_dependencies();
     }
-    
+
     /**
      * Elimina restricciones de la API REST que puedan causar error 403
      */
@@ -59,10 +59,10 @@ class Custom_API_Vehicles {
                 array('status' => 401)
             );
         }
-        
+
         return $result;
     }
-    
+
     /**
      * Devuelve el namespace de la API
      */
@@ -75,20 +75,20 @@ class Custom_API_Vehicles {
      */
     private function load_dependencies() {
         // Incluir archivos necesarios en orden correcto
-        require_once plugin_dir_path(__FILE__) . 'admin/class-admin-menu.php';          
-        require_once plugin_dir_path(__FILE__) . 'includes/class-api-logger.php';       
+        require_once plugin_dir_path(__FILE__) . 'admin/class-admin-menu.php';
+        require_once plugin_dir_path(__FILE__) . 'includes/class-api-logger.php';
         require_once plugin_dir_path(__FILE__) . 'includes/class-debug-handler.php';     // Nuevo manejador de debug
-        require_once plugin_dir_path(__FILE__) . 'includes/class-vehicle-fields.php';   
+        require_once plugin_dir_path(__FILE__) . 'includes/class-vehicle-fields.php';
         require_once plugin_dir_path(__FILE__) . 'includes/class-glossary-fields.php';
         require_once plugin_dir_path(__FILE__) . 'admin/class-glossary-mappings.php';
-        require_once plugin_dir_path(__FILE__) . 'includes/taxonomy-endpoints.php';      
+        require_once plugin_dir_path(__FILE__) . 'includes/taxonomy-endpoints.php';
         require_once plugin_dir_path(__FILE__) . 'includes/singlecar-endpoint.php';     // Funciones de vehículos
         require_once plugin_dir_path(__FILE__) . 'includes/author-endpoint.php';        // Funciones de autores
         require_once plugin_dir_path(__FILE__) . 'includes/singlecar-endpoints/routes.php';  // Rutas
-        
+
         // Cargar el controlador de vehículos
         require_once plugin_dir_path(__FILE__) . 'includes/api/class-vehicle-controller.php';
-        
+
         // Cargar el nuevo endpoint para opciones de glosario
         require_once plugin_dir_path(__FILE__) . 'includes/api/get-glossary-options-endpoint.php';
     }
@@ -100,7 +100,7 @@ $custom_api_vehicles = new Custom_API_Vehicles();
 // Agregar verificación de dependencias
 function check_plugin_dependencies() {
     if (!function_exists('jet_engine')) {
-        add_action('admin_notices', function() {
+        add_action('admin_notices', function () {
             echo '<div class="error"><p>Custom API Vehicles requiere JetEngine para funcionar correctamente.</p></div>';
         });
     }
@@ -108,8 +108,7 @@ function check_plugin_dependencies() {
 add_action('admin_init', 'check_plugin_dependencies');
 
 // Agregar función de activación del plugin
-function activate_vehicle_api_plugin()
-{
+function activate_vehicle_api_plugin() {
     // Crear tabla de logs
     Vehicle_API_Logger::get_instance()->create_log_table();
 
@@ -151,9 +150,9 @@ function enqueue_admin_scripts() {
 add_action('admin_enqueue_scripts', 'enqueue_admin_scripts');
 
 // Añadir la acción para depurar cualquier error en la API REST
-add_action('rest_api_init', function() {
+add_action('rest_api_init', function () {
     // Depurar errores específicos de la API REST
-    add_filter('rest_request_before_callbacks', function($response, $handler, $request) {
+    add_filter('rest_request_before_callbacks', function ($response, $handler, $request) {
         if (strpos($request->get_route(), 'api-motor/v1') !== false) {
             // Verificar si hay errores de permisos
             if (is_wp_error($response)) {

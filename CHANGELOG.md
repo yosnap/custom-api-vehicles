@@ -5,7 +5,31 @@ Todos los cambios notables en este proyecto serán documentados en este archivo.
 El formato está basado en [Keep a Changelog](https://keepachangelog.com/es/1.0.0/),
 y este proyecto adhiere a [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [2.2.3] - 2025-07-27
+## [2.2.3] - 2025-07-28
+
+### ✅ Corregido
+
+- **Mapeos de glosarios por defecto**: Añadidos mapeos automáticos para todos los campos de glosario
+- **Campo `tipus-de-moto`**: Corregida categorización como campo de glosario (no taxonomía)
+- **Sistema de glosarios mejorado**: Mapeos por defecto para 20+ campos de glosario comunes
+- **Consistencia de procesamiento**: Eliminados casos hardcodeados que impedían el procesamiento estándar
+- **Configuración automática**: Los campos ahora funcionan sin necesidad de configuración manual
+
+### 🔧 Cambiado
+
+- **`Vehicle_Glossary_Mappings::get_glossary_id()`**: Añadido sistema de mapeos por defecto
+- **Lista de campos mapeables**: Incluido `tipus-de-moto` en la interfaz de administración
+- **Procesamiento de campos**: Limpieza de lógica hardcodeada para mayor consistencia
+
+### 📋 Campos con mapeos por defecto
+
+- `tipus-de-moto` → Tipus Moto (ID: 42)
+- `carrosseria-cotxe` → Carrosseria (ID: 41)
+- `color-vehicle` → Color Exterior (ID: 51)
+- `extres-cotxe` → Extres Coche (ID: 54)
+- Y 16 campos adicionales configurados automáticamente
+
+## [2.2.2.3] - 2025-07-27
 
 ### 🔄 BREAKING CHANGE: API devuelve Values en lugar de Labels
 
@@ -14,6 +38,8 @@ y este proyecto adhiere a [Semantic Versioning](https://semver.org/spec/v2.0.0.h
 - Configuración global para devolver valores/slugs en lugar de etiquetas traducidas
 - Consistencia total en la respuesta de la API para todos los campos
 - Mejora en la procesabilidad de datos para frontends
+- **Nuevos endpoints con labels**: `/vehicles-labels`, `/vehicles-all-labels`, `/vehicles-labels/{id}`
+- **Flexibilidad de visualización**: Endpoints específicos para mostrar datos con etiquetas traducidas
 
 #### 🔧 Cambiado
 
@@ -39,6 +65,9 @@ y este proyecto adhiere a [Semantic Versioning](https://semver.org/spec/v2.0.0.h
 
 - Modificado `includes/singlecar-endpoints/field-processors.php`
 - Modificado `includes/singlecar-endpoints/get-handlers.php`
+- Modificado `includes/singlecar-endpoints/routes.php`
+- Añadidas funciones `get_singlecar_with_labels()`, `get_all_singlecar_with_labels()`, `get_vehicle_details_with_labels()`
+- Implementado sistema de forzado de labels mediante variable global `$force_labels_mode`
 - Cambios aplicados tanto a listados como a vehículos individuales
 - Mantenida compatibilidad con estructura de datos existente
 

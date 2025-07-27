@@ -74,6 +74,7 @@ class Vehicle_Glossary_Mappings {
             'carroseria-vehicle-comercial' => 'Carroseria Vehicle Comercial',
             'carrosseria-caravana' => 'Carrosseria Caravana',
             'tipus-carroseria-caravana' => 'Tipus Carrosseria Caravana', // Añadido para soportar el tipo de carrocería de caravanas
+            'tipus-de-moto' => 'Tipus de Moto', // Añadido para soportar el tipo de moto
             'extres-cotxe' => 'Extras Cotxe',
             'extres-moto' => 'Extras Moto',
             'extres-autocaravana' => 'Extras Autocaravana',
@@ -85,7 +86,7 @@ class Vehicle_Glossary_Mappings {
             'velocitat-recarrega' => 'Velocitat Recàrrega'
         );
 
-        ?>
+?>
         <div class="wrap">
             <h1>Mapeos de Glosarios</h1>
             <p>Selecciona el glosario correspondiente para cada campo. Esto permitirá que la API devuelva los labels correctos para cada valor.</p>
@@ -106,13 +107,12 @@ class Vehicle_Glossary_Mappings {
                             <tr>
                                 <td><strong><?php echo esc_html($field_label); ?></strong></td>
                                 <td>
-                                    <select 
+                                    <select
                                         name="<?php echo esc_attr($this->option_name); ?>[<?php echo esc_attr($field_key); ?>]"
-                                        style="min-width: 300px;"
-                                    >
+                                        style="min-width: 300px;">
                                         <option value="">Seleccionar glosario</option>
                                         <?php foreach ($glossaries as $id => $name): ?>
-                                            <option value="<?php echo esc_attr($id); ?>" 
+                                            <option value="<?php echo esc_attr($id); ?>"
                                                 <?php selected(isset($saved_mappings[$field_key]) ? $saved_mappings[$field_key] : '', $id); ?>>
                                                 <?php echo esc_html($name); ?>
                                             </option>
@@ -126,12 +126,42 @@ class Vehicle_Glossary_Mappings {
                 <?php submit_button('Guardar Mapeos'); ?>
             </form>
         </div>
-        <?php
+<?php
     }
 
     public static function get_glossary_id($field_name) {
+        // Mapeos por defecto para campos comunes
+        $default_mappings = [
+            'tipus-de-moto' => '42', // Tipus Moto
+            'carrosseria-cotxe' => '41', // Carrosseria
+            'tipus-de-canvi-moto' => '62', // Tipus canvi moto
+            'color-vehicle' => '51', // Color Exterior
+            'color-tapisseria' => '53', // Color Tapisseria
+            'tipus-tapisseria' => '52', // Tapisseria
+            'traccio' => '59', // Tracció
+            'roda-recanvi' => '60', // Roda recanvi
+            'extres-cotxe' => '54', // Extres Coche
+            'extres-moto' => '55', // Extres Moto
+            'extres-autocaravana' => '56', // Extres Autocaravana
+            'extres-habitacle' => '57', // Extres Habitacle
+            'bateria' => '48', // Bateria
+            'cables-recarrega' => '50', // Cables recàrrega
+            'connectors' => '49', // Connectors-electric
+            'velocitat-recarrega' => '61', // Velocitat de recàrrega
+            'emissions-vehicle' => '58', // Tipus Emissions
+            'carroseria-camions' => '45', // Carrosseria camions
+            'carroseria-vehicle-comercial' => '44', // Carrosseria comercials
+            'tipus-carroseria-caravana' => '43', // Carrosseria Caravanes
+        ];
+
+        // Primero, verificar mapeos guardados por el usuario
         $mappings = get_option('vehicle_glossary_mappings', array());
-        return isset($mappings[$field_name]) ? $mappings[$field_name] : null;
+        if (isset($mappings[$field_name]) && !empty($mappings[$field_name])) {
+            return $mappings[$field_name];
+        }
+
+        // Si no hay mapeo del usuario, usar el mapeo por defecto
+        return isset($default_mappings[$field_name]) ? $default_mappings[$field_name] : null;
     }
 }
 

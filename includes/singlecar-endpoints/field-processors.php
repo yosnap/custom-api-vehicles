@@ -4,52 +4,31 @@ function get_field_label($field_name, $value) {
     if (empty($value) && $value !== '0' && $value !== 0) {
         return '';
     }
-    
+
     // Para extres-cotxe, manejar el formato de array anidado
     if ($field_name === 'extres-cotxe') {
         Vehicle_Debug_Handler::log("Procesando extres-cotxe con valor: " . print_r($value, true));
-        
+
         // Deserializar si es necesario
         $value = deserialize_if_needed($value);
-        
+
         // Extraer valores del array anidado si es necesario
         if (is_array($value) && isset($value[0]) && is_array($value[0])) {
             $value = $value[0];
             Vehicle_Debug_Handler::log("Extraído array interno de extres-cotxe: " . print_r($value, true));
         }
-        
+
         // Obtener las opciones del glosario
         $glossary_id = Vehicle_Glossary_Mappings::get_glossary_id($field_name);
         if ($glossary_id && function_exists('jet_engine') && isset(jet_engine()->glossaries)) {
             $options = jet_engine()->glossaries->filters->get_glossary_options($glossary_id);
             Vehicle_Debug_Handler::log("Opciones del glosario para extres-cotxe: " . print_r($options, true));
-            
+
             // Procesar cada valor
             return process_array_value($value, $options);
         }
-        
-        return $value;
-    }
 
-    // Primero intentar obtener del glosario mapeado
-    $glossary_id = Vehicle_Glossary_Mappings::get_glossary_id($field_name);
-    if ($glossary_id && function_exists('jet_engine') && isset(jet_engine()->glossaries)) {
-        $options = jet_engine()->glossaries->filters->get_glossary_options($glossary_id);
-        Vehicle_Debug_Handler::log("Opciones del glosario para {$field_name}: " . print_r($options, true));
-        
-        if (!empty($options)) {
-            if (is_array($value)) {
-                return process_array_value($value, $options);
-            }
-            
-            if (isset($options[$value])) {
-                Vehicle_Debug_Handler::log("Label encontrado para {$field_name}: {$options[$value]}");
-                return $options[$value];
-            } elseif (isset($options[trim($value)])) {
-                Vehicle_Debug_Handler::log("Label encontrado (después de trim) para {$field_name}: {$options[trim($value)]}");
-                return $options[trim($value)];
-            }
-        }
+        return $value;
     }
 
     // Si es un campo que maneja arrays
@@ -73,13 +52,13 @@ function get_field_label($field_name, $value) {
 
 function process_array_value($value, $options) {
     $labels = [];
-    
+
     // Asegurarse de que value sea un array
     if (!is_array($value)) {
         Vehicle_Debug_Handler::log("process_array_value: valor no es un array: " . print_r($value, true));
         return [$value];
     }
-    
+
     foreach ($value as $item) {
         // Verificar que el ítem sea un string o número válido para usar como índice
         if (is_string($item) || is_numeric($item)) {
@@ -105,7 +84,7 @@ function process_array_field($field_name, $value) {
         if ($field_name === 'extres-cotxe') {
             // Deserializar si es necesario
             $value = deserialize_if_needed($value);
-            
+
             // Extraer valores del array anidado si es necesario
             if (is_array($value) && isset($value[0]) && is_array($value[0])) {
                 $value = $value[0];
@@ -114,9 +93,14 @@ function process_array_field($field_name, $value) {
         } else {
             $value = deserialize_if_needed($value);
         }
-        
+
         if (!is_array($value) || empty($value)) {
             return [];
+        }
+
+        // Verificar si debe devolver labels o values
+        if (!should_get_field_label($field_name)) {
+            return $value;
         }
 
         $glossary_id = Vehicle_Glossary_Mappings::get_glossary_id($field_name);
@@ -134,6 +118,11 @@ function process_array_field($field_name, $value) {
 
 function process_glossary_field($field_name, $value) {
     try {
+        // Verificar si debe devolver label o value
+        if (!should_get_field_label($field_name)) {
+            return $value;
+        }
+
         $glossary_id = Vehicle_Glossary_Mappings::get_glossary_id($field_name);
         if (!$glossary_id) {
             return $value;
@@ -151,10 +140,16 @@ function process_taxonomy_field($field_name, $value) {
     Vehicle_Debug_Handler::log("=== DEBUG PROCESS TAXONOMY FIELD ===");
     Vehicle_Debug_Handler::log("Procesando campo: $field_name");
     Vehicle_Debug_Handler::log("Valor recibido: " . print_r($value, true));
-    
+
+    // Verificar si debe devolver label o value
+    if (!should_get_field_label($field_name)) {
+        Vehicle_Debug_Handler::log("No debe devolver label para $field_name, retornando value: $value");
+        return $value;
+    }
+
     $taxonomy = get_taxonomy_for_field($field_name);
     Vehicle_Debug_Handler::log("Taxonomía mapeada: $taxonomy");
-    
+
     if (!$taxonomy) {
         Vehicle_Debug_Handler::log("No se encontró taxonomía para el campo: $field_name");
         return $value;
@@ -162,7 +157,7 @@ function process_taxonomy_field($field_name, $value) {
 
     $term = get_term_by('slug', $value, $taxonomy);
     Vehicle_Debug_Handler::log("Término encontrado: " . print_r($term, true));
-    
+
     if ($term && !is_wp_error($term)) {
         Vehicle_Debug_Handler::log("Retornando nombre del término: " . $term->name);
         return $term->name;
@@ -174,16 +169,16 @@ function process_taxonomy_field($field_name, $value) {
 
 function process_standard_field($field_name, $value) {
     $field_type = get_field_type($field_name);
-    
+
     if ($field_type === 'boolean' || $field_type === 'switch') {
         // Custom boolean processing for better handling
         return process_boolean_value($value);
     }
-    
+
     if ($field_type === 'number') {
         return $value;
     }
-    
+
     return $value;
 }
 
@@ -192,12 +187,12 @@ function process_boolean_value($value) {
     if (is_null($value) || $value === '') {
         return false;
     }
-    
+
     // Handle boolean values
     if (is_bool($value)) {
         return $value;
     }
-    
+
     // Handle string values
     if (is_string($value)) {
         $value_lower = strtolower(trim($value));
@@ -208,12 +203,12 @@ function process_boolean_value($value) {
             return false;
         }
     }
-    
+
     // Handle numeric values
     if (is_numeric($value)) {
         return intval($value) !== 0;
     }
-    
+
     // Default to false for unknown values
     return false;
 }
@@ -277,7 +272,7 @@ function map_field_value($key, $value) {
         $processed_value = process_boolean_value($value);
         return $processed_value ? 1 : 0;
     }
-    
+
     // Special handling for array fields (extras)
     if (is_array_field($key)) {
         // Deserializar si es necesario
@@ -285,23 +280,23 @@ function map_field_value($key, $value) {
             $value = unserialize($value);
             Vehicle_Debug_Handler::log("Deserializado campo {$key}: " . print_r($value, true));
         }
-        
+
         // Asegurarse de que sea un array
         if (!is_array($value)) {
             $value = [$value];
         }
-        
+
         // Limpiar valores vacíos
-        $value = array_filter($value, function($val) {
+        $value = array_filter($value, function ($val) {
             return !empty($val) && $val !== '';
         });
-        
+
         // Reindexar el array
         $value = array_values($value);
-        
+
         return $value;
     }
-    
+
     return $value;
 }
 
@@ -343,8 +338,19 @@ function is_glossary_field($field_name) {
     ]);
 }
 
-function should_get_field_label($field_name) {
-    // CAMBIO: Todos los campos ahora devuelven values en lugar de labels
+function should_get_field_label($field_name, $force_labels = false) {
+    // Verificar si está activado el modo global de labels
+    global $force_labels_mode;
+    if (isset($force_labels_mode) && $force_labels_mode === true) {
+        return true;
+    }
+
+    // Si se fuerza el retorno de labels (para endpoints específicos)
+    if ($force_labels) {
+        return true;
+    }
+
+    // CAMBIO: Todos los campos ahora devuelven values en lugar de labels por defecto
     // Esto asegura consistencia en la API y facilita el procesamiento en el frontend
     return false;
 }
@@ -356,7 +362,6 @@ function is_taxonomy_field($field_name) {
         'tipus-combustible',
         'tipus-propulsor',
         'estat-vehicle',
-        'tipus-de-moto',
         'tipus-canvi-cotxe',
         // 'tipus-carroseria-caravana', // Removido porque es un campo meta, no taxonomía
         'marques-cotxe',
@@ -374,7 +379,6 @@ function get_taxonomy_map() {
         'tipus-combustible' => 'tipus-combustible',
         'tipus-propulsor' => 'tipus-de-propulsor',
         'estat-vehicle' => 'estat-vehicle',
-        'tipus-de-moto' => 'marques-de-moto',
         'tipus-canvi-cotxe' => 'tipus-de-canvi',
         // 'tipus-carroseria-caravana' => 'tipus-carroseria-caravana', // Removido porque es un campo meta, no taxonomía
         'marques-cotxe' => 'marques-coches'
@@ -392,26 +396,56 @@ function get_taxonomy_for_field($field_name) {
 function get_field_type($field_name) {
     // Campos booleanos
     $boolean_fields = [
-        'is-vip', 'venut', 'llibre-manteniment', 'revisions-oficials',
-        'impostos-deduibles', 'vehicle-a-canvi', 'garantia', 'vehicle-accidentat',
-        'aire-acondicionat', 'climatitzacio', 'vehicle-fumador',
-        'frenada-regenerativa', 'one-pedal'
+        'is-vip',
+        'venut',
+        'llibre-manteniment',
+        'revisions-oficials',
+        'impostos-deduibles',
+        'vehicle-a-canvi',
+        'garantia',
+        'vehicle-accidentat',
+        'aire-acondicionat',
+        'climatitzacio',
+        'vehicle-fumador',
+        'frenada-regenerativa',
+        'one-pedal'
     ];
 
     // Campos numéricos
     $number_fields = [
-        'places-moto', 'capacitat-total-l', 'dies-caducitat',
-        'preu', 'preu-mensual', 'preu-diari', 'preu-antic',
-        'quilometratge', 'cilindrada', 'potencia-cv', 'potencia-kw',
-        'portes-cotxe', 'places-cotxe', 'velocitat-maxima',
-        'acceleracio-0-100', 'capacitat-total', 'maleters',
-        'autonomia-wltp', 'autonomia-urbana-wltp', 'autonomia-extraurbana-wltp',
-        'autonomia-electrica', 'temps-recarrega-total', 'temps-recarrega-fins-80',
-        'n-motors', 'potencia-combinada',
-        'kw-motor-davant', 'cv-motor-davant',
-        'kw-motor-darrere', 'cv-motor-darrere',
-        'kw-motor-3', 'cv-motor-3',
-        'kw-motor-4', 'cv-motor-4'
+        'places-moto',
+        'capacitat-total-l',
+        'dies-caducitat',
+        'preu',
+        'preu-mensual',
+        'preu-diari',
+        'preu-antic',
+        'quilometratge',
+        'cilindrada',
+        'potencia-cv',
+        'potencia-kw',
+        'portes-cotxe',
+        'places-cotxe',
+        'velocitat-maxima',
+        'acceleracio-0-100',
+        'capacitat-total',
+        'maleters',
+        'autonomia-wltp',
+        'autonomia-urbana-wltp',
+        'autonomia-extraurbana-wltp',
+        'autonomia-electrica',
+        'temps-recarrega-total',
+        'temps-recarrega-fins-80',
+        'n-motors',
+        'potencia-combinada',
+        'kw-motor-davant',
+        'cv-motor-davant',
+        'kw-motor-darrere',
+        'cv-motor-darrere',
+        'kw-motor-3',
+        'cv-motor-3',
+        'kw-motor-4',
+        'cv-motor-4'
     ];
 
     // Campos de fecha
@@ -439,13 +473,13 @@ function get_field_type($field_name) {
  */
 function process_and_save_meta_fields($post_id, $params) {
     $meta_fields = Vehicle_Fields::get_meta_fields();
-    
+
     // SOLUCIÓN DEFINITIVA: Valores por defecto para campos problemáticos
     $params['frenada-regenerativa'] = 'no';
     $params['one-pedal'] = 'no';
     $params['aire-acondicionat'] = 'no';
-    $params['portes-cotxe'] = isset($params['portes-cotxe']) && is_numeric($params['portes-cotxe']) ? 
-                            $params['portes-cotxe'] : '5';
+    $params['portes-cotxe'] = isset($params['portes-cotxe']) && is_numeric($params['portes-cotxe']) ?
+        $params['portes-cotxe'] : '5';
     $params['climatitzacio'] = 'no';
     $params['vehicle-fumador'] = 'no';
     $params['vehicle-accidentat'] = 'no';
@@ -453,16 +487,16 @@ function process_and_save_meta_fields($post_id, $params) {
     $params['revisions-oficials'] = 'no';
     $params['impostos-deduibles'] = 'no'; // Añadido impostos-deduibles
     $params['vehicle-a-canvi'] = 'no'; // Añadido vehicle-a-canvi
-    
+
     // Para campos numéricos problemáticos, establecer valor 0 si están vacíos
     if (empty($params['temps-recarrega-total']) || !is_numeric($params['temps-recarrega-total'])) {
         $params['temps-recarrega-total'] = '0';
     }
-    
+
     if (empty($params['temps-recarrega-fins-80']) || !is_numeric($params['temps-recarrega-fins-80'])) {
         $params['temps-recarrega-fins-80'] = '0';
     }
-    
+
     // Guardar explícitamente los campos problemáticos con valores por defecto
     update_post_meta($post_id, 'frenada-regenerativa', 'false');
     update_post_meta($post_id, 'one-pedal', 'false');
@@ -477,38 +511,38 @@ function process_and_save_meta_fields($post_id, $params) {
     update_post_meta($post_id, 'portes-cotxe', $params['portes-cotxe']);
     update_post_meta($post_id, 'temps-recarrega-total', $params['temps-recarrega-total']);
     update_post_meta($post_id, 'temps-recarrega-fins-80', $params['temps-recarrega-fins-80']);
-    
+
     // Procesar campos específicos para autocaravanas
     process_autocaravana_fields($post_id, $params);
-    
+
     // Procesar campos específicos para vehículos comerciales
     process_vehicle_comercial_fields($post_id, $params);
-    
+
     // Procesar todos los campos de glosario para convertir label a value si es necesario
     foreach ($params as $field => $value) {
         if (is_glossary_field($field) && !empty($value)) {
             $params[$field] = convert_glossary_label_to_value($field, $value);
         }
     }
-    
+
     // Manejo especial para extres-cotxe para todos los tipos de vehículos
     if (isset($params['extres-cotxe']) && !empty($params['extres-cotxe'])) {
         $values = $params['extres-cotxe'];
-        
+
         // Si no es un array, convertirlo en array
         if (!is_array($values)) {
             $values = [$values];
         }
-        
+
         // Validar que los valores existan en el glosario correspondiente
         if (function_exists('validate_glossary_values')) {
             $validation = validate_glossary_values('extres-cotxe', $values);
-            
+
             if ($validation['valid']) {
                 // Guardar como array simple (formato requerido por JSM)
                 update_post_meta($post_id, 'extres-cotxe', $values);
                 Vehicle_Debug_Handler::log("Guardado extres-cotxe como array simple: " . print_r($values, true));
-                
+
                 // Verificación adicional
                 $saved_value = get_post_meta($post_id, 'extres-cotxe', true);
                 Vehicle_Debug_Handler::log("Valor guardado de extres-cotxe: " . print_r($saved_value, true));
@@ -517,7 +551,7 @@ function process_and_save_meta_fields($post_id, $params) {
             }
         }
     }
-    
+
     // Para motos, asignar taxonomías específicas
     $vehicle_type = $params['tipus-vehicle'] ?? '';
     if ($vehicle_type === 'moto-quad-atv' || strtolower($vehicle_type) === 'moto') {
@@ -527,7 +561,7 @@ function process_and_save_meta_fields($post_id, $params) {
                 wp_set_object_terms($post_id, intval($marca_term['term_id']), 'marques-de-moto');
             }
         }
-        
+
         if (isset($params['models-moto'])) {
             $model_term = term_exists($params['models-moto'], 'models-moto');
             if ($model_term) {
@@ -535,13 +569,14 @@ function process_and_save_meta_fields($post_id, $params) {
             }
         }
     }
-    
+
     // Procesar todos los demás campos meta
     foreach ($meta_fields as $field => $type) {
         // Saltarnos los campos que ya hemos procesado manualmente
-        if ($field === 'frenada-regenerativa' || 
-            $field === 'one-pedal' || 
-            $field === 'aire-acondicionat' || 
+        if (
+            $field === 'frenada-regenerativa' ||
+            $field === 'one-pedal' ||
+            $field === 'aire-acondicionat' ||
             $field === 'climatitzacio' ||
             $field === 'vehicle-fumador' ||
             $field === 'vehicle-accidentat' ||
@@ -549,13 +584,14 @@ function process_and_save_meta_fields($post_id, $params) {
             $field === 'revisions-oficials' || // Añadido revisions-oficials
             $field === 'impostos-deduibles' || // Añadido impostos-deduibles
             $field === 'vehicle-a-canvi' || // Añadido vehicle-a-canvi
-            $field === 'portes-cotxe' ||  
-            $field === 'temps-recarrega-total' || 
+            $field === 'portes-cotxe' ||
+            $field === 'temps-recarrega-total' ||
             $field === 'temps-recarrega-fins-80' ||
-            $field === 'extres-cotxe') { // Añadido extres-cotxe porque ya lo procesamos arriba
+            $field === 'extres-cotxe'
+        ) { // Añadido extres-cotxe porque ya lo procesamos arriba
             continue;
         }
-        
+
         // Manejo especial para campos de precio - guardarlo siempre como texto plano
         if ($field === 'preu-mensual' || $field === 'preu-diari' || $field === 'preu-antic') {
             if (isset($params[$field])) {
@@ -563,7 +599,7 @@ function process_and_save_meta_fields($post_id, $params) {
             }
             continue;
         }
-        
+
         if (isset($params[$field])) {
             $value = sanitize_meta_value($params[$field], $type);
             update_post_meta($post_id, $field, $value);
@@ -587,10 +623,10 @@ function process_autocaravana_fields($post_id, $params) {
     foreach ($autocaravana_fields as $input_field => $config) {
         $meta_field = $config['field'];
         $field_type = $config['type'];
-        
+
         if (isset($params[$input_field])) {
             $values = $params[$input_field];
-            
+
             // Si es un campo de tipo single y viene como array, tomar solo el primer valor
             if ($field_type === 'single' && is_array($values)) {
                 $values = !empty($values) ? $values[0] : '';
@@ -600,42 +636,42 @@ function process_autocaravana_fields($post_id, $params) {
             else if ($field_type === 'array' && !is_array($values)) {
                 $values = [$values];
             }
-            
+
             // Validar que los valores existan en el glosario correspondiente
             if (function_exists('validate_glossary_values')) {
                 $validation_values = is_array($values) ? $values : [$values];
                 $validation = validate_glossary_values($input_field, $validation_values);
-                
+
                 if (!$validation['valid']) {
                     // Recopilar información de valores inválidos
                     $invalid_fields[$input_field] = [
                         'invalid_values' => $validation['invalid_values']
                     ];
-                    
+
                     // Obtener valores válidos para mostrarlos en el mensaje de error
                     $glossary_id = get_glossary_id_for_field($input_field);
                     if ($glossary_id) {
                         $valid_values = get_valid_glossary_values($glossary_id);
                         $invalid_fields[$input_field]['valid_values'] = $valid_values;
                     }
-                    
+
                     // Continuar con el siguiente campo, no guardar valores inválidos
                     continue;
                 }
             }
-            
+
             Vehicle_Debug_Handler::log("Procesando campo de glosario $input_field -> $meta_field con valores: " . print_r($values, true));
-            
+
             // Guardar como campo meta (serializado para arrays, valor simple para single)
             update_post_meta($post_id, $meta_field, $values);
             Vehicle_Debug_Handler::log("Campo $meta_field guardado correctamente con valor: " . print_r($values, true));
-            
+
             // Verificación adicional
             if ($input_field === 'extres-autocaravana') {
                 Vehicle_Debug_Handler::log("DEBUG SAVE - Verificación adicional para extres-autocaravana");
                 $saved_value = get_post_meta($post_id, $meta_field, true);
                 Vehicle_Debug_Handler::log("DEBUG SAVE - Valor guardado de extres-autocaravana: " . print_r($saved_value, true));
-                
+
                 // Verificar el tipo de datos
                 Vehicle_Debug_Handler::log("DEBUG SAVE - Tipo de datos de values: " . gettype($values));
                 if (is_array($values)) {
@@ -643,14 +679,14 @@ function process_autocaravana_fields($post_id, $params) {
                 } else {
                     Vehicle_Debug_Handler::log("DEBUG SAVE - No es un array, es: " . gettype($values));
                 }
-                
+
                 // Asegurarse de que se guarde correctamente
                 if (empty($saved_value) && !empty($values)) {
                     Vehicle_Debug_Handler::log("DEBUG SAVE - Intentando guardar extres-autocaravana nuevamente");
-                    
+
                     // Eliminar cualquier valor existente
                     delete_post_meta($post_id, $meta_field);
-                    
+
                     // Guardar cada valor individualmente si es un array
                     if (is_array($values)) {
                         foreach ($values as $single_value) {
@@ -662,7 +698,7 @@ function process_autocaravana_fields($post_id, $params) {
                         add_post_meta($post_id, $meta_field, $values);
                         Vehicle_Debug_Handler::log("DEBUG SAVE - Añadido valor único: " . $values);
                     }
-                    
+
                     // Verificar nuevamente
                     $saved_values = get_post_meta($post_id, $meta_field);
                     Vehicle_Debug_Handler::log("DEBUG SAVE - Valores guardados después del segundo intento: " . print_r($saved_values, true));
@@ -670,20 +706,20 @@ function process_autocaravana_fields($post_id, $params) {
             }
         }
     }
-    
+
     // Si hay campos inválidos, lanzar una excepción con información detallada
     if (!empty($invalid_fields)) {
         $error_message = "Valores inválidos en campos de glosario:\n";
-        
+
         foreach ($invalid_fields as $field => $info) {
             $error_message .= "- Campo '$field':\n";
             $error_message .= "  - Valores inválidos: " . implode(', ', $info['invalid_values']) . "\n";
-            
+
             if (isset($info['valid_values']) && !empty($info['valid_values'])) {
                 $error_message .= "  - Valores válidos: " . implode(', ', $info['valid_values']) . "\n";
             }
         }
-        
+
         throw new Exception($error_message);
     }
 }
@@ -697,7 +733,7 @@ function process_vehicle_comercial_fields($post_id, $params) {
     if ($vehicle_type !== 'vehicle-comercial') {
         return; // No es un vehículo comercial, salir
     }
-    
+
     // Mapeo de campos a campos meta para vehículos comerciales
     $comercial_fields = [
         'extres-cotxe' => ['field' => 'extres-cotxe', 'type' => 'array'],
@@ -709,41 +745,41 @@ function process_vehicle_comercial_fields($post_id, $params) {
     foreach ($comercial_fields as $input_field => $config) {
         $meta_field = $config['field'];
         $field_type = $config['type'];
-        
+
         if (isset($params[$input_field])) {
             $values = $params[$input_field];
-            
+
             // Si es un campo de tipo single y viene como array, tomar solo el primer valor
             if ($field_type === 'single' && is_array($values)) {
                 $values = !empty($values) ? $values[0] : '';
                 Vehicle_Debug_Handler::log("Campo $input_field es de tipo single, usando solo el primer valor: $values");
             }
-            
+
             // Validar campos de glosario
             if (function_exists('validate_glossary_values') && is_glossary_field($input_field)) {
                 Vehicle_Debug_Handler::log("Validando campo de glosario: $input_field con valor: " . (is_array($values) ? implode(', ', $values) : $values));
-                
+
                 // Para validación, siempre convertir a array
                 $validation_values = is_array($values) ? $values : [$values];
                 $validation = validate_glossary_values($input_field, $validation_values);
-                
+
                 if (!$validation['valid']) {
                     $glossary_id = get_glossary_id_for_field($input_field);
                     $valid_values = get_valid_glossary_values($glossary_id);
-                    
+
                     $invalid_fields[$input_field] = [
                         'invalid_values' => $validation['invalid_values'],
                         'valid_values' => $valid_values
                     ];
-                    
+
                     Vehicle_Debug_Handler::log("Campo inválido $input_field: " . print_r($validation['invalid_values'], true));
                     Vehicle_Debug_Handler::log("Valores válidos para $input_field: " . implode(', ', $valid_values));
-                    
+
                     // No guardar valores inválidos
                     continue;
                 }
             }
-            
+
             // Guardar el campo según su tipo
             if ($field_type === 'array') {
                 // Para campos de tipo array (como extres-cotxe)
@@ -764,7 +800,7 @@ function process_vehicle_comercial_fields($post_id, $params) {
             }
         }
     }
-    
+
     // Si hay campos inválidos, registrar en el log
     if (!empty($invalid_fields)) {
         Vehicle_Debug_Handler::log("Campos inválidos en vehículo comercial: " . print_r($invalid_fields, true));
@@ -783,17 +819,17 @@ function convert_glossary_label_to_value($field, $value) {
         }
         return $result;
     }
-    
+
     // Si el valor ya es una clave válida, devolverlo tal cual
     if (is_valid_glossary_key($field, $value)) {
         return $value;
     }
-    
+
     // Si el valor no es string o número, devolverlo sin cambios
     if (!is_string($value) && !is_numeric($value)) {
         return $value;
     }
-    
+
     // Obtener el mapa de opciones según el campo
     $options = [];
     switch ($field) {
@@ -803,9 +839,6 @@ function convert_glossary_label_to_value($field, $value) {
         case 'color-vehicle':
             $options = Vehicle_Fields::get_color_vehicle_options();
             break;
-        case 'tipus-de-moto':
-            $options = Vehicle_Fields::get_tipus_de_moto_options();
-            break;
         // Añadir más casos según sea necesario...
         default:
             $glossary_id = Vehicle_Glossary_Mappings::get_glossary_id($field);
@@ -814,16 +847,16 @@ function convert_glossary_label_to_value($field, $value) {
             }
             break;
     }
-    
+
     // Si no hay opciones, devolvemos el valor original
     if (empty($options)) {
         return $value;
     }
-    
+
     // Convertir el valor a string para usar strtolower
     $value_string = (string)$value;
     $value_lower = strtolower($value_string);
-    
+
     // Buscar el valor correspondiente al label (ignorando mayúsculas/minúsculas)
     foreach ($options as $key => $label) {
         // Asegurarse de que $label sea string antes de usar strtolower
@@ -831,7 +864,7 @@ function convert_glossary_label_to_value($field, $value) {
             return $key;
         }
     }
-    
+
     // Si no se encuentra, devolver el valor original
     return $value;
 }
@@ -844,7 +877,7 @@ function is_valid_glossary_key($field, $value) {
     if (!is_string($value) && !is_numeric($value)) {
         return false;
     }
-    
+
     $options = [];
     switch ($field) {
         case 'traccio':
@@ -852,9 +885,6 @@ function is_valid_glossary_key($field, $value) {
             break;
         case 'color-vehicle':
             $options = Vehicle_Fields::get_color_vehicle_options();
-            break;
-        case 'tipus-de-moto':
-            $options = Vehicle_Fields::get_tipus_de_moto_options();
             break;
         // Añadir más casos según sea necesario...
         default:
@@ -864,7 +894,7 @@ function is_valid_glossary_key($field, $value) {
             }
             break;
     }
-    
+
     // Asegurarnos de que $value sea un string antes de usarlo como clave
     $value_key = (string)$value;
     return isset($options[$value_key]);
@@ -878,22 +908,22 @@ function sanitize_boolean_value($value) {
     if (empty($value) && $value !== '0' && $value !== 0) {
         return 'false';
     }
-    
+
     if (is_bool($value)) {
         return $value ? 'true' : 'false';
     }
-    
+
     if (is_string($value)) {
         $value = strtolower(trim($value));
         if (in_array($value, ['true', 'si', 'yes', '1', 'on'])) {
             return 'true';
         }
     }
-    
+
     if (is_numeric($value) && intval($value) === 1) {
         return 'true';
     }
-    
+
     return 'false';
 }
 
@@ -905,10 +935,10 @@ function sanitize_meta_value($value, $type) {
         case 'boolean':
         case 'switch':
             return sanitize_boolean_value($value);
-        
+
         case 'number':
             return is_numeric($value) ? floatval($value) : 0;
-            
+
         default:
             return sanitize_text_field($value);
     }
