@@ -2,25 +2,39 @@
 
 Plugin WordPress para gestionar vehículos a través de una API REST personalizada.
 
-**Versión actual:** 2.2.2.2  
+**Versión actual:** 2.2.3  
 **Namespace:** `api-motor/v1`  
 **Tipo de contenido:** `singlecar`
 
-## 🚀 Novedades v2.2.2.2
+## 🚀 Novedades v2.2.3
 
-### 🆕 Nuevo Endpoint `/vehicles-all`
-- **Nuevo endpoint:** `/wp-json/api-motor/v1/vehicles-all`
-- **Funcionalidad:** Devuelve TODOS los vehículos sin filtros por defecto
-- **Diferencia con `/vehicles`:** No aplica filtros automáticos de `venut` (vendidos) ni `anunci-actiu` (activos)
-- **Estado de posts:** Incluye cualquier `post_status` (publish, draft, etc.)
-- **Compatibilidad:** Mantiene la misma estructura de respuesta que `/vehicles`
-- **Filtros opcionales:** Permite aplicar filtros si se pasan explícitamente como parámetros
+### 🔄 Cambio Importante: API devuelve Values en lugar de Labels
+- **BREAKING CHANGE**: Todos los campos ahora devuelven valores/slugs en lugar de etiquetas traducidas
+- **Campos de taxonomía**: Devuelven slugs (`cotxe` en lugar de `Coche`)
+- **Campos de glosario**: Devuelven values (`aire-acondicionat` en lugar de `Aire acondicionado`)
+- **Campos de arrays**: Devuelven arrays de values en lugar de labels
+- **Motivo**: Mejora la consistencia de la API y facilita el procesamiento en frontend
+- **Migración**: Los frontends deben actualizar para manejar values y hacer la traducción localmente
 
-### 📊 Comparativa de Endpoints
-| Endpoint | Descripción | Filtros por defecto |
-|----------|-------------|-------------------|
-| `/vehicles` | Vehículos filtrados | ❌ Excluye vendidos, ✅ Incluye activos/inactivos |
-| `/vehicles-all` | Todos los vehículos | ✅ Incluye vendidos y no vendidos, ✅ Incluye activos/inactivos |
+### 📊 Comparativa de Respuestas (Antes vs Ahora)
+
+**Antes (v2.2.2):**
+```json
+{
+  "tipus-vehicle": "Coche", 
+  "combustible": "Gasolina",
+  "extres-cotxe": ["Aire acondicionado", "Bluetooth"]
+}
+```
+
+**Ahora (v2.2.3):**
+```json
+{
+  "tipus-vehicle": "cotxe",
+  "combustible": "gasolina", 
+  "extres-cotxe": ["aire-acondicionat", "bluetooth"]
+}
+```
 
 ## 🚀 Novedades v2.2.2
 
@@ -110,16 +124,16 @@ Obtiene una lista de **TODOS** los vehículos **sin filtros por defecto**.
     "titol-anunci": "Título del anuncio",
     "descripcio-anunci": "Descripción del anuncio",
     "tipus-vehicle": "cotxe",
+    "combustible": "gasolina",
     "marca": "Marca del vehículo",
     "model": "Modelo del vehículo",
     "preu": "25000",
     "quilometres": "50000",
     "any": "2020",
-    "combustible": "gasolina",
     "potencia": "150",
     "canvi": "manual",
-    "color-vehicle": "Blanco",
-    "extres-cotxe": ["Extra 1", "Extra 2"]
+    "color-vehicle": "blanc",
+    "extres-cotxe": ["aire-acondicionat", "bluetooth", "gps"]
   }
 ]
 ```
@@ -555,9 +569,12 @@ La respuesta incluye:
   "descripcio-anunci": "Vehículo en perfecto estado...",
   "anunci-actiu": "true",
   "anunci-destacat": "true",
-  "tipus-vehicle": "Cotxe",
-  "marques-cotxe": "Ford",
-  "models-cotxe": "Focus",
+  "tipus-vehicle": "cotxe",
+  "marques-cotxe": "ford",
+  "models-cotxe": "focus",
+  "combustible": "gasolina",
+  "color-vehicle": "blanc",
+  "extres-cotxe": ["aire-acondicionat", "bluetooth"],
   "imatge-destacada-url": "https://...",
   "galeria-vehicle-urls": ["https://...", "https://..."]
   // ...otros campos personalizados...
@@ -722,9 +739,9 @@ El sistema utiliza detección por contenido de texto en el campo `tipus-vehicle`
 - **Ejemplo de respuesta:**
 ```json
 {
-  "tipus-vehicle": "Cotxe",
-  "marques-cotxe": "Audi",
-  "models-cotxe": "A3"
+  "tipus-vehicle": "cotxe",
+  "marques-cotxe": "audi",
+  "models-cotxe": "a3"
 }
 ```
 
@@ -736,9 +753,9 @@ El sistema utiliza detección por contenido de texto en el campo `tipus-vehicle`
 - **Ejemplo de respuesta:**
 ```json
 {
-  "tipus-vehicle": "Autocaravana",
-  "marques-autocaravana": "Hymer",
-  "models-autocaravana": "B-Class"
+  "tipus-vehicle": "autocaravana",
+  "marques-autocaravana": "hymer",
+  "models-autocaravana": "b-class"
 }
 ```
 
@@ -751,9 +768,9 @@ El sistema utiliza detección por contenido de texto en el campo `tipus-vehicle`
 - **Ejemplo de respuesta:**
 ```json
 {
-  "tipus-vehicle": "Vehicle comercial",
-  "marques-comercial": "Mercedes",
-  "models-comercial": "Sprinter"
+  "tipus-vehicle": "vehicle-comercial",
+  "marques-comercial": "mercedes",
+  "models-comercial": "sprinter"
 }
 ```
 
@@ -765,13 +782,11 @@ El sistema utiliza detección por contenido de texto en el campo `tipus-vehicle`
 - **Ejemplo de respuesta:**
 ```json
 {
-  "tipus-vehicle": "Moto",
-  "marques-moto": "Yamaha",
-  "models-moto": "YZF-R1"
+  "tipus-vehicle": "moto",
+  "marques-moto": "yamaha",
+  "models-moto": "yzf-r1"
 }
-```
-
-## Filtros por marca y modelo
+```## Filtros por marca y modelo
 
 Puedes filtrar vehículos usando los parámetros correspondientes a cada tipo:
 

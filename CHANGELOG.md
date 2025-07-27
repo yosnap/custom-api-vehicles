@@ -5,6 +5,47 @@ Todos los cambios notables en este proyecto serán documentados en este archivo.
 El formato está basado en [Keep a Changelog](https://keepachangelog.com/es/1.0.0/),
 y este proyecto adhiere a [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.2.3] - 2025-07-27
+
+### 🔄 BREAKING CHANGE: API devuelve Values en lugar de Labels
+
+#### 🆕 Añadido
+- Configuración global para devolver valores/slugs en lugar de etiquetas traducidas
+- Consistencia total en la respuesta de la API para todos los campos
+- Mejora en la procesabilidad de datos para frontends
+
+#### 🔧 Cambiado
+- **CRÍTICO**: Todos los campos de taxonomía ahora devuelven slugs (`cotxe` en lugar de `Coche`)
+- **CRÍTICO**: Todos los campos de glosario ahora devuelven values (`aire-acondicionat` en lugar de `Aire acondicionado`)
+- **CRÍTICO**: Arrays de campos devuelven arrays de values en lugar de labels
+- Función `should_get_field_label()` modificada para devolver siempre `false`
+- Campos de taxonomía modificados para usar `->slug` en lugar de `->name`
+
+#### 📝 Documentación
+- README.md actualizado con ejemplos de respuesta que reflejan los nuevos values
+- Documentación de migración añadida para desarrolladores frontend
+- Ejemplos comparativos entre versiones anteriores y actual
+
+#### 🔧 Técnico
+- Modificado `includes/singlecar-endpoints/field-processors.php`
+- Modificado `includes/singlecar-endpoints/get-handlers.php`
+- Cambios aplicados tanto a listados como a vehículos individuales
+- Mantenida compatibilidad con estructura de datos existente
+
+#### ⚠️ Migración Requerida
+Los frontends que consumen esta API deberán:
+1. Actualizar el procesamiento de respuestas para manejar values en lugar de labels
+2. Implementar traducción local de values a labels visibles
+3. Actualizar filtros y búsquedas para usar values en lugar de labels
+4. Verificar que el manejo de arrays de extras funcione correctamente
+
+## [2.3.0] - 2025-06-05log
+
+Todos los cambios notables en este proyecto serán documentados en este archivo.
+
+El formato está basado en [Keep a Changelog](https://keepachangelog.com/es/1.0.0/),
+y este proyecto adhiere a [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
 ## [2.2.2.2] - 2025-07-14
 
 ### Añadido

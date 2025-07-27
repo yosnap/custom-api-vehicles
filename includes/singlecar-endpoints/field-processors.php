@@ -344,20 +344,9 @@ function is_glossary_field($field_name) {
 }
 
 function should_get_field_label($field_name) {
-    // Lista de campos que deben devolver values en lugar de labels
-    $return_values_fields = [
-        'extres-cotxe',
-        'extres-autocaravana',
-        'extres-moto',
-        'extres-habitacle'
-    ];
-    
-    // Si es un campo que debe devolver values, devolver false
-    if (in_array($field_name, $return_values_fields)) {
-        return false;
-    }
-    
-    return is_glossary_field($field_name) || is_taxonomy_field($field_name);
+    // CAMBIO: Todos los campos ahora devuelven values en lugar de labels
+    // Esto asegura consistencia en la API y facilita el procesamiento en el frontend
+    return false;
 }
 
 function is_taxonomy_field($field_name) {

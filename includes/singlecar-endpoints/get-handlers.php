@@ -689,7 +689,7 @@ function get_vehicle_details_common($vehicle_id, $post = null, $meta = null, $te
     ];
 
     if (isset($terms_data['tipus-vehicle'])) {
-        $response['tipus-vehicle'] = $terms_data['tipus-vehicle']->name;
+        $response['tipus-vehicle'] = $terms_data['tipus-vehicle']->slug;
     }
 
     // Process car/caravan/commercial vehicle brands and models (all use marques-coches taxonomy)
@@ -701,21 +701,21 @@ function get_vehicle_details_common($vehicle_id, $post = null, $meta = null, $te
                 $vehicle_type = isset($response['tipus-vehicle']) ? $response['tipus-vehicle'] : '';
                 
                 if (strpos(strtolower($vehicle_type), 'autocaravana') !== false || strpos(strtolower($vehicle_type), 'camper') !== false) {
-                    $response['marques-autocaravana'] = $term->name;
+                    $response['marques-autocaravana'] = $term->slug;
                     $marca_field = 'models-autocaravana';
                 } elseif (strpos(strtolower($vehicle_type), 'comercial') !== false) {
-                    $response['marques-comercial'] = $term->name;
+                    $response['marques-comercial'] = $term->slug;
                     $marca_field = 'models-comercial';
                 } else {
                     // Default to car
-                    $response['marques-cotxe'] = $term->name;
+                    $response['marques-cotxe'] = $term->slug;
                     $marca_field = 'models-cotxe';
                 }
                 
                 // Find child model terms
                 foreach ($marques_terms as $model_term) {
                     if ($model_term->parent === $term->term_id) {
-                        $response[$marca_field] = $model_term->name;
+                        $response[$marca_field] = $model_term->slug;
                         break;
                     }
                 }
@@ -729,11 +729,11 @@ function get_vehicle_details_common($vehicle_id, $post = null, $meta = null, $te
     if (!is_wp_error($moto_terms) && !empty($moto_terms)) {
         foreach ($moto_terms as $term) {
             if ($term->parent === 0) {
-                $response['marques-moto'] = $term->name;
+                $response['marques-moto'] = $term->slug;
                 // Find child model terms
                 foreach ($moto_terms as $model_term) {
                     if ($model_term->parent === $term->term_id) {
-                        $response['models-moto'] = $model_term->name;
+                        $response['models-moto'] = $model_term->slug;
                         break;
                     }
                 }
@@ -744,7 +744,7 @@ function get_vehicle_details_common($vehicle_id, $post = null, $meta = null, $te
 
     foreach ($terms_data as $field => $term) {
         if (!in_array($field, ['tipus-vehicle', 'marques-cotxe', 'models-cotxe', 'marques-moto', 'models-moto'])) {
-            $response[$field] = $term->name;
+            $response[$field] = $term->slug;
         }
     }
 
