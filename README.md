@@ -2,13 +2,14 @@
 
 Plugin WordPress para gestionar vehículos a través de una API REST personalizada.
 
-**Versión actual:** 2.2.3  
-**Namespace:** `api-motor/v1`  
+**Versión actual:** 2.2.3
+**Namespace:** `api-motor/v1`
 **Tipo de contenido:** `singlecar`
 
 ## 🚀 Novedades v2.2.3
 
 ### 🔄 Cambio Importante: API devuelve Values en lugar de Labels
+
 - **BREAKING CHANGE**: Todos los campos ahora devuelven valores/slugs en lugar de etiquetas traducidas
 - **Campos de taxonomía**: Devuelven slugs (`cotxe` en lugar de `Coche`)
 - **Campos de glosario**: Devuelven values (`aire-acondicionat` en lugar de `Aire acondicionado`)
@@ -16,22 +17,31 @@ Plugin WordPress para gestionar vehículos a través de una API REST personaliza
 - **Motivo**: Mejora la consistencia de la API y facilita el procesamiento en frontend
 - **Migración**: Los frontends deben actualizar para manejar values y hacer la traducción localmente
 
+### 💡 Flexibilidad en POST/PUT
+
+- **Entrada flexible**: Los endpoints POST/PUT aceptan tanto values como labels
+- **Ejemplo válido con values**: `"combustible": "gasolina"`
+- **Ejemplo válido con labels**: `"combustible": "Gasolina"`
+- **Ventaja**: Facilita la migración y desarrollo sin romper integraciones existentes
+
 ### 📊 Comparativa de Respuestas (Antes vs Ahora)
 
 **Antes (v2.2.2):**
+
 ```json
 {
-  "tipus-vehicle": "Coche", 
+  "tipus-vehicle": "Coche",
   "combustible": "Gasolina",
   "extres-cotxe": ["Aire acondicionado", "Bluetooth"]
 }
 ```
 
 **Ahora (v2.2.3):**
+
 ```json
 {
   "tipus-vehicle": "cotxe",
-  "combustible": "gasolina", 
+  "combustible": "gasolina",
   "extres-cotxe": ["aire-acondicionat", "bluetooth"]
 }
 ```
@@ -39,11 +49,13 @@ Plugin WordPress para gestionar vehículos a través de una API REST personaliza
 ## 🚀 Novedades v2.2.2
 
 ### ✅ Correcciones Críticas
+
 - **Filtro `anunci-actiu` funcionando correctamente** - Solucionado problema donde no filtraba adecuadamente
 - **Consistencia de tipos** - Campo `anunci-actiu` ahora devuelve siempre strings ('true'/'false')
 - **Endpoints individuales** - Lógica unificada para todos los endpoints
 
 ### 🎛️ Nueva Página de Administración
+
 - **Ubicación:** WP Admin → API Motoraldia
 - **Control de Cache:** Activar/desactivar desde interfaz
 - **Gestión de Caducidad:** Configurar expiración automática de anuncios
@@ -51,6 +63,7 @@ Plugin WordPress para gestionar vehículos a través de una API REST personaliza
 - **Sin código:** Todo configurable desde WordPress admin
 
 ### 📈 Mejoras de Rendimiento
+
 - Cache inteligente basado en configuración
 - Desactivado por defecto para desarrollo
 - Opciones de duración desde 5 minutos a 24 horas
@@ -64,13 +77,14 @@ Plugin WordPress para gestionar vehículos a través de una API REST personaliza
 Obtiene los tipos de vehículos disponibles.
 
 **Respuesta:**
+
 ```json
 [
-  {"id": 1, "name": "Coche"},
-  {"id": 2, "name": "Moto"},
-  {"id": 3, "name": "Furgoneta"},
-  {"id": 4, "name": "Autocaravana"},
-  {"id": 5, "name": "Camión"}
+  { "id": 1, "name": "Coche" },
+  { "id": 2, "name": "Moto" },
+  { "id": 3, "name": "Furgoneta" },
+  { "id": 4, "name": "Autocaravana" },
+  { "id": 5, "name": "Camión" }
 ]
 ```
 
@@ -79,6 +93,7 @@ Obtiene los tipos de vehículos disponibles.
 Obtiene una lista de vehículos **con filtros por defecto**.
 
 **Filtros automáticos aplicados:**
+
 - ❌ **Excluye vehículos vendidos** (`venut=false` por defecto)
 - ✅ **Incluye activos e inactivos** (sin filtro `anunci-actiu` por defecto)
 
@@ -98,6 +113,7 @@ Obtiene una lista de vehículos **con filtros por defecto**.
 Obtiene una lista de **TODOS** los vehículos **sin filtros por defecto**.
 
 **Características:**
+
 - ✅ **Incluye vehículos vendidos y no vendidos**
 - ✅ **Incluye activos e inactivos**
 - ✅ **Incluye cualquier post_status** (publish, draft, etc.)
@@ -139,6 +155,7 @@ Obtiene una lista de **TODOS** los vehículos **sin filtros por defecto**.
 ```
 
 **Headers de respuesta:**
+
 - `X-WP-Total`: Total de vehículos encontrados
 - `X-WP-TotalPages`: Total de páginas disponibles
 
@@ -184,7 +201,7 @@ Crea un nuevo vehículo.
   "status": "publish",
   "slug": "ejemplo-vehiculo",
   "titol-anunci": "Título del anuncio",
-  "descripcio-anunci": "Descripción del anuncio",
+  "descripcio-anunci": "Descripción del anuncio"
   // ... todos los campos del vehículo
 }
 ```
@@ -194,6 +211,7 @@ Crea un nuevo vehículo.
 Obtiene detalles de un vehículo específico.
 
 **Parámetros:**
+
 - `id`: ID del vehículo (requerido)
 
 **Respuesta:**
@@ -204,6 +222,7 @@ Misma estructura que un elemento individual de la lista de vehículos, pero con 
 Actualiza un vehículo existente.
 
 **Parámetros:**
+
 - `id`: ID del vehículo a actualizar (requerido)
 - Campos a actualizar (similar a la creación, pero opcionales)
 
@@ -278,6 +297,7 @@ Obtiene información de vendedores profesionales.
 **Comportamiento:**
 
 1. Como administrador:
+
    - Sin `user_id`: Devuelve lista de todos los usuarios no administradores
    - Con `user_id`: Devuelve detalles completos del usuario específico
 
@@ -289,81 +309,90 @@ Obtiene información de vendedores profesionales.
 
 ### Campos Comunes (Todos los vehículos)
 
-| Campo | Tipo | Descripción | Requerido |
-|-------|------|-------------|-----------|
-| `title` | string | Título del anuncio | Sí |
-| `content` | string | Descripción del anuncio | No |
-| `tipus-vehicle` | string | Tipo de vehículo | Sí |
-| `marca` | string | Marca del vehículo | Sí |
-| `model` | string | Modelo del vehículo | Sí |
-| `preu` | string | Precio del vehículo | Sí |
-| `quilometres` | string | Kilometraje | Sí |
-| `any` | string | Año de fabricación | Sí |
-| `combustible` | string | Tipo de combustible | Sí |
-| `potencia` | string | Potencia en CV | Sí |
-| `color-vehicle` | string | Color del vehículo | No |
+| Campo           | Tipo   | Descripción             | Requerido |
+| --------------- | ------ | ----------------------- | --------- |
+| `title`         | string | Título del anuncio      | Sí        |
+| `content`       | string | Descripción del anuncio | No        |
+| `tipus-vehicle` | string | Tipo de vehículo        | Sí        |
+| `marca`         | string | Marca del vehículo      | Sí        |
+| `model`         | string | Modelo del vehículo     | Sí        |
+| `preu`          | string | Precio del vehículo     | Sí        |
+| `quilometres`   | string | Kilometraje             | Sí        |
+| `any`           | string | Año de fabricación      | Sí        |
+| `combustible`   | string | Tipo de combustible     | Sí        |
+| `potencia`      | string | Potencia en CV          | Sí        |
+| `color-vehicle` | string | Color del vehículo      | No        |
 
 ### Campos Específicos para Coches (`tipus-vehicle` = "cotxe")
 
-| Campo | Tipo | Descripción | Valores válidos |
-|-------|------|-------------|----------------|
-| `extres-cotxe` | array | Extras del coche | Valores del glosario ID 54 |
-| `tipus-tapisseria` | string | Tipo de tapicería | Valores del glosario ID 52 |
+| Campo              | Tipo   | Descripción        | Valores válidos            |
+| ------------------ | ------ | ------------------ | -------------------------- |
+| `extres-cotxe`     | array  | Extras del coche   | Valores del glosario ID 54 |
+| `tipus-tapisseria` | string | Tipo de tapicería  | Valores del glosario ID 52 |
 | `color-tapisseria` | string | Color de tapicería | Valores del glosario ID 53 |
-| `portes-cotxe` | string | Número de puertas | Por defecto: "5" |
-| `canvi` | string | Tipo de cambio | "manual", "automatic" |
+| `portes-cotxe`     | string | Número de puertas  | Por defecto: "5"           |
+| `canvi`            | string | Tipo de cambio     | "manual", "automatic"      |
 
 ### Campos Específicos para Motos (`tipus-vehicle` = "moto")
 
-| Campo | Tipo | Descripción | Valores válidos |
-|-------|------|-------------|----------------|
-| `extres-moto` | array | Extras de la moto | Valores del glosario ID 55 |
-| `tipus-de-moto` | string | Tipo de moto | Valores del glosario ID 42 |
-| `tipus-canvi-moto` | string | Tipo de cambio | Valores del glosario ID 62 |
+| Campo              | Tipo   | Descripción       | Valores válidos            |
+| ------------------ | ------ | ----------------- | -------------------------- |
+| `extres-moto`      | array  | Extras de la moto | Valores del glosario ID 55 |
+| `tipus-de-moto`    | string | Tipo de moto      | Valores del glosario ID 42 |
+| `tipus-canvi-moto` | string | Tipo de cambio    | Valores del glosario ID 62 |
 
 ### Campos Específicos para Autocaravanas (`tipus-vehicle` = "autocaravana")
 
-| Campo | Tipo | Descripción | Valores válidos |
-|-------|------|-------------|----------------|
-| `extres-autocaravana` | array | Extras de la autocaravana | Valores del glosario ID 56 |
-| `carrosseria-caravana` | string | Tipo de carrocería | Valores del glosario ID 43 ("c-perfilada", "c-capuchina", "c-integral", "c-camper") |
-| `extres-habitacle` | array | Extras del habitáculo | Valores del glosario ID 57 |
+| Campo                  | Tipo   | Descripción               | Valores válidos                                                                     |
+| ---------------------- | ------ | ------------------------- | ----------------------------------------------------------------------------------- |
+| `extres-autocaravana`  | array  | Extras de la autocaravana | Valores del glosario ID 56                                                          |
+| `carrosseria-caravana` | string | Tipo de carrocería        | Valores del glosario ID 43 ("c-perfilada", "c-capuchina", "c-integral", "c-camper") |
+| `extres-habitacle`     | array  | Extras del habitáculo     | Valores del glosario ID 57                                                          |
 
 ### Campos Específicos para Vehículos Comerciales (`tipus-vehicle` = "vehicle-comercial")
 
-| Campo | Tipo | Descripción | Valores válidos |
-|-------|------|-------------|----------------|
-| `carroseria-vehicle-comercial` | string | Tipo de carrocería | Valores del glosario ID 44 ("c-furgon-industrial", "c-furgo-industrial") |
-| `extres-cotxe` | array | Extras del vehículo | Valores del glosario ID 54 |
+| Campo                          | Tipo   | Descripción         | Valores válidos                                                          |
+| ------------------------------ | ------ | ------------------- | ------------------------------------------------------------------------ |
+| `carroseria-vehicle-comercial` | string | Tipo de carrocería  | Valores del glosario ID 44 ("c-furgon-industrial", "c-furgo-industrial") |
+| `extres-cotxe`                 | array  | Extras del vehículo | Valores del glosario ID 54                                               |
 
 ## Glosarios Disponibles
 
 La API utiliza glosarios para validar ciertos campos. Cada glosario tiene un ID único y contiene valores válidos para campos específicos.
 
-| ID Glosario | Campo Asociado | Descripción |
-|-------------|----------------|-------------|
-| 41 | `segment` | Segmento del vehículo |
-| 42 | `tipus-de-moto` | Tipos de motos |
-| 43 | `carrosseria-caravana` | Tipos de carrocería para autocaravanas |
-| 44 | `carroseria-vehicle-comercial` | Tipos de carrocería para vehículos comerciales |
-| 49 | `connectors` | Tipos de conectores |
-| 50 | `cables-recarrega` | Cables de recarga |
-| 51 | `color-vehicle` | Colores de vehículos |
-| 52 | `tipus-tapisseria` | Tipos de tapicería |
-| 53 | `color-tapisseria` | Colores de tapicería |
-| 54 | `extres-cotxe` | Extras para coches |
-| 55 | `extres-moto` | Extras para motos |
-| 56 | `extres-autocaravana` | Extras para autocaravanas |
-| 57 | `extres-habitacle` | Extras para habitáculos |
-| 58 | `emissions-vehicle` | Emisiones del vehículo |
-| 59 | `traccio` | Tipos de tracción |
-| 60 | `roda-recanvi` | Rueda de recambio |
-| 62 | `tipus-canvi-moto` | Tipos de cambio para motos |
-| 63 | `tipus-canvi-electric` | Tipos de cambio para vehículos eléctricos |
+| ID Glosario | Campo Asociado                 | Descripción                                    |
+| ----------- | ------------------------------ | ---------------------------------------------- |
+| 41          | `segment`                      | Segmento del vehículo                          |
+| 42          | `tipus-de-moto`                | Tipos de motos                                 |
+| 43          | `carrosseria-caravana`         | Tipos de carrocería para autocaravanas         |
+| 44          | `carroseria-vehicle-comercial` | Tipos de carrocería para vehículos comerciales |
+| 49          | `connectors`                   | Tipos de conectores                            |
+| 50          | `cables-recarrega`             | Cables de recarga                              |
+| 51          | `color-vehicle`                | Colores de vehículos                           |
+| 52          | `tipus-tapisseria`             | Tipos de tapicería                             |
+| 53          | `color-tapisseria`             | Colores de tapicería                           |
+| 54          | `extres-cotxe`                 | Extras para coches                             |
+| 55          | `extres-moto`                  | Extras para motos                              |
+| 56          | `extres-autocaravana`          | Extras para autocaravanas                      |
+| 57          | `extres-habitacle`             | Extras para habitáculos                        |
+| 58          | `emissions-vehicle`            | Emisiones del vehículo                         |
+| 59          | `traccio`                      | Tipos de tracción                              |
+| 60          | `roda-recanvi`                 | Rueda de recambio                              |
+| 62          | `tipus-canvi-moto`             | Tipos de cambio para motos                     |
+| 63          | `tipus-canvi-electric`         | Tipos de cambio para vehículos eléctricos      |
 
 ## Validación de Campos
 
-La API implementa validación estricta para los campos, especialmente para aquellos asociados a glosarios. Si se intenta guardar un valor no válido para un campo de glosario, la API devolverá un error con los valores válidos disponibles.
+La API implementa validación flexible para los campos, especialmente para aquellos asociados a glosarios. 
+
+### 🔧 Flexibilidad de Entrada
+
+- **Acepta values**: `"combustible": "gasolina"` ✅
+- **Acepta labels**: `"combustible": "Gasolina"` ✅  
+- **Arrays mixtos**: `["aire-acondicionat", "Bluetooth"]` ✅
+- **Validación inteligente**: La API reconoce automáticamente si es value o label
+
+Si se intenta guardar un valor no válido para un campo de glosario, la API devolverá un error con los valores válidos disponibles.
 
 ### Ejemplo de Error de Validación
 
@@ -381,21 +410,23 @@ La API implementa validación estricta para los campos, especialmente para aquel
 
 Los siguientes campos se establecen automáticamente con valores por defecto si no se proporcionan:
 
-| Campo | Valor por defecto |
-|-------|------------------|
-| `frenada-regenerativa` | "no" |
-| `one-pedal` | "no" |
-| `aire-acondicionat` | "no" |
-| `portes-cotxe` | "5" |
-| `climatitzacio` | "no" |
-| `vehicle-fumador` | "no" |
-| `vehicle-accidentat` | "no" |
-| `llibre-manteniment` | "no" |
-| `revisions-oficials` | "no" |
-| `impostos-deduibles` | "no" |
-| `vehicle-a-canvi` | "no" |
+| Campo                  | Valor por defecto |
+| ---------------------- | ----------------- |
+| `frenada-regenerativa` | "no"              |
+| `one-pedal`            | "no"              |
+| `aire-acondicionat`    | "no"              |
+| `portes-cotxe`         | "5"               |
+| `climatitzacio`        | "no"              |
+| `vehicle-fumador`      | "no"              |
+| `vehicle-accidentat`   | "no"              |
+| `llibre-manteniment`   | "no"              |
+| `revisions-oficials`   | "no"              |
+| `impostos-deduibles`   | "no"              |
+| `vehicle-a-canvi`      | "no"              |
 
 ## Ejemplos de Uso
+
+> **💡 Nota sobre flexibilidad**: En los siguientes ejemplos puedes usar tanto **values** (`"combustible": "gasolina"`) como **labels** (`"combustible": "Gasolina"`). La API acepta ambos formatos para facilitar la integración.
 
 ### Crear un Coche
 
@@ -444,6 +475,30 @@ Authorization: Bearer YOUR_TOKEN
 }
 ```
 
+### Ejemplo con Labels (también válido)
+
+```http
+POST /wp-json/api-motor/v1/vehicles
+Content-Type: application/json
+Authorization: Bearer YOUR_TOKEN
+
+{
+  "title": "Coche con labels",
+  "content": "Ejemplo usando etiquetas traducidas",
+  "tipus-vehicle": "Coche",
+  "marca": "BMW",
+  "model": "Serie 3",
+  "preu": "45000",
+  "quilometres": "25000",
+  "any": "2022",
+  "combustible": "Gasolina",
+  "potencia": "180",
+  "canvi": "Automático",
+  "color-vehicle": "Negro",
+  "extres-cotxe": ["Aire acondicionado", "Navegador GPS", "Bluetooth"]
+}
+```
+
 ## Endpoint: /vehicles
 
 Este endpoint permite obtener un listado de vehículos con soporte para múltiples filtros, ordenamiento y paginación.
@@ -451,10 +506,12 @@ Este endpoint permite obtener un listado de vehículos con soporte para múltipl
 ### Parámetros de filtrado
 
 #### Paginación
+
 - `page`: Número de página (default: 1)
 - `per_page`: Resultados por página (default: 10)
 
 #### Taxonomías
+
 - `tipus-vehicle`: Tipo de vehículo
 - `tipus-combustible`: Tipo de combustible
 - `tipus-canvi`: Tipo de cambio
@@ -466,6 +523,7 @@ Este endpoint permite obtener un listado de vehículos con soporte para múltipl
 - `models-moto`: Modelo de la moto (funciona en conjunto con marques-de-moto o independientemente)
 
 #### Rangos numéricos
+
 - Precio:
   - `preu_min`: Precio mínimo
   - `preu_max`: Precio máximo
@@ -480,6 +538,7 @@ Este endpoint permite obtener un listado de vehículos con soporte para múltipl
   - `potencia_cv_max`: Potencia máxima en CV
 
 #### Filtros booleanos
+
 - `anunci-destacat`: Anuncio destacado (utiliza el meta field 'is-vip')
 - `venut`: Vehículo vendido
 - `llibre-manteniment`: Libro de mantenimiento
@@ -493,6 +552,7 @@ Este endpoint permite obtener un listado de vehículos con soporte para múltipl
 - `vehicle-fumador`: Vehículo de fumador
 
 #### Filtros de glosario
+
 - `venedor`: Vendedor
 - `traccio`: Tracción
 - `roda-recanvi`: Rueda de recambio
@@ -506,6 +566,7 @@ Este endpoint permite obtener un listado de vehículos con soporte para múltipl
 - `connectors`: Conectores
 
 #### Búsqueda y ordenamiento
+
 - `search`: Búsqueda por texto
 - `orderby`: Campo por el que ordenar
   - `date`: Fecha
@@ -517,32 +578,38 @@ Este endpoint permite obtener un listado de vehículos con soporte para múltipl
   - `DESC`: Descendente (default)
 
 #### Otros filtros
+
 - `user_id`: ID del usuario (requiere permisos)
 - `anunci-actiu`: Estado activo del anuncio
 
 ### Ejemplos de uso
 
 1. Filtrar coches por marca y modelo:
+
 ```
 /wp-json/api-motor/v1/vehicles?marques-cotxe=bmw&models-cotxe=serie-3
 ```
 
 2. Filtrar por rango de precio y kilómetros:
+
 ```
 /wp-json/api-motor/v1/vehicles?preu_min=10000&preu_max=20000&km_min=0&km_max=100000
 ```
 
 3. Búsqueda con múltiples filtros:
+
 ```
 /wp-json/api-motor/v1/vehicles?tipus-vehicle=cotxe&estat-vehicle=nou&orderby=price&order=ASC&page=1&per_page=20
 ```
 
 4. Filtrar motos por marca y modelo:
+
 ```
 /wp-json/api-motor/v1/vehicles?marques-de-moto=honda&models-moto=cbr
 ```
 
 5. Filtrar anuncios destacados:
+
 ```
 /wp-json/api-motor/v1/vehicles?anunci-destacat=true&orderby=date&order=DESC
 ```
@@ -550,6 +617,7 @@ Este endpoint permite obtener un listado de vehículos con soporte para múltipl
 ### Respuesta
 
 La respuesta incluye:
+
 - `status`: Estado de la respuesta
 - `items`: Array de vehículos
 - `total`: Total de items encontrados
@@ -558,6 +626,7 @@ La respuesta incluye:
 - `per_page`: Items por página
 
 ### Ejemplo de respuesta de un vehículo individual
+
 ```json
 {
   "id": 123,
@@ -582,6 +651,7 @@ La respuesta incluye:
 ```
 
 ### Ejemplo de respuesta de sellers (lista)
+
 ```json
 {
   "status": "success",
@@ -603,6 +673,7 @@ La respuesta incluye:
 ```
 
 ### Ejemplo de respuesta de sellers (detalle)
+
 ```json
 {
   "status": "success",
@@ -625,10 +696,7 @@ La respuesta incluye:
     "cognoms-contacte": "Pérez",
     "descripcio-empresa": "Concesionario oficial...",
     "pagina-web": "https://empresa.com",
-    "galeria-professionals": [
-      "https://.../img1.jpg",
-      "https://.../img2.jpg"
-    ],
+    "galeria-professionals": ["https://.../img1.jpg", "https://.../img2.jpg"],
     "total_vehicles": 10,
     "active_vehicles": 8
   }
@@ -637,15 +705,15 @@ La respuesta incluye:
 
 ### Parámetros de ordenación soportados en /vehicles
 
-| Opción UI                | Parámetro `orderby` | Parámetro `order` | Descripción                                 |
-|--------------------------|---------------------|-------------------|---------------------------------------------|
-| Destacados primero       | featured            | -                 | Destacados primero, luego más recientes     |
-| Precio: menor a mayor    | price               | ASC               | Precio ascendente                           |
-| Precio: mayor a menor    | price               | DESC              | Precio descendente                          |
-| Más recientes            | date                | DESC              | Fecha de publicación descendente            |
-| Más antiguos             | date                | ASC               | Fecha de publicación ascendente             |
-| Alfabético (A-Z)         | title               | ASC               | Título ascendente                           |
-| Alfabético (Z-A)         | title               | DESC              | Título descendente                          |
+| Opción UI             | Parámetro `orderby` | Parámetro `order` | Descripción                             |
+| --------------------- | ------------------- | ----------------- | --------------------------------------- |
+| Destacados primero    | featured            | -                 | Destacados primero, luego más recientes |
+| Precio: menor a mayor | price               | ASC               | Precio ascendente                       |
+| Precio: mayor a menor | price               | DESC              | Precio descendente                      |
+| Más recientes         | date                | DESC              | Fecha de publicación descendente        |
+| Más antiguos          | date                | ASC               | Fecha de publicación ascendente         |
+| Alfabético (A-Z)      | title               | ASC               | Título ascendente                       |
+| Alfabético (Z-A)      | title               | DESC              | Título descendente                      |
 
 ### Ejemplos de consulta de vehículos por usuario y estado
 
@@ -659,6 +727,7 @@ La respuesta incluye:
   `/wp-json/api-motor/v1/vehicles?user_id=45&venut=true`
 
 ### Filtro por estado activo
+
 Puedes filtrar los vehículos activos o inactivos:
 
 - Solo activos:
@@ -669,6 +738,7 @@ Puedes filtrar los vehículos activos o inactivos:
 El filtro es exacto y solo devuelve los ítems cuyo estado real coincide con el solicitado.
 
 ### Ordenar por destacados
+
 Para mostrar los vehículos destacados primero, usa:
 
 - `/wp-json/api-motor/v1/vehicles?orderby=featured`
@@ -676,6 +746,7 @@ Para mostrar los vehículos destacados primero, usa:
 Esto ordena primero los que tienen `is-vip = 'true'` y luego el resto, por fecha descendente.
 
 ### Filtro por vendidos (`venut`)
+
 - Si **no pasas** el parámetro `venut`, solo se mostrarán los vehículos no vendidos o que no tienen el campo (disponibles).
 - Si pasas `venut=false`, solo se mostrarán los vehículos que tienen el campo `venut` explícitamente en "false".
 - Si pasas `venut=true`, solo se mostrarán los vehículos vendidos.
@@ -694,12 +765,14 @@ Puedes filtrar vehículos por los siguientes endpoints:
 - `/wp-json/api-motor/v1/estat-vehicle/{slug}`
 
 **Parámetros disponibles:**
+
 - `page` (int, por defecto 1)
 - `per_page` (int, por defecto 10)
 - `orderby` (string, por defecto 'date')
 - `order` (string, por defecto 'DESC')
 
 **Ejemplo:**
+
 ```
 /wp-json/api-motor/v1/marques-cotxe/audi?page=1&per_page=10&orderby=price&order=ASC
 ```
@@ -710,6 +783,7 @@ Puedes filtrar vehículos por los siguientes endpoints:
 - `/wp-json/api-motor/v1/marques-moto/{marca}/{modelo}`
 
 **Ejemplo:**
+
 ```
 /wp-json/api-motor/v1/marques-cotxe/audi/a3?page=1&per_page=10
 ```
@@ -727,16 +801,18 @@ El sistema asigna automáticamente los campos de marca y modelo según el tipo d
 El sistema utiliza detección por contenido de texto en el campo `tipus-vehicle` para asignar los campos correctos:
 
 1. **Autocaravanas/Campers**: Si `tipus-vehicle` contiene "autocaravana" o "camper" (case-insensitive)
-2. **Vehículos comerciales**: Si `tipus-vehicle` contiene "comercial" (case-insensitive)  
+2. **Vehículos comerciales**: Si `tipus-vehicle` contiene "comercial" (case-insensitive)
 3. **Motos**: Utiliza la taxonomía `marques-de-moto` específica
 4. **Coches**: Cualquier otro tipo que no coincida con los anteriores
 
 ### Coches (por defecto)
+
 - **Campos:** `marques-cotxe` y `models-cotxe`
 - **Taxonomía:** `marques-coches`
 - **Detección:** Cualquier vehículo que no sea autocaravana, comercial o moto
 - **Tipos incluidos:** Cotxe, Berlina, SUV, Descapotable, etc.
 - **Ejemplo de respuesta:**
+
 ```json
 {
   "tipus-vehicle": "cotxe",
@@ -746,11 +822,13 @@ El sistema utiliza detección por contenido de texto en el campo `tipus-vehicle`
 ```
 
 ### Autocaravanas y Campers
+
 - **Campos:** `marques-autocaravana` y `models-autocaravana`
 - **Taxonomía:** `marques-coches`
 - **Detección:** Cuando `tipus-vehicle` contiene "autocaravana" o "camper"
 - **Mapeo configurado:** "AUTOCARAVANA-CAMPER"
 - **Ejemplo de respuesta:**
+
 ```json
 {
   "tipus-vehicle": "autocaravana",
@@ -760,12 +838,14 @@ El sistema utiliza detección por contenido de texto en el campo `tipus-vehicle`
 ```
 
 ### Vehículos comerciales
+
 - **Campos:** `marques-comercial` y `models-comercial`
 - **Taxonomía:** `marques-coches`
 - **Detección:** Cuando `tipus-vehicle` contiene "comercial"
 - **Mapeo configurado:** "VEHICLE-COMERCIAL"
 - **Tipos incluidos:** Furgonetas, camiones, vehículos de trabajo
 - **Ejemplo de respuesta:**
+
 ```json
 {
   "tipus-vehicle": "vehicle-comercial",
@@ -775,12 +855,14 @@ El sistema utiliza detección por contenido de texto en el campo `tipus-vehicle`
 ```
 
 ### Motos, Quadbikes y ATVs
+
 - **Campos:** `marques-moto` y `models-moto`
 - **Taxonomía:** `marques-de-moto`
 - **Mapeo configurado:** "MOTO-QUAD-ATV"
 - **Tipos incluidos:** Motos, Scooters, Quadbikes, ATVs
 - **Ejemplo de respuesta:**
-```json
+
+````json
 {
   "tipus-vehicle": "moto",
   "marques-moto": "yamaha",
@@ -791,28 +873,36 @@ El sistema utiliza detección por contenido de texto en el campo `tipus-vehicle`
 Puedes filtrar vehículos usando los parámetros correspondientes a cada tipo:
 
 ### Filtros para coches
-```
+````
+
 GET /wp-json/api-motor/v1/vehicles?marques-cotxe=audi
 GET /wp-json/api-motor/v1/vehicles?marques-cotxe=audi&models-cotxe=a3
+
 ```
 
 ### Filtros para autocaravanas
 ```
+
 GET /wp-json/api-motor/v1/vehicles?marques-autocaravana=hymer
 GET /wp-json/api-motor/v1/vehicles?marques-autocaravana=hymer&models-autocaravana=b-class
+
 ```
 
 ### Filtros para vehículos comerciales
 ```
+
 GET /wp-json/api-motor/v1/vehicles?marques-comercial=mercedes
 GET /wp-json/api-motor/v1/vehicles?marques-comercial=mercedes&models-comercial=sprinter
+
 ```
 
 ### Filtros para motos
 ```
+
 GET /wp-json/api-motor/v1/vehicles?marques-moto=yamaha
 GET /wp-json/api-motor/v1/vehicles?marques-moto=yamaha&models-moto=yzf-r1
-```
+
+````
 
 ## Facetas inteligentes
 
@@ -836,9 +926,10 @@ Elimina todos los transientes de caché del plugin (solo administradores):
 ```bash
 curl -X DELETE "/wp-json/api-motor/v1/clear-cache" \
   -H "Authorization: Bearer YOUR_TOKEN"
-```
+````
 
 **Respuesta:**
+
 ```json
 {
   "status": "success",
