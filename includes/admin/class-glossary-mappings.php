@@ -24,6 +24,7 @@ class Vehicle_Glossary_Mappings {
     public static function get_glossary_mappings() {
         return [
             'segment' => 41,
+            'carrosseria-cotxe' => 41, // Mismo ID que segment ya que son el mismo campo
             'tipus-de-moto' => 42,
             'carrosseria-caravana' => 43,
             'carroseria-vehicle-comercial' => 44,

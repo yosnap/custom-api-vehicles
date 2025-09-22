@@ -757,7 +757,7 @@ function get_vehicle_details_common($vehicle_id, $post = null, $meta = null, $te
             $segment_field = 'carroseria-comercial';
         } else {
             // Default to car
-            $segment_field = 'carroseria-cotxe';
+            $segment_field = 'carrosseria-cotxe';
         }
         
         if (function_exists('should_get_field_label') && should_get_field_label('segment')) {
@@ -769,7 +769,6 @@ function get_vehicle_details_common($vehicle_id, $post = null, $meta = null, $te
     
     // Process other carroceria fields
     $carroceria_fields = [
-        'carroseria-cotxe' => 'carroseria-cotxe',
         'carrosseria-cotxe' => 'carrosseria-cotxe',
         'carroseria-vehicle-comercial' => 'carroseria-comercial',
         'carrosseria-caravana' => 'carrosseria-caravana',
@@ -1036,7 +1035,7 @@ function calculate_facets($vehicles, $params = []) {
         'garantia' => [],
         'traccio' => [],
         'roda-recanvi' => [],
-        'carroseria-cotxe' => [],
+        'carrosseria-cotxe' => [],
         'carroseria-comercial' => [],
         'carroseria-caravana' => [],
         'tipus-de-moto' => [],

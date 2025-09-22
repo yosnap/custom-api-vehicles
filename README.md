@@ -2,9 +2,16 @@
 
 Plugin WordPress para gestionar vehículos a través de una API REST personalizada.
 
-**Versión actual:** 2.2.2.2  
+**Versión actual:** 2.2.5  
 **Namespace:** `api-motor/v1`  
 **Tipo de contenido:** `singlecar`
+
+## 🚀 Novedades v2.2.5
+
+### 🔧 Correcciones
+- **Campo carrosseria-cotxe:** Nombre del campo corregido de "carroseria-cotxe" a "carrosseria-cotxe" en todo el sistema
+- **Mapeo de glosarios:** Añadido mapeo específico para "carrosseria-cotxe" con ID 41
+- **Consistencia:** Unificado el manejo entre `segment` y `carrosseria-cotxe`
 
 ## 🚀 Novedades v2.2.2.2
 

@@ -276,8 +276,8 @@ function map_field_key($key) {
         'any' => 'any',
         'is-vip' => 'anunci-destacat',
         'anunci-destacat' => 'is-vip',
-        'segment' => 'carroseria-cotxe',
-        'carroseria-cotxe' => 'segment'
+        'segment' => 'carrosseria-cotxe',
+        'carrosseria-cotxe' => 'segment'
     ];
 
     return isset($mapping[$key]) ? $mapping[$key] : $key;
@@ -610,16 +610,16 @@ function process_and_save_meta_fields($post_id, $params, $is_update = false) {
         Vehicle_Debug_Handler::log("Guardado connectors: " . print_r($values, true));
     }
 
-    // Manejo especial para segment (carroseria-cotxe)
+    // Manejo especial para segment (carrosseria-cotxe)
     if (isset($params['segment']) && !empty($params['segment'])) {
         update_post_meta($post_id, 'segment', $params['segment']);
         Vehicle_Debug_Handler::log("Guardado segment: " . $params['segment']);
     }
 
-    // También manejar si viene como carroseria-cotxe
-    if (isset($params['carroseria-cotxe']) && !empty($params['carroseria-cotxe'])) {
-        update_post_meta($post_id, 'segment', $params['carroseria-cotxe']);
-        Vehicle_Debug_Handler::log("Guardado carroseria-cotxe como segment: " . $params['carroseria-cotxe']);
+    // También manejar si viene como carrosseria-cotxe
+    if (isset($params['carrosseria-cotxe']) && !empty($params['carrosseria-cotxe'])) {
+        update_post_meta($post_id, 'segment', $params['carrosseria-cotxe']);
+        Vehicle_Debug_Handler::log("Guardado carrosseria-cotxe como segment: " . $params['carrosseria-cotxe']);
     }
 
     // Para motos, asignar taxonomías específicas
@@ -660,7 +660,7 @@ function process_and_save_meta_fields($post_id, $params, $is_update = false) {
             $field === 'cables-recarrega' ||
             $field === 'connectors' ||
             $field === 'segment' ||
-            $field === 'carroseria-cotxe' ||
+            $field === 'carrosseria-cotxe' ||
             $field === 'anunci-destacat') { // Campos procesados manualmente
             continue;
         }

@@ -5,6 +5,18 @@ Todos los cambios notables en este proyecto serán documentados en este archivo.
 El formato está basado en [Keep a Changelog](https://keepachangelog.com/es/1.0.0/),
 y este proyecto adhiere a [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.2.5] - 2025-09-22
+
+### Corregido
+- **Campo carrosseria-cotxe** - Corregido nombre del campo de "carroseria-cotxe" a "carrosseria-cotxe" en todo el sistema
+- **Mapeo de glosarios** - Añadido mapeo específico para "carrosseria-cotxe" con ID 41 (mismo que segment)
+- **Duplicados en configuración** - Eliminada línea duplicada en el array carroceria_fields
+
+### Técnico
+- Normalización de nombres de campos para carrocería de coches
+- Consistencia en recepción y envío de datos del campo carrosseria-cotxe
+- Mapeo unificado entre segment y carrosseria-cotxe
+
 ## [2.2.4] - 2025-09-22
 
 ### Corregido
