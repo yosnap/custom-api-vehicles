@@ -53,17 +53,32 @@ function create_singlecar($request) {
             Vehicle_Debug_Handler::log('Imagen destacada validada correctamente');
         }
 
-        // SOLUCIÓN DEFINITIVA: Siempre establecer valores por defecto para campos problemáticos
-        $params['frenada-regenerativa'] = 'no';
-        $params['one-pedal'] = 'no';
-        $params['aire-acondicionat'] = 'no';
-        $params['climatitzacio'] = 'no'; // Añadido nuevo campo
-        $params['vehicle-fumador'] = 'no'; // Añadido nuevo campo
-        $params['vehicle-accidentat'] = 'no'; // Añadido vehicle-accidentat
-        $params['llibre-manteniment'] = 'no'; // Añadido llibre-manteniment
-        $params['revisions-oficials'] = 'no'; // Añadido revisions-oficials
-        $params['portes-cotxe'] = isset($params['portes-cotxe']) && is_numeric($params['portes-cotxe']) ? 
-                                $params['portes-cotxe'] : '5'; // Añadir portes-cotxe
+        // Establecer valores por defecto solo si no están presentes (no sobrescribir valores del usuario)
+        $defaults = [
+            'frenada-regenerativa' => 'no',
+            'one-pedal' => 'no',
+            'aire-acondicionat' => 'no',
+            'climatitzacio' => 'no',
+            'vehicle-fumador' => 'no',
+            'vehicle-accidentat' => 'no',
+            'llibre-manteniment' => 'no',
+            'revisions-oficials' => 'no',
+            'impostos-deduibles' => 'no',
+            'vehicle-a-canvi' => 'no',
+            'anunci-destacat' => 'false'
+        ];
+
+        // Solo establecer defaults si el campo no existe o está vacío
+        foreach ($defaults as $field => $default_value) {
+            if (!isset($params[$field]) || $params[$field] === '' || $params[$field] === null) {
+                $params[$field] = $default_value;
+            }
+        }
+
+        // Manejar portes-cotxe con valor por defecto
+        if (!isset($params['portes-cotxe']) || !is_numeric($params['portes-cotxe'])) {
+            $params['portes-cotxe'] = '5';
+        }
         
         // Manejar campos numéricos especiales
         if (empty($params['temps-recarrega-total']) || !is_numeric($params['temps-recarrega-total'])) {
@@ -166,27 +181,12 @@ function create_singlecar($request) {
         // Establecer valores por defecto
         set_default_values($post_id, $params);
 
-        // Establecer explícitamente estos valores al final para asegurarnos
-        update_post_meta($post_id, 'frenada-regenerativa', 'false');
-        update_post_meta($post_id, 'one-pedal', 'false');
-        update_post_meta($post_id, 'aire-acondicionat', 'false');
-        update_post_meta($post_id, 'climatitzacio', 'false'); // Añadido nuevo campo
-        update_post_meta($post_id, 'vehicle-fumador', 'false'); // Añadido nuevo campo
-        update_post_meta($post_id, 'vehicle-accidentat', 'false'); // Añadido vehicle-accidentat
-        update_post_meta($post_id, 'llibre-manteniment', 'false'); // Añadido llibre-manteniment
-        update_post_meta($post_id, 'revisions-oficials', 'false'); // Añadido revisions-oficials
+        // Los valores booleanos se procesan en process_and_save_meta_fields
         update_post_meta($post_id, 'portes-cotxe', $params['portes-cotxe']); // Guardar portes-cotxe
         update_post_meta($post_id, 'temps-recarrega-total', $params['temps-recarrega-total']);
         update_post_meta($post_id, 'temps-recarrega-fins-80', $params['temps-recarrega-fins-80']);
 
-        // Manejar el campo anunci-destacat (radio button)
-        Vehicle_Debug_Handler::log('POST - Verificando anunci-destacat en params: ' . (isset($params['anunci-destacat']) ? 'true' : 'false'));
-        Vehicle_Debug_Handler::log('POST - Tipo de anunci-destacat: ' . (isset($params['anunci-destacat']) ? gettype($params['anunci-destacat']) : 'no definido'));
-        $anunci_destacat = isset($params['anunci-destacat']) ? $params['anunci-destacat'] : 'false';
-        Vehicle_Debug_Handler::log('POST - Valor a guardar de anunci-destacat: ' . $anunci_destacat);
-        $result = update_post_meta($post_id, 'is-vip', $anunci_destacat);
-        Vehicle_Debug_Handler::log('POST - Resultado de guardar is-vip: ' . ($result ? 'true' : 'false'));
-        Vehicle_Debug_Handler::log('POST - Valor guardado en is-vip: ' . get_post_meta($post_id, 'is-vip', true));
+        // El campo anunci-destacat se procesa en process_and_save_meta_fields
 
         $wpdb->query('COMMIT');
 
