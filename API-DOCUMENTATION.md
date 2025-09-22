@@ -1,38 +1,12 @@
 # Documentación Oficial: Custom API Vehicles for Motoraldia
 
-**Versión:** 2.2.3
-**Namespace:** `api-motor/v1`
+**Versión:** 2.2.2  
+**Namespace:** `api-motor/v1`  
 **Tipo de contenido:** `singlecar`
 
 ## Introducción
 
 Custom API Vehicles for Motoraldia es un plugin de WordPress que proporciona una API REST personalizada para la gestión completa de vehículos. Esta API permite crear, leer, actualizar y eliminar vehículos de diferentes tipos (coches, motos, autocaravanas y vehículos comerciales), así como acceder a taxonomías y glosarios relacionados.
-
-## Novedad v2.2.3: Mapeos de Glosarios Automáticos
-
-### 🆕 Mapeos por Defecto
-
-A partir de la versión 2.2.3, el plugin incluye mapeos automáticos para más de 20 campos de glosario, eliminando la necesidad de configuración manual. Los campos ahora muestran correctamente:
-
-- **Endpoints regulares** (`/vehicles`): Values/slugs (ej: "escuter")
-- **Endpoints con labels** (`/vehicles-labels`): Labels traducidos (ej: "Escúter")
-
-### 📋 Campos con Mapeo Automático
-
-| Campo                       | Glosario       | ID  |
-| --------------------------- | -------------- | --- |
-| `tipus-de-moto`             | Tipus Moto     | 42  |
-| `carrosseria-cotxe`         | Carrosseria    | 41  |
-| `color-vehicle`             | Color Exterior | 51  |
-| `extres-cotxe`              | Extres Coche   | 54  |
-| `traccio`                   | Tracció        | 59  |
-| Y 15+ campos adicionales... |
-
-### ✅ Corrección de Bugs
-
-- **Campo `tipus-de-moto`**: Ahora correctamente categorizado como campo de glosario
-- **Procesamiento consistente**: Eliminada lógica hardcodeada conflictiva
-- **Sistema unificado**: Todos los campos usan el mismo sistema de procesamiento
 
 ## Requisitos
 
@@ -49,7 +23,6 @@ A partir de la versión 2.2.2, el plugin incluye una página de configuración e
 **Ubicación:** WP Admin → API Motoraldia
 
 **Funcionalidades disponibles:**
-
 - **Control de Cache:** Activar/desactivar sistema de cache
 - **Duración de Cache:** Configurar tiempo de vida (5 minutos a 24 horas)
 - **Limpieza de Cache:** Botón para limpiar todos los transients
@@ -101,16 +74,15 @@ Los errores incluyen un objeto JSON con detalles adicionales:
 Obtiene los tipos de vehículos disponibles.
 
 **Respuesta:**
-
 ```json
 {
   "status": "success",
   "total": 4,
   "data": [
-    { "name": "AUTOCARAVANA", "value": "autocaravana-camper" },
-    { "name": "COTXE", "value": "cotxe" },
-    { "name": "MOTO", "value": "moto-quad-atv" },
-    { "name": "VEHICLE COMERCIAL", "value": "vehicle-comercial" }
+    {"name": "AUTOCARAVANA", "value": "autocaravana-camper"},
+    {"name": "COTXE", "value": "cotxe"},
+    {"name": "MOTO", "value": "moto-quad-atv"},
+    {"name": "VEHICLE COMERCIAL", "value": "vehicle-comercial"}
   ]
 }
 ```
@@ -121,17 +93,17 @@ Obtiene una lista de vehículos.
 
 **Parámetros:**
 
-| Parámetro    | Tipo    | Descripción                                                                                                                             | Requerido | Valor por defecto |
-| ------------ | ------- | --------------------------------------------------------------------------------------------------------------------------------------- | --------- | ----------------- |
-| page         | integer | Número de página                                                                                                                        | No        | 1                 |
-| per_page     | integer | Elementos por página                                                                                                                    | No        | 10                |
-| orderby      | string  | Campo para ordenar                                                                                                                      | No        | date              |
-| order        | string  | Dirección de ordenación (ASC, DESC)                                                                                                     | No        | DESC              |
-| brand        | string  | ID de la marca para filtrar                                                                                                             | No        | -                 |
-| user_id      | integer | Filtrar por ID de usuario                                                                                                               | No        | -                 |
-| post_id      | integer | Filtrar por ID específico                                                                                                               | No        | -                 |
-| post_name    | string  | Filtrar por slug                                                                                                                        | No        | -                 |
-| anunci-actiu | boolean | Filtrar por estado de activación (true: solo anuncios activos, false: solo anuncios inactivos, omitir: todos) - **CORREGIDO en v2.2.2** | No        | Todos             |
+| Parámetro | Tipo | Descripción | Requerido | Valor por defecto |
+|-----------|------|-------------|-----------|-------------------|
+| page | integer | Número de página | No | 1 |
+| per_page | integer | Elementos por página | No | 10 |
+| orderby | string | Campo para ordenar | No | date |
+| order | string | Dirección de ordenación (ASC, DESC) | No | DESC |
+| brand | string | ID de la marca para filtrar | No | - |
+| user_id | integer | Filtrar por ID de usuario | No | - |
+| post_id | integer | Filtrar por ID específico | No | - |
+| post_name | string | Filtrar por slug | No | - |
+| anunci-actiu | boolean | Filtrar por estado de activación (true: solo anuncios activos, false: solo anuncios inactivos, omitir: todos) - **CORREGIDO en v2.2.2** | No | Todos |
 
 **Respuesta:**
 
@@ -160,7 +132,6 @@ Obtiene una lista de vehículos.
 ```
 
 **Headers de respuesta:**
-
 - `X-WP-Total`: Total de vehículos encontrados
 - `X-WP-TotalPages`: Total de páginas disponibles
 
@@ -176,18 +147,18 @@ Crea un nuevo vehículo.
 
 **Campos requeridos:**
 
-| Campo         | Tipo   | Descripción                                                                     | Requerido   |
-| ------------- | ------ | ------------------------------------------------------------------------------- | ----------- |
-| tipus-vehicle | string | Tipo de vehículo (cotxe, moto-quad-atv, autocaravana-camper, vehicle-comercial) | Sí          |
-| estat-vehicle | string | Estado del vehículo                                                             | Sí          |
-| marques-cotxe | string | Marca del vehículo (para coches, autocaravanas y vehículos comerciales)         | Condicional |
-| models-cotxe  | string | Modelo del vehículo (para coches, autocaravanas y vehículos comerciales)        | Condicional |
-| marques-moto  | string | Marca de la moto (solo para motos)                                              | Condicional |
-| preu          | string | Precio del vehículo                                                             | Sí          |
-| quilometres   | string | Kilometraje                                                                     | Sí          |
-| any           | string | Año de fabricación                                                              | Sí          |
-| combustible   | string | Tipo de combustible                                                             | Sí          |
-| potencia      | string | Potencia en CV                                                                  | Sí          |
+| Campo | Tipo | Descripción | Requerido |
+|-------|------|-------------|-----------|
+| tipus-vehicle | string | Tipo de vehículo (cotxe, moto-quad-atv, autocaravana-camper, vehicle-comercial) | Sí |
+| estat-vehicle | string | Estado del vehículo | Sí |
+| marques-cotxe | string | Marca del vehículo (para coches, autocaravanas y vehículos comerciales) | Condicional |
+| models-cotxe | string | Modelo del vehículo (para coches, autocaravanas y vehículos comerciales) | Condicional |
+| marques-moto | string | Marca de la moto (solo para motos) | Condicional |
+| preu | string | Precio del vehículo | Sí |
+| quilometres | string | Kilometraje | Sí |
+| any | string | Año de fabricación | Sí |
+| combustible | string | Tipo de combustible | Sí |
+| potencia | string | Potencia en CV | Sí |
 
 **Campos específicos por tipo de vehículo:**
 
@@ -198,10 +169,10 @@ Crea un nuevo vehículo.
 
 **Campos de imágenes:**
 
-| Campo          | Tipo     | Descripción                       | Requerido |
-| -------------- | -------- | --------------------------------- | --------- |
-| featured_image | file/URL | Imagen destacada del vehículo     | No        |
-| gallery        | array    | Array de imágenes para la galería | No        |
+| Campo | Tipo | Descripción | Requerido |
+|-------|------|-------------|-----------|
+| featured_image | file/URL | Imagen destacada del vehículo | No |
+| gallery | array | Array de imágenes para la galería | No |
 
 **Respuesta:**
 
@@ -224,7 +195,6 @@ Crea un nuevo vehículo.
 Obtiene detalles de un vehículo específico.
 
 **Parámetros:**
-
 - `id`: ID del vehículo (requerido)
 
 **Respuesta:**
@@ -235,7 +205,6 @@ Misma estructura que un elemento individual de la lista de vehículos, pero con 
 Actualiza un vehículo existente.
 
 **Parámetros:**
-
 - `id`: ID del vehículo a actualizar (requerido)
 - Campos a actualizar (similar a la creación, pero opcionales)
 
@@ -247,11 +216,9 @@ Objeto completo del vehículo actualizado.
 Elimina (mueve a papelera) un vehículo.
 
 **Parámetros:**
-
 - `id`: ID del vehículo a eliminar (requerido)
 
 **Respuesta:**
-
 ```json
 {
   "status": "success",
@@ -268,16 +235,15 @@ Elimina (mueve a papelera) un vehículo.
 Obtiene los tipos de vehículos disponibles.
 
 **Respuesta:**
-
 ```json
 {
   "status": "success",
   "total": 4,
   "data": [
-    { "name": "AUTOCARAVANA", "value": "autocaravana-camper" },
-    { "name": "COTXE", "value": "cotxe" },
-    { "name": "MOTO", "value": "moto-quad-atv" },
-    { "name": "VEHICLE COMERCIAL", "value": "vehicle-comercial" }
+    {"name": "AUTOCARAVANA", "value": "autocaravana-camper"},
+    {"name": "COTXE", "value": "cotxe"},
+    {"name": "MOTO", "value": "moto-quad-atv"},
+    {"name": "VEHICLE COMERCIAL", "value": "vehicle-comercial"}
   ]
 }
 ```
@@ -287,15 +253,14 @@ Obtiene los tipos de vehículos disponibles.
 Obtiene los estados posibles de un vehículo.
 
 **Respuesta:**
-
 ```json
 {
   "status": "success",
   "total": 3,
   "data": [
-    { "name": "Nou", "value": "nou" },
-    { "name": "Seminou", "value": "seminou" },
-    { "name": "Ocasió", "value": "ocasio" }
+    {"name": "Nou", "value": "nou"},
+    {"name": "Seminou", "value": "seminou"},
+    {"name": "Ocasió", "value": "ocasio"}
   ]
 }
 ```
@@ -305,18 +270,17 @@ Obtiene los estados posibles de un vehículo.
 Obtiene los tipos de combustible disponibles.
 
 **Respuesta:**
-
 ```json
 {
   "status": "success",
   "total": 6,
   "data": [
-    { "name": "Gasolina", "value": "gasolina" },
-    { "name": "Dièsel", "value": "diesel" },
-    { "name": "Híbrid", "value": "hibrid" },
-    { "name": "Elèctric", "value": "electric" },
-    { "name": "GLP", "value": "glp" },
-    { "name": "Altres", "value": "altres" }
+    {"name": "Gasolina", "value": "gasolina"},
+    {"name": "Dièsel", "value": "diesel"},
+    {"name": "Híbrid", "value": "hibrid"},
+    {"name": "Elèctric", "value": "electric"},
+    {"name": "GLP", "value": "glp"},
+    {"name": "Altres", "value": "altres"}
   ]
 }
 ```
@@ -326,14 +290,13 @@ Obtiene los tipos de combustible disponibles.
 Obtiene los tipos de cambio disponibles.
 
 **Respuesta:**
-
 ```json
 {
   "status": "success",
   "total": 2,
   "data": [
-    { "name": "Manual", "value": "manual" },
-    { "name": "Automàtic", "value": "automatic" }
+    {"name": "Manual", "value": "manual"},
+    {"name": "Automàtic", "value": "automatic"}
   ]
 }
 ```
@@ -349,14 +312,13 @@ Obtiene los tipos de propulsor disponibles.
 Lista todas las marcas de coches.
 
 **Respuesta:**
-
 ```json
 {
   "status": "success",
   "total": 50,
   "data": [
-    { "value": "audi", "label": "Audi" },
-    { "value": "bmw", "label": "BMW" }
+    {"value": "audi", "label": "Audi"},
+    {"value": "bmw", "label": "BMW"},
     // ... más marcas
   ]
 }
@@ -367,18 +329,16 @@ Lista todas las marcas de coches.
 Obtiene modelos de una marca específica de coche.
 
 **Parámetros:**
-
 - `marca`: Slug de la marca (requerido)
 
 **Respuesta:**
-
 ```json
 {
   "status": "success",
   "total": 15,
   "data": [
-    { "value": "a3", "label": "A3" },
-    { "value": "a4", "label": "A4" }
+    {"value": "a3", "label": "A3"},
+    {"value": "a4", "label": "A4"},
     // ... más modelos
   ]
 }
@@ -396,7 +356,6 @@ Similar a la respuesta de marcas de coches.
 Obtiene modelos de una marca específica de moto.
 
 **Parámetros:**
-
 - `marca`: Slug de la marca (requerido)
 
 **Respuesta:**
@@ -477,7 +436,6 @@ Proporciona información de diagnóstico sobre el sistema.
 **Permisos requeridos:** Administrador
 
 **Respuesta:**
-
 ```json
 {
   "jet_engine_active": true,
@@ -508,23 +466,23 @@ La API permite subir imágenes para los vehículos de dos formas:
 ```javascript
 // Usando FormData en JavaScript
 const formData = new FormData();
-formData.append("tipus-vehicle", "cotxe");
-formData.append("preu", "25000");
+formData.append('tipus-vehicle', 'cotxe');
+formData.append('preu', '25000');
 // ... otros campos
 
 // Imagen destacada
-formData.append("featured_image", fileInputElement.files[0]);
+formData.append('featured_image', fileInputElement.files[0]);
 
 // Galería (múltiples imágenes)
 for (let i = 0; i < galleryInputElement.files.length; i++) {
-  formData.append("gallery[]", galleryInputElement.files[i]);
+  formData.append('gallery[]', galleryInputElement.files[i]);
 }
 
-fetch("/wp-json/api-motor/v1/vehicles", {
-  method: "POST",
+fetch('/wp-json/api-motor/v1/vehicles', {
+  method: 'POST',
   body: formData,
-  credentials: "include", // Para incluir cookies de autenticación
-});
+  credentials: 'include' // Para incluir cookies de autenticación
+})
 ```
 
 ## Sistema de Logging
@@ -533,14 +491,14 @@ El plugin incluye un sistema de registro personalizado que captura todas las ope
 
 ### Estructura de la tabla de logs:
 
-| Campo      | Tipo        | Descripción                             |
-| ---------- | ----------- | --------------------------------------- |
-| id         | bigint(20)  | ID único del registro                   |
-| user_id    | bigint(20)  | ID del usuario que realizó la acción    |
-| vehicle_id | bigint(20)  | ID del vehículo afectado                |
-| action     | varchar(50) | Tipo de acción (create, update, delete) |
-| details    | text        | Detalles adicionales en formato JSON    |
-| created_at | datetime    | Fecha y hora de la acción               |
+| Campo | Tipo | Descripción |
+|-------|------|-------------|
+| id | bigint(20) | ID único del registro |
+| user_id | bigint(20) | ID del usuario que realizó la acción |
+| vehicle_id | bigint(20) | ID del vehículo afectado |
+| action | varchar(50) | Tipo de acción (create, update, delete) |
+| details | text | Detalles adicionales en formato JSON |
+| created_at | datetime | Fecha y hora de la acción |
 
 Los mensajes de debug se gestionan a través de la clase `Vehicle_Debug_Handler`, que proporciona un control centralizado sobre los mensajes de depuración.
 
@@ -555,9 +513,9 @@ Los mensajes de debug se gestionan a través de la clase `Vehicle_Debug_Handler`
 ### Obtener lista de vehículos:
 
 ```javascript
-fetch("/wp-json/api-motor/v1/vehicles?page=1&per_page=10")
-  .then((response) => response.json())
-  .then((data) => console.log(data));
+fetch('/wp-json/api-motor/v1/vehicles?page=1&per_page=10')
+  .then(response => response.json())
+  .then(data => console.log(data));
 ```
 
 ### Crear un nuevo vehículo:
@@ -568,30 +526,29 @@ const vehicleData = {
   "estat-vehicle": "nou",
   "marques-cotxe": "audi",
   "models-cotxe": "a3",
-  preu: "35000",
-  quilometres: "0",
-  any: "2025",
-  combustible: "electric",
-  potencia: "204",
-  canvi: "automatic",
+  "preu": "35000",
+  "quilometres": "0",
+  "any": "2025",
+  "combustible": "electric",
+  "potencia": "204",
+  "canvi": "automatic",
   "color-vehicle": "Blanc",
-  "extres-cotxe": ["climatitzacio", "navegador", "bluetooth"],
+  "extres-cotxe": ["climatitzacio", "navegador", "bluetooth"]
 };
 
-fetch("/wp-json/api-motor/v1/vehicles", {
-  method: "POST",
+fetch('/wp-json/api-motor/v1/vehicles', {
+  method: 'POST',
   headers: {
-    "Content-Type": "application/json",
+    'Content-Type': 'application/json'
   },
   body: JSON.stringify(vehicleData),
-  credentials: "include",
+  credentials: 'include'
 })
-  .then((response) => response.json())
-  .then((data) => console.log(data));
+  .then(response => response.json())
+  .then(data => console.log(data));
 ```
 
 ### Ejemplo de respuesta de un vehículo individual
-
 ```json
 {
   "id": 123,
@@ -613,7 +570,6 @@ fetch("/wp-json/api-motor/v1/vehicles", {
 ```
 
 ### Ejemplo de respuesta de sellers (lista)
-
 ```json
 {
   "status": "success",
@@ -635,7 +591,6 @@ fetch("/wp-json/api-motor/v1/vehicles", {
 ```
 
 ### Ejemplo de respuesta de sellers (detalle)
-
 ```json
 {
   "status": "success",
@@ -658,7 +613,10 @@ fetch("/wp-json/api-motor/v1/vehicles", {
     "cognoms-contacte": "Pérez",
     "descripcio-empresa": "Concesionario oficial...",
     "pagina-web": "https://empresa.com",
-    "galeria-professionals": ["https://.../img1.jpg", "https://.../img2.jpg"],
+    "galeria-professionals": [
+      "https://.../img1.jpg",
+      "https://.../img2.jpg"
+    ],
     "total_vehicles": 10,
     "active_vehicles": 8
   }
@@ -666,7 +624,6 @@ fetch("/wp-json/api-motor/v1/vehicles", {
 ```
 
 ### Filtro por vendidos (`venut`)
-
 - Si **no pasas** el parámetro `venut`, solo se mostrarán los vehículos no vendidos o que no tienen el campo (disponibles).
 - Si pasas `venut=false`, solo se mostrarán los vehículos que tienen el campo `venut` explícitamente en "false".
 - Si pasas `venut=true`, solo se mostrarán los vehículos vendidos.
@@ -681,56 +638,56 @@ Esta documentación está sujeta a actualizaciones. Última actualización: Mayo
 
 ## Parámetros de consulta disponibles para /wp-json/api-motor/v1/vehicles
 
-| Parámetro          | Tipo    | Descripción                                             | Ejemplo                    |
-| ------------------ | ------- | ------------------------------------------------------- | -------------------------- |
-| page               | integer | Número de página (por defecto: 1)                       | page=2                     |
-| per_page           | integer | Ítems por página (por defecto: 10)                      | per_page=20                |
-| orderby            | string  | Campo por el que ordenar (featured, price, date, title) | orderby=price              |
-| order              | string  | Dirección de ordenación (ASC, DESC)                     | order=DESC                 |
-| search             | string  | Búsqueda por texto libre                                | search=audi                |
-| tipus-vehicle      | string  | Tipo de vehículo (cotxe, moto, etc.)                    | tipus-vehicle=cotxe        |
-| estat-vehicle      | string  | Estado del vehículo (nou, seminou, etc.)                | estat-vehicle=nou          |
-| marques-cotxe      | string  | Marca del coche (slug)                                  | marques-cotxe=audi         |
-| models-cotxe       | string  | Modelo del coche (slug)                                 | models-cotxe=a4            |
-| marques-moto       | string  | Marca de la moto (slug)                                 | marques-moto=honda         |
-| models-moto        | string  | Modelo de la moto (slug)                                | models-moto=cbr            |
-| tipus-combustible  | string  | Tipo de combustible                                     | tipus-combustible=benzina  |
-| tipus-canvi        | string  | Tipo de cambio                                          | tipus-canvi=automatic      |
-| tipus-propulsor    | string  | Tipo de propulsor                                       | tipus-propulsor=electric   |
-| preu_min           | number  | Precio mínimo                                           | preu_min=10000             |
-| preu_max           | number  | Precio máximo                                           | preu_max=30000             |
-| km_min             | number  | Kilometraje mínimo                                      | km_min=0                   |
-| km_max             | number  | Kilometraje máximo                                      | km_max=50000               |
-| any_min            | number  | Año mínimo                                              | any_min=2018               |
-| any_max            | number  | Año máximo                                              | any_max=2023               |
-| potencia_cv_min    | number  | Potencia mínima (CV)                                    | potencia_cv_min=100        |
-| potencia_cv_max    | number  | Potencia máxima (CV)                                    | potencia_cv_max=200        |
-| anunci-actiu       | boolean | Solo anuncios activos (true/false)                      | anunci-actiu=true          |
-| anunci-destacat    | boolean | Solo destacados (true/false o 1/0)                      | anunci-destacat=1          |
-| venut              | boolean | Solo vendidos (true/false)                              | venut=false                |
-| llibre-manteniment | boolean | Con libro de mantenimiento (true/false)                 | llibre-manteniment=true    |
-| revisions-oficials | boolean | Con revisiones oficiales (true/false)                   | revisions-oficials=true    |
-| impostos-deduibles | boolean | Impuestos deducibles (true/false)                       | impostos-deduibles=true    |
-| vehicle-a-canvi    | boolean | Vehículo a cambio (true/false)                          | vehicle-a-canvi=true       |
-| garantia           | boolean | Con garantía (true/false)                               | garantia=true              |
-| vehicle-accidentat | boolean | Accidentado (true/false)                                | vehicle-accidentat=false   |
-| aire-acondicionat  | boolean | Aire acondicionado (true/false)                         | aire-acondicionat=true     |
-| climatitzacio      | boolean | Climatización (true/false)                              | climatitzacio=true         |
-| vehicle-fumador    | boolean | Vehículo de fumador (true/false)                        | vehicle-fumador=false      |
-| venedor            | string  | Tipo de vendedor                                        | venedor=professional       |
-| traccio            | string  | Tracción                                                | traccio=davant             |
-| roda-recanvi       | string  | Rueda de recambio                                       | roda-recanvi=kit           |
-| segment            | string  | Segmento                                                | segment=compacte           |
-| color-vehicle      | string  | Color del vehículo                                      | color-vehicle=blanco       |
-| tipus-tapisseria   | string  | Tipo de tapicería                                       | tipus-tapisseria=cuir      |
-| color-tapisseria   | string  | Color de tapicería                                      | color-tapisseria=negre     |
-| emissions-vehicle  | string  | Emisiones del vehículo                                  | emissions-vehicle=euro6    |
-| extres-cotxe       | string  | Extras del coche                                        | extres-cotxe=abs           |
-| cables-recarrega   | string  | Cables de recarga                                       | cables-recarrega=mennekes  |
-| connectors         | string  | Conectores                                              | connectors=tipo2           |
-| user_id            | integer | Filtrar por ID de usuario (requiere permisos)           | user_id=45                 |
-| post_id            | integer | Filtrar por ID específico                               | post_id=123                |
-| post_name          | string  | Filtrar por slug                                        | post_name=ejemplo-vehiculo |
+| Parámetro              | Tipo      | Descripción                                                                                 | Ejemplo                         |
+|-----------------------|-----------|--------------------------------------------------------------------------------------------|---------------------------------|
+| page                  | integer   | Número de página (por defecto: 1)                                                          | page=2                          |
+| per_page              | integer   | Ítems por página (por defecto: 10)                                                         | per_page=20                     |
+| orderby               | string    | Campo por el que ordenar (featured, price, date, title)                                    | orderby=price                   |
+| order                 | string    | Dirección de ordenación (ASC, DESC)                                                        | order=DESC                      |
+| search                | string    | Búsqueda por texto libre                                                                   | search=audi                     |
+| tipus-vehicle         | string    | Tipo de vehículo (cotxe, moto, etc.)                                                       | tipus-vehicle=cotxe             |
+| estat-vehicle         | string    | Estado del vehículo (nou, seminou, etc.)                                                   | estat-vehicle=nou               |
+| marques-cotxe         | string    | Marca del coche (slug)                                                                     | marques-cotxe=audi              |
+| models-cotxe          | string    | Modelo del coche (slug)                                                                    | models-cotxe=a4                 |
+| marques-moto       | string    | Marca de la moto (slug)                                                                    | marques-moto=honda           |
+| models-moto           | string    | Modelo de la moto (slug)                                                                   | models-moto=cbr                 |
+| tipus-combustible     | string    | Tipo de combustible                                                                        | tipus-combustible=benzina       |
+| tipus-canvi           | string    | Tipo de cambio                                                                             | tipus-canvi=automatic           |
+| tipus-propulsor       | string    | Tipo de propulsor                                                                          | tipus-propulsor=electric        |
+| preu_min              | number    | Precio mínimo                                                                              | preu_min=10000                  |
+| preu_max              | number    | Precio máximo                                                                              | preu_max=30000                  |
+| km_min                | number    | Kilometraje mínimo                                                                         | km_min=0                        |
+| km_max                | number    | Kilometraje máximo                                                                         | km_max=50000                    |
+| any_min               | number    | Año mínimo                                                                                 | any_min=2018                    |
+| any_max               | number    | Año máximo                                                                                 | any_max=2023                    |
+| potencia_cv_min       | number    | Potencia mínima (CV)                                                                       | potencia_cv_min=100             |
+| potencia_cv_max       | number    | Potencia máxima (CV)                                                                       | potencia_cv_max=200             |
+| anunci-actiu          | boolean   | Solo anuncios activos (true/false)                                                         | anunci-actiu=true               |
+| anunci-destacat       | boolean   | Solo destacados (true/false o 1/0)                                                         | anunci-destacat=1               |
+| venut                 | boolean   | Solo vendidos (true/false)                                                                 | venut=false                     |
+| llibre-manteniment    | boolean   | Con libro de mantenimiento (true/false)                                                    | llibre-manteniment=true         |
+| revisions-oficials    | boolean   | Con revisiones oficiales (true/false)                                                      | revisions-oficials=true         |
+| impostos-deduibles    | boolean   | Impuestos deducibles (true/false)                                                          | impostos-deduibles=true         |
+| vehicle-a-canvi       | boolean   | Vehículo a cambio (true/false)                                                             | vehicle-a-canvi=true            |
+| garantia              | boolean   | Con garantía (true/false)                                                                  | garantia=true                   |
+| vehicle-accidentat    | boolean   | Accidentado (true/false)                                                                   | vehicle-accidentat=false        |
+| aire-acondicionat     | boolean   | Aire acondicionado (true/false)                                                            | aire-acondicionat=true          |
+| climatitzacio         | boolean   | Climatización (true/false)                                                                 | climatitzacio=true              |
+| vehicle-fumador       | boolean   | Vehículo de fumador (true/false)                                                           | vehicle-fumador=false           |
+| venedor               | string    | Tipo de vendedor                                                                           | venedor=professional            |
+| traccio               | string    | Tracción                                                                                   | traccio=davant                  |
+| roda-recanvi          | string    | Rueda de recambio                                                                          | roda-recanvi=kit                |
+| segment               | string    | Segmento                                                                                   | segment=compacte                |
+| color-vehicle         | string    | Color del vehículo                                                                         | color-vehicle=blanco            |
+| tipus-tapisseria      | string    | Tipo de tapicería                                                                          | tipus-tapisseria=cuir           |
+| color-tapisseria      | string    | Color de tapicería                                                                         | color-tapisseria=negre          |
+| emissions-vehicle     | string    | Emisiones del vehículo                                                                     | emissions-vehicle=euro6         |
+| extres-cotxe          | string    | Extras del coche                                                                          | extres-cotxe=abs                |
+| cables-recarrega      | string    | Cables de recarga                                                                          | cables-recarrega=mennekes       |
+| connectors            | string    | Conectores                                                                                 | connectors=tipo2                |
+| user_id               | integer   | Filtrar por ID de usuario (requiere permisos)                                              | user_id=45                      |
+| post_id               | integer   | Filtrar por ID específico                                                                  | post_id=123                     |
+| post_name             | string    | Filtrar por slug                                                                           | post_name=ejemplo-vehiculo      |
 
 ### Ejemplo de uso combinado
 
@@ -744,15 +701,15 @@ Devuelve los posts del blog con los campos principales, taxonomías, tags, metad
 
 ### Parámetros de consulta
 
-| Parámetro | Tipo    | Descripción                            | Ejemplo           |
-| --------- | ------- | -------------------------------------- | ----------------- |
-| page      | integer | Número de página (por defecto: 1)      | page=2            |
-| per_page  | integer | Ítems por página (por defecto: 10)     | per_page=20       |
-| orderby   | string  | Campo por el que ordenar (date, title) | orderby=title     |
-| order     | string  | Dirección de ordenación (ASC, DESC)    | order=ASC         |
-| category  | string  | Slug o ID de categoría (opcional)      | category=noticias |
-| tag       | string  | Slug o ID de tag (opcional)            | tag=motor         |
-| search    | string  | Búsqueda por texto (opcional)          | search=coches     |
+| Parámetro   | Tipo     | Descripción                                                      | Ejemplo                |
+|-------------|----------|------------------------------------------------------------------|------------------------|
+| page        | integer  | Número de página (por defecto: 1)                                | page=2                 |
+| per_page    | integer  | Ítems por página (por defecto: 10)                               | per_page=20            |
+| orderby     | string   | Campo por el que ordenar (date, title)                           | orderby=title          |
+| order       | string   | Dirección de ordenación (ASC, DESC)                              | order=ASC              |
+| category    | string   | Slug o ID de categoría (opcional)                                | category=noticias      |
+| tag         | string   | Slug o ID de tag (opcional)                                      | tag=motor              |
+| search      | string   | Búsqueda por texto (opcional)                                    | search=coches          |
 
 ### Estructura de respuesta
 
@@ -765,8 +722,12 @@ Devuelve los posts del blog con los campos principales, taxonomías, tags, metad
       "title": "Título del post",
       "slug": "titulo-del-post",
       "featured_image": "https://...",
-      "categories": [{ "id": 1, "name": "Noticias", "slug": "noticias" }],
-      "tags": [{ "id": 5, "name": "Motor", "slug": "motor" }],
+      "categories": [
+        { "id": 1, "name": "Noticias", "slug": "noticias" }
+      ],
+      "tags": [
+        { "id": 5, "name": "Motor", "slug": "motor" }
+      ],
       "date": "2024-06-01T12:00:00",
       "author": "Nombre del autor",
       "content": "...",
@@ -803,10 +764,9 @@ Devuelve los posts del blog con los campos principales, taxonomías, tags, metad
 
 > **Nota sobre las facetas:**
 > Los conteos de las facetas (`facets`) siempre reflejan el total de resultados que cumplen los filtros activos, independientemente de la paginación. Es decir, aunque solo se muestren 10 ítems por página, los conteos de cada filtro corresponden al total global de la búsqueda.
-> <<<<<<< HEAD
+<<<<<<< HEAD
 
 > **Nota sobre los facets de modelos:**
 > Los conteos de modelos (`models-cotxe`, `models-moto`) solo se calculan y devuelven si el filtro de marca correspondiente (`marques-cotxe` o `marques-moto`) está presente en la consulta. Si no hay marca seleccionada, estos facets serán un array vacío.
-> =======
->
-> > > > > > > ce4e7f4 (docs: los conteos de facetas en /vehicles ahora siempre son globales (independientes de la paginación))
+=======
+>>>>>>> ce4e7f4 (docs: los conteos de facetas en /vehicles ahora siempre son globales (independientes de la paginación))

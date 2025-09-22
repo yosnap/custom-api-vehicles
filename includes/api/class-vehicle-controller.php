@@ -233,11 +233,13 @@ class Vehicle_Controller {
         // Añadir ID y título
         $data = array(
             'id' => $post->ID,
+            'author_id' => $post->post_author,
             'data-creacio' => $post->post_date,
             'status' => $post->post_status,
             'slug' => $post->post_name,
             'titol-anunci' => $post->post_title,
             'descripcio-anunci' => $post->post_content,
+            'plugin_version_test' => 'MIGRATED_PLUGIN_ACTIVE' // Identificador único para confirmar que el plugin migrado está activo
         );
         
         // Verificar si existe el campo extres-autocaravana o extras-autocaravana
