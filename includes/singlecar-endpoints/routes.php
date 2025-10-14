@@ -28,7 +28,7 @@ function register_vehicle_routes() {
             'methods' => 'POST',
             'callback' => 'create_singlecar',
             'permission_callback' => function() {
-                return is_user_logged_in(); // Any logged-in user can create a vehicle
+                return user_can_create_vehicle();
             }
         ]
     ]);
@@ -72,14 +72,14 @@ function register_vehicle_routes() {
             'methods' => 'PUT',
             'callback' => 'update_singlecar',
             'permission_callback' => function($request) {
-                return verify_post_ownership($request['id']);
+                return user_can_edit_vehicle($request['id']);
             }
         ],
         [
             'methods' => 'DELETE',
             'callback' => 'delete_singlecar',
             'permission_callback' => function($request) {
-                return verify_post_ownership($request['id']);
+                return user_can_delete_vehicle($request['id']);
             }
         ],
         'args' => [

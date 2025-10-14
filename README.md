@@ -2,9 +2,43 @@
 
 Plugin WordPress para gestionar vehículos a través de una API REST personalizada.
 
-**Versión actual:** 2.2.5  
-**Namespace:** `api-motor/v1`  
+**Versión actual:** 2.2.6
+**Namespace:** `api-motor/v1`
 **Tipo de contenido:** `singlecar`
+
+## 🚀 Novedades v2.2.6
+
+### 🔐 Sistema de Permisos Configurable
+
+Se ha implementado un **sistema de permisos configurable** que permite gestionar qué roles de usuario pueden interactuar con la API.
+
+#### Características Principales
+- ✅ **Panel de administración** para configurar permisos por rol de usuario
+- ✅ **Tres niveles de permisos**: Crear vehículos, Editar vehículos, Subir imágenes
+- ✅ **Soporte para roles Professional y Particular**
+- ✅ **Protección de propiedad**: Los usuarios solo pueden editar sus propios vehículos
+- ✅ **Administradores mantienen acceso total**
+
+#### Configuración
+1. Ve a **WP Admin → API Motoraldia → Permisos**
+2. Selecciona los roles permitidos para:
+   - **Crear Vehículos (POST)**: Qué roles pueden crear nuevos vehículos
+   - **Editar Vehículos (PUT)**: Qué roles pueden editar vehículos existentes
+   - **Subir Imágenes**: Qué roles pueden subir imágenes (destacada y galería)
+3. Guarda los cambios
+
+#### Seguridad
+- Los usuarios solo pueden editar/eliminar **sus propios vehículos**
+- Los administradores pueden gestionar **todos los vehículos**
+- Si no se configura ningún rol, solo **administradores** tienen acceso
+
+#### Funciones Disponibles
+```php
+user_can_create_vehicle()        // Verifica si el usuario puede crear vehículos
+user_can_edit_vehicle($post_id)  // Verifica si el usuario puede editar un vehículo
+user_can_upload_images()         // Verifica si el usuario puede subir imágenes
+user_can_delete_vehicle($post_id) // Verifica si el usuario puede eliminar un vehículo
+```
 
 ## 🚀 Novedades v2.2.5
 

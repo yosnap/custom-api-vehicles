@@ -3,7 +3,7 @@
 Plugin Name: Custom API Vehicles
 Plugin URI: https://github.com/yosnap/custom-api-vehicles
 Description: API personalizada para gestión de vehículos en WordPress.
-Version: 2.2.5
+Version: 2.2.6
 Author: Yosnap
 Author URI: https://github.com/yosnap
 */
@@ -75,20 +75,24 @@ class Custom_API_Vehicles {
      */
     private function load_dependencies() {
         // Incluir archivos necesarios en orden correcto
-        require_once plugin_dir_path(__FILE__) . 'admin/class-admin-menu.php';          
-        require_once plugin_dir_path(__FILE__) . 'includes/class-api-logger.php';       
+        require_once plugin_dir_path(__FILE__) . 'admin/class-admin-menu.php';
+        require_once plugin_dir_path(__FILE__) . 'includes/class-api-logger.php';
         require_once plugin_dir_path(__FILE__) . 'includes/class-debug-handler.php';     // Nuevo manejador de debug
-        require_once plugin_dir_path(__FILE__) . 'includes/class-vehicle-fields.php';   
+        require_once plugin_dir_path(__FILE__) . 'includes/class-vehicle-fields.php';
         require_once plugin_dir_path(__FILE__) . 'includes/class-glossary-fields.php';
         require_once plugin_dir_path(__FILE__) . 'admin/class-glossary-mappings.php';
-        require_once plugin_dir_path(__FILE__) . 'includes/taxonomy-endpoints.php';      
+        require_once plugin_dir_path(__FILE__) . 'includes/taxonomy-endpoints.php';
         require_once plugin_dir_path(__FILE__) . 'includes/singlecar-endpoint.php';     // Funciones de vehículos
         require_once plugin_dir_path(__FILE__) . 'includes/author-endpoint.php';        // Funciones de autores
+
+        // Cargar funciones de permisos ANTES de las rutas
+        require_once plugin_dir_path(__FILE__) . 'includes/singlecar-endpoints/permission-helpers.php';
+
         require_once plugin_dir_path(__FILE__) . 'includes/singlecar-endpoints/routes.php';  // Rutas
-        
+
         // Cargar el controlador de vehículos
         require_once plugin_dir_path(__FILE__) . 'includes/api/class-vehicle-controller.php';
-        
+
         // Cargar el nuevo endpoint para opciones de glosario
         require_once plugin_dir_path(__FILE__) . 'includes/api/get-glossary-options-endpoint.php';
     }

@@ -5,6 +5,47 @@ Todos los cambios notables en este proyecto serán documentados en este archivo.
 El formato está basado en [Keep a Changelog](https://keepachangelog.com/es/1.0.0/),
 y este proyecto adhiere a [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.2.6] - 2025-10-14
+
+### Añadido
+- **Sistema de permisos configurable** - Panel de administración para gestionar permisos de la API por rol de usuario
+- **Página de configuración de permisos** - Interfaz en `WP Admin → API Motoraldia → Permisos` para configurar roles permitidos
+- **Funciones helper de permisos** - Nuevas funciones para validar permisos: `user_can_create_vehicle()`, `user_can_edit_vehicle()`, `user_can_upload_images()`, `user_can_delete_vehicle()`
+- **Soporte para roles Professional y Particular** - Ahora pueden crear, editar y gestionar vehículos a través de la API
+- **Protección de propiedad** - Los usuarios solo pueden editar/eliminar sus propios vehículos (excepto administradores)
+- **Tres niveles de permisos configurables**:
+  - Crear vehículos (POST)
+  - Editar vehículos (PUT)
+  - Subir imágenes (imagen destacada y galería)
+
+### Cambiado
+- **Permission callbacks** - Actualizados en todos los endpoints para usar el nuevo sistema de permisos
+- **Validación de permisos** - Ahora basada en configuración de roles en lugar de capabilities fijas de WordPress
+- **Valores por defecto** - Si no se configura ningún rol, solo administradores tienen acceso (comportamiento seguro)
+
+### Archivos Nuevos
+- `includes/singlecar-endpoints/permission-helpers.php` - Funciones de validación de permisos
+- `CHANGELOG-PERMISOS.md` - Documentación detallada de cambios de permisos
+- `INSTRUCCIONES-PRUEBA-PERMISOS.md` - Guía paso a paso para probar el sistema
+- `test-permissions.php` - Script de prueba (temporal, eliminar después de probar)
+
+### Archivos Modificados
+- `admin/views/permissions-page.php` - Nueva interfaz de configuración de permisos
+- `includes/singlecar-endpoints/routes.php` - Actualizado permission_callback
+- `includes/api/class-vehicle-controller.php` - Actualizado permission_callback
+- `custom-api-vehicles.php` - Carga del sistema de permisos
+
+### Técnico
+- Opciones de WordPress: `vehicles_api_create_permissions`, `vehicles_api_edit_permissions`, `vehicles_api_image_permissions`
+- Retrocompatibilidad completa con código existente
+- Administradores mantienen acceso total sin cambios
+- Sistema de seguridad: validación de propiedad del vehículo en edición/eliminación
+
+### Corregido
+- **Error 403 para usuarios Professional** - Ahora pueden crear y editar vehículos a través de la API
+- **Error 403 para usuarios Particular** - Ahora pueden gestionar sus vehículos (si se configura)
+- **Permisos no configurables** - El sistema anterior solo validaba capabilities de WordPress, ahora es completamente configurable
+
 ## [2.2.5] - 2025-09-22
 
 ### Corregido

@@ -970,7 +970,7 @@ class Vehicle_Controller {
      * @return bool|WP_Error
      */
     public function create_item_permissions_check($request) {
-        return current_user_can('publish_posts');
+        return user_can_create_vehicle();
     }
 
     /**
@@ -981,13 +981,7 @@ class Vehicle_Controller {
      */
     public function update_item_permissions_check($request) {
         $post_id = (int) $request['id'];
-        $post = get_post($post_id);
-        
-        if (!$post || $post->post_type !== 'singlecar') {
-            return false;
-        }
-        
-        return current_user_can('edit_post', $post_id);
+        return user_can_edit_vehicle($post_id);
     }
 
     /**
