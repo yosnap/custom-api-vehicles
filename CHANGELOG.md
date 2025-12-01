@@ -5,6 +5,31 @@ Todos los cambios notables en este proyecto serán documentados en este archivo.
 El formato está basado en [Keep a Changelog](https://keepachangelog.com/es/1.0.0/),
 y este proyecto adhiere a [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.3.0] - 2025-12-01
+
+### Añadido
+- **Endpoint de gestión de imágenes** - Nuevo endpoint `DELETE /vehicles/{id}/images` para eliminar imágenes específicas por ID de WordPress
+- **Endpoint para añadir imágenes** - Nuevo endpoint `POST /vehicles/{id}/images` para añadir imágenes a la galería sin eliminar las existentes
+- **IDs de WordPress en respuestas** - Las respuestas de POST y PUT ahora incluyen los IDs de WordPress de las imágenes:
+  - `imatge-destacada-wp-id`: ID de la imagen destacada
+  - `galeria-vehicle-wp-ids`: Array de IDs de las imágenes de la galería
+- **Funciones de eliminación selectiva** - Nueva función `delete_vehicle_images_by_id()` para eliminar imágenes específicas
+- **Funciones de adición incremental** - Nueva función `add_images_to_gallery()` para añadir imágenes sin afectar las existentes
+
+### Técnico
+- Los endpoints de imágenes usan los mismos permisos que la edición de vehículos (`user_can_edit_vehicle`)
+- El endpoint DELETE acepta:
+  - `delete-featured-image`: boolean para eliminar la imagen destacada
+  - `delete-gallery-ids`: array de IDs de WordPress a eliminar de la galería
+- El endpoint POST acepta:
+  - `gallery-urls`: array de URLs de imágenes a añadir
+- Las imágenes eliminadas se borran completamente del media library de WordPress
+
+### Propósito
+- Permite a clientes externos (como Kars) gestionar imágenes de forma granular
+- Evita la duplicación de imágenes al actualizar vehículos sincronizados
+- Facilita la sincronización inteligente donde solo se envían los cambios de imágenes
+
 ## [2.2.6] - 2025-10-14
 
 ### Añadido

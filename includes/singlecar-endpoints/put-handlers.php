@@ -267,6 +267,17 @@ function prepare_update_response($post_id) {
     $response['anunci-actiu'] = get_post_meta($post_id, 'anunci-actiu', true) === 'true' ? 'true' : 'false';
     $response['anunci-destacat'] = (get_post_meta($post_id, 'is-vip', true) === 'true') ? 1 : 0;
 
+    // Agregar IDs de imágenes de WordPress para tracking en cliente
+    $images_data = get_vehicle_images($post_id);
+    if (!empty($images_data)) {
+        if (isset($images_data['imatge-destacada-wp-id'])) {
+            $response['imatge-destacada-wp-id'] = $images_data['imatge-destacada-wp-id'];
+        }
+        if (isset($images_data['galeria-vehicle-wp-ids'])) {
+            $response['galeria-vehicle-wp-ids'] = $images_data['galeria-vehicle-wp-ids'];
+        }
+    }
+
     return new WP_REST_Response($response, 200);
 }
 

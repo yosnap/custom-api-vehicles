@@ -463,28 +463,36 @@ function get_attachment_by_url($url) {
 
 function get_vehicle_images($post_id) {
     $response = [];
-    
+
     // Obtener imagen destacada
+    $featured_image_id = get_post_thumbnail_id($post_id);
     $featured_image_url = get_the_post_thumbnail_url($post_id, 'full');
     if ($featured_image_url) {
         $response['imatge-destacada-url'] = $featured_image_url;
     }
+    if ($featured_image_id) {
+        $response['imatge-destacada-wp-id'] = (int) $featured_image_id;
+    }
 
     // Obtener galería
-    $gallery_ids = get_post_meta($post_id, 'ad_gallery', true);
-    if (!empty($gallery_ids)) {
+    $gallery_ids_string = get_post_meta($post_id, 'ad_gallery', true);
+    if (!empty($gallery_ids_string)) {
         $gallery_urls = [];
-        $gallery_ids = explode(',', $gallery_ids);
-        
+        $gallery_wp_ids = [];
+        $gallery_ids = explode(',', $gallery_ids_string);
+
         foreach ($gallery_ids as $gallery_id) {
-            $url = wp_get_attachment_url(trim($gallery_id));
+            $gallery_id = trim($gallery_id);
+            $url = wp_get_attachment_url($gallery_id);
             if ($url) {
                 $gallery_urls[] = $url;
+                $gallery_wp_ids[] = (int) $gallery_id;
             }
         }
-        
+
         if (!empty($gallery_urls)) {
             $response['galeria-vehicle-urls'] = $gallery_urls;
+            $response['galeria-vehicle-wp-ids'] = $gallery_wp_ids;
         }
     }
 
@@ -498,24 +506,24 @@ function process_gallery_urls($post_id, $gallery_urls) {
     try {
         Vehicle_Debug_Handler::log('=== INICIO PROCESAMIENTO GALERÍA URLS ===');
         Vehicle_Debug_Handler::log('Post ID: ' . $post_id);
-        
+
         // Asegurarse de que tenemos un array
         if (!is_array($gallery_urls)) {
             $gallery_urls = explode(',', $gallery_urls);
         }
-        
+
         Vehicle_Debug_Handler::log('URLs de galería recibidas: ' . print_r($gallery_urls, true));
-        
+
         $gallery_ids = [];
-        
+
         foreach ($gallery_urls as $url) {
             if (empty($url)) {
                 Vehicle_Debug_Handler::log('URL vacía, continuando con la siguiente');
                 continue;
             }
-            
+
             Vehicle_Debug_Handler::log('Procesando URL de galería: ' . $url);
-            
+
             try {
                 // Verificar si es una URL web o una ruta local
                 if (filter_var($url, FILTER_VALIDATE_URL)) {
@@ -530,7 +538,7 @@ function process_gallery_urls($post_id, $gallery_urls) {
                         continue;
                     }
                 }
-                
+
                 if ($attach_id) {
                     Vehicle_Debug_Handler::log('Imagen de galería procesada, ID: ' . $attach_id);
                     $gallery_ids[] = $attach_id;
@@ -540,19 +548,188 @@ function process_gallery_urls($post_id, $gallery_urls) {
                 continue;
             }
         }
-        
+
         Vehicle_Debug_Handler::log('IDs de galería recolectados: ' . print_r($gallery_ids, true));
-        
+
         if (!empty($gallery_ids)) {
             save_gallery_meta($post_id, $gallery_ids);
             Vehicle_Debug_Handler::log('Galería guardada exitosamente');
         } else {
             Vehicle_Debug_Handler::log('No se encontraron IDs válidos para guardar en la galería');
         }
-        
+
         Vehicle_Debug_Handler::log('=== FIN PROCESAMIENTO GALERÍA URLS ===');
     } catch (Exception $e) {
         Vehicle_Debug_Handler::log('ERROR CRÍTICO en proceso de galería URLs: ' . $e->getMessage());
         throw $e;
+    }
+}
+
+/**
+ * Elimina imágenes específicas de un vehículo por sus IDs de WordPress
+ *
+ * @param int $post_id ID del vehículo
+ * @param array $params Parámetros con los IDs a eliminar:
+ *   - delete-featured-image: bool - si true, elimina la imagen destacada
+ *   - delete-gallery-ids: array de IDs de WP a eliminar de la galería
+ * @return array Resultado de la operación con las imágenes restantes
+ */
+function delete_vehicle_images_by_id($post_id, $params) {
+    Vehicle_Debug_Handler::log('=== INICIO ELIMINACIÓN DE IMÁGENES POR ID ===');
+    Vehicle_Debug_Handler::log('Post ID: ' . $post_id);
+    Vehicle_Debug_Handler::log('Parámetros: ' . print_r($params, true));
+
+    $result = [
+        'deleted_featured' => false,
+        'deleted_gallery_ids' => [],
+        'errors' => []
+    ];
+
+    try {
+        // Eliminar imagen destacada si se solicita
+        if (isset($params['delete-featured-image']) && $params['delete-featured-image']) {
+            $featured_id = get_post_thumbnail_id($post_id);
+            if ($featured_id) {
+                // Eliminar el attachment de WordPress
+                $deleted = wp_delete_attachment($featured_id, true);
+                if ($deleted) {
+                    delete_post_thumbnail($post_id);
+                    $result['deleted_featured'] = true;
+                    Vehicle_Debug_Handler::log('Imagen destacada eliminada: ID ' . $featured_id);
+                } else {
+                    $result['errors'][] = 'No se pudo eliminar la imagen destacada ID: ' . $featured_id;
+                    Vehicle_Debug_Handler::log('Error eliminando imagen destacada ID: ' . $featured_id);
+                }
+            }
+        }
+
+        // Eliminar imágenes específicas de la galería
+        if (isset($params['delete-gallery-ids']) && is_array($params['delete-gallery-ids']) && !empty($params['delete-gallery-ids'])) {
+            $gallery_ids_to_delete = array_map('intval', $params['delete-gallery-ids']);
+            Vehicle_Debug_Handler::log('IDs de galería a eliminar: ' . print_r($gallery_ids_to_delete, true));
+
+            // Obtener la galería actual
+            $gallery_ids_string = get_post_meta($post_id, 'ad_gallery', true);
+            $current_gallery_ids = [];
+
+            if (!empty($gallery_ids_string)) {
+                $current_gallery_ids = array_map('intval', array_map('trim', explode(',', $gallery_ids_string)));
+            }
+
+            Vehicle_Debug_Handler::log('Galería actual: ' . print_r($current_gallery_ids, true));
+
+            // Eliminar cada imagen solicitada
+            foreach ($gallery_ids_to_delete as $id_to_delete) {
+                if (in_array($id_to_delete, $current_gallery_ids)) {
+                    // Eliminar el attachment de WordPress
+                    $deleted = wp_delete_attachment($id_to_delete, true);
+                    if ($deleted) {
+                        $result['deleted_gallery_ids'][] = $id_to_delete;
+                        // Remover del array de galería actual
+                        $current_gallery_ids = array_diff($current_gallery_ids, [$id_to_delete]);
+                        Vehicle_Debug_Handler::log('Imagen de galería eliminada: ID ' . $id_to_delete);
+                    } else {
+                        $result['errors'][] = 'No se pudo eliminar imagen de galería ID: ' . $id_to_delete;
+                        Vehicle_Debug_Handler::log('Error eliminando imagen de galería ID: ' . $id_to_delete);
+                    }
+                } else {
+                    $result['errors'][] = 'ID ' . $id_to_delete . ' no encontrado en la galería del vehículo';
+                    Vehicle_Debug_Handler::log('ID no encontrado en galería: ' . $id_to_delete);
+                }
+            }
+
+            // Actualizar la galería con los IDs restantes
+            if (!empty($current_gallery_ids)) {
+                $new_gallery_string = implode(',', $current_gallery_ids);
+                update_post_meta($post_id, 'ad_gallery', $new_gallery_string);
+                Vehicle_Debug_Handler::log('Galería actualizada: ' . $new_gallery_string);
+            } else {
+                delete_post_meta($post_id, 'ad_gallery');
+                Vehicle_Debug_Handler::log('Galería vaciada completamente');
+            }
+        }
+
+        // Devolver el estado actual de las imágenes
+        $result['current_images'] = get_vehicle_images($post_id);
+
+        Vehicle_Debug_Handler::log('=== FIN ELIMINACIÓN DE IMÁGENES POR ID ===');
+        Vehicle_Debug_Handler::log('Resultado: ' . print_r($result, true));
+
+        return $result;
+
+    } catch (Exception $e) {
+        Vehicle_Debug_Handler::log('ERROR CRÍTICO eliminando imágenes: ' . $e->getMessage());
+        $result['errors'][] = $e->getMessage();
+        return $result;
+    }
+}
+
+/**
+ * Añade nuevas imágenes a la galería existente sin eliminar las actuales
+ *
+ * @param int $post_id ID del vehículo
+ * @param array $new_urls URLs de las nuevas imágenes a añadir
+ * @return array Resultado con los nuevos IDs añadidos
+ */
+function add_images_to_gallery($post_id, $new_urls) {
+    Vehicle_Debug_Handler::log('=== INICIO AÑADIR IMÁGENES A GALERÍA ===');
+    Vehicle_Debug_Handler::log('Post ID: ' . $post_id);
+    Vehicle_Debug_Handler::log('URLs a añadir: ' . print_r($new_urls, true));
+
+    $result = [
+        'added_ids' => [],
+        'errors' => []
+    ];
+
+    try {
+        // Obtener la galería actual
+        $gallery_ids_string = get_post_meta($post_id, 'ad_gallery', true);
+        $current_gallery_ids = [];
+
+        if (!empty($gallery_ids_string)) {
+            $current_gallery_ids = array_map('intval', array_map('trim', explode(',', $gallery_ids_string)));
+        }
+
+        // Procesar cada nueva URL
+        foreach ($new_urls as $url) {
+            if (empty($url)) continue;
+
+            try {
+                $attach_id = null;
+
+                if (filter_var($url, FILTER_VALIDATE_URL)) {
+                    $attach_id = handle_image_url($url, $post_id);
+                } elseif (file_exists($url)) {
+                    $attach_id = handle_local_file($url, $post_id);
+                }
+
+                if ($attach_id) {
+                    $result['added_ids'][] = $attach_id;
+                    $current_gallery_ids[] = $attach_id;
+                    Vehicle_Debug_Handler::log('Nueva imagen añadida con ID: ' . $attach_id);
+                }
+            } catch (Exception $e) {
+                $result['errors'][] = 'Error procesando URL ' . $url . ': ' . $e->getMessage();
+                Vehicle_Debug_Handler::log('Error procesando URL: ' . $e->getMessage());
+            }
+        }
+
+        // Guardar la galería actualizada
+        if (!empty($current_gallery_ids)) {
+            $gallery_string = implode(',', $current_gallery_ids);
+            update_post_meta($post_id, 'ad_gallery', $gallery_string);
+            Vehicle_Debug_Handler::log('Galería actualizada: ' . $gallery_string);
+        }
+
+        $result['current_images'] = get_vehicle_images($post_id);
+
+        Vehicle_Debug_Handler::log('=== FIN AÑADIR IMÁGENES A GALERÍA ===');
+
+        return $result;
+
+    } catch (Exception $e) {
+        Vehicle_Debug_Handler::log('ERROR CRÍTICO añadiendo imágenes: ' . $e->getMessage());
+        $result['errors'][] = $e->getMessage();
+        return $result;
     }
 }

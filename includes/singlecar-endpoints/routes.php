@@ -108,6 +108,146 @@ function register_vehicle_routes() {
             return current_user_can('administrator');
         }
     ]);
+
+    // Endpoint para gestión de imágenes por ID
+    register_rest_route('api-motor/v1', '/vehicles/(?P<id>\d+)/images', [
+        [
+            'methods' => 'DELETE',
+            'callback' => 'handle_delete_vehicle_images',
+            'permission_callback' => function($request) {
+                return user_can_edit_vehicle($request['id']);
+            },
+            'args' => [
+                'id' => [
+                    'validate_callback' => function($param) {
+                        return is_numeric($param);
+                    }
+                ],
+                'delete-featured-image' => [
+                    'type' => 'boolean',
+                    'default' => false,
+                    'sanitize_callback' => 'rest_sanitize_boolean'
+                ],
+                'delete-gallery-ids' => [
+                    'type' => 'array',
+                    'default' => [],
+                    'sanitize_callback' => function($value) {
+                        if (is_string($value)) {
+                            $value = json_decode($value, true);
+                        }
+                        return is_array($value) ? array_map('intval', $value) : [];
+                    }
+                ]
+            ]
+        ],
+        [
+            'methods' => 'POST',
+            'callback' => 'handle_add_vehicle_images',
+            'permission_callback' => function($request) {
+                return user_can_edit_vehicle($request['id']);
+            },
+            'args' => [
+                'id' => [
+                    'validate_callback' => function($param) {
+                        return is_numeric($param);
+                    }
+                ],
+                'gallery-urls' => [
+                    'type' => 'array',
+                    'default' => [],
+                    'sanitize_callback' => function($value) {
+                        if (is_string($value)) {
+                            $value = json_decode($value, true);
+                        }
+                        return is_array($value) ? array_map('esc_url_raw', $value) : [];
+                    }
+                ]
+            ]
+        ]
+    ]);
+}
+
+/**
+ * Handler para eliminar imágenes específicas de un vehículo
+ */
+function handle_delete_vehicle_images($request) {
+    try {
+        $post_id = $request['id'];
+
+        // Verificar que el vehículo existe
+        $post = get_post($post_id);
+        if (!$post || $post->post_type !== 'singlecar') {
+            return new WP_REST_Response([
+                'status' => 'error',
+                'message' => 'Vehículo no encontrado'
+            ], 404);
+        }
+
+        $params = [
+            'delete-featured-image' => $request->get_param('delete-featured-image'),
+            'delete-gallery-ids' => $request->get_param('delete-gallery-ids')
+        ];
+
+        $result = delete_vehicle_images_by_id($post_id, $params);
+
+        return new WP_REST_Response([
+            'status' => empty($result['errors']) ? 'success' : 'partial',
+            'message' => empty($result['errors']) ? 'Imágenes eliminadas correctamente' : 'Algunas imágenes no pudieron ser eliminadas',
+            'deleted_featured' => $result['deleted_featured'],
+            'deleted_gallery_ids' => $result['deleted_gallery_ids'],
+            'errors' => $result['errors'],
+            'current_images' => $result['current_images']
+        ], 200);
+
+    } catch (Exception $e) {
+        return new WP_REST_Response([
+            'status' => 'error',
+            'message' => $e->getMessage()
+        ], 500);
+    }
+}
+
+/**
+ * Handler para añadir nuevas imágenes a la galería de un vehículo
+ */
+function handle_add_vehicle_images($request) {
+    try {
+        $post_id = $request['id'];
+
+        // Verificar que el vehículo existe
+        $post = get_post($post_id);
+        if (!$post || $post->post_type !== 'singlecar') {
+            return new WP_REST_Response([
+                'status' => 'error',
+                'message' => 'Vehículo no encontrado'
+            ], 404);
+        }
+
+        $gallery_urls = $request->get_param('gallery-urls');
+
+        if (empty($gallery_urls)) {
+            return new WP_REST_Response([
+                'status' => 'error',
+                'message' => 'No se proporcionaron URLs de imágenes'
+            ], 400);
+        }
+
+        $result = add_images_to_gallery($post_id, $gallery_urls);
+
+        return new WP_REST_Response([
+            'status' => empty($result['errors']) ? 'success' : 'partial',
+            'message' => empty($result['errors']) ? 'Imágenes añadidas correctamente' : 'Algunas imágenes no pudieron ser añadidas',
+            'added_ids' => $result['added_ids'],
+            'errors' => $result['errors'],
+            'current_images' => $result['current_images']
+        ], 200);
+
+    } catch (Exception $e) {
+        return new WP_REST_Response([
+            'status' => 'error',
+            'message' => $e->getMessage()
+        ], 500);
+    }
 }
 
 add_action('rest_api_init', 'register_vehicle_routes');
