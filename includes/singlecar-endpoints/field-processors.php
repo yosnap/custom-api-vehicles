@@ -41,7 +41,7 @@ function get_field_label($field_name, $value) {
             if (is_array($value)) {
                 return process_array_value($value, $options);
             }
-            
+
             if (isset($options[$value])) {
                 Vehicle_Debug_Handler::log("Label encontrado para {$field_name}: {$options[$value]}");
                 return $options[$value];
@@ -49,6 +49,17 @@ function get_field_label($field_name, $value) {
                 Vehicle_Debug_Handler::log("Label encontrado (después de trim) para {$field_name}: {$options[trim($value)]}");
                 return $options[trim($value)];
             }
+
+            // Reverse lookup: buscar si el valor almacenado coincide con un label del glosario
+            $found_by_label = array_search($value, $options);
+            if ($found_by_label !== false) {
+                Vehicle_Debug_Handler::log("Label encontrado por reverse lookup para {$field_name}: {$options[$found_by_label]}");
+                return $options[$found_by_label];
+            }
+
+            // Si no se encontró en el glosario, devolver el valor original
+            Vehicle_Debug_Handler::log("Valor no encontrado en glosario para {$field_name}, devolviendo valor original: {$value}");
+            return $value;
         }
     }
 

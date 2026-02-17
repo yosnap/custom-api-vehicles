@@ -517,17 +517,6 @@ function validate_glossary_field($field, $value) {
     }
 }
 
-// Agregar esta función de ayuda
-function get_traccio_options() {
-    $valid_options = [
-        'darrere',             // Cambiado a minúsculas (value)
-        'davant',              // Cambiado a minúsculas (value)
-        'integral',            // Cambiado a minúsculas (value)
-        'integral-connectable' // Cambiado a minúsculas (value)
-    ];
-    return $valid_options;
-}
-
 // Modificar validate_boolean_fields para ignorar completamente estos campos
 function validate_boolean_fields($params) {
     $boolean_fields = [
@@ -805,22 +794,26 @@ function get_glossary_id_for_field($field_name) {
     }
     
     // Mapeos directos para campos específicos (fallback)
+    // IDs alineados con class-glossary-mappings.php (fuente de verdad)
     $direct_mappings = [
-        'extres-cotxe' => 54,
-        'extres-autocaravana' => 56,
+        'segment' => 41,
         'carrosseria-caravana' => 43,
-        'extres-habitacle' => 57,
+        'carroseria-vehicle-comercial' => 44,
+        'connectors' => 49,
+        'cables-recarrega' => 50,
+        'color-vehicle' => 51,
         'tipus-tapisseria' => 52,
         'color-tapisseria' => 53,
+        'extres-cotxe' => 54,
         'extres-moto' => 55,
-        'cables-recarrega' => 58,
-        'connectors' => 59,
-        'traccio' => 60,
-        'emissions-vehicle' => 61,
-        'segment' => 63,
-        'tipus-de-moto' => 64,
-        'color-vehicle' => 51,
-        'carroseria-vehicle-comercial' => 44
+        'extres-autocaravana' => 56,
+        'extres-habitacle' => 57,
+        'emissions-vehicle' => 58,
+        'traccio' => 59,
+        'roda-recanvi' => 60,
+        'tipus-de-moto' => 42,
+        'tipus-canvi-moto' => 62,
+        'tipus-canvi-electric' => 63
     ];
     
     if (isset($direct_mappings[$field_name])) {

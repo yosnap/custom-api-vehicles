@@ -576,14 +576,49 @@ class Vehicle_Fields
      */
     public static function get_emissions_vehicle_options()
     {
-        return [
-            'euro1' => 'euro1',
-            'euro2' => 'euro2',
-            'euro3' => 'euro3',
-            'euro4' => 'euro4',
-            'euro5' => 'euro5',
-            'euro6' => 'euro6'
-        ];
+        try {
+            if (!function_exists('jet_engine')) {
+                return [];
+            }
+
+            $jet_engine = jet_engine();
+
+            if (!isset($jet_engine->glossaries) || !isset($jet_engine->glossaries->filters)) {
+                return [];
+            }
+
+            $glossary_id = Vehicle_Glossary_Mappings::get_glossary_id('emissions-vehicle');
+
+            if (!$glossary_id) {
+                return [
+                    'euro1' => 'euro1',
+                    'euro2' => 'euro2',
+                    'euro3' => 'euro3',
+                    'euro4' => 'euro4',
+                    'euro5' => 'euro5',
+                    'euro6' => 'euro6'
+                ];
+            }
+
+            $options = $jet_engine->glossaries->filters->get_glossary_options($glossary_id);
+
+            if (empty($options)) {
+                return [
+                    'euro1' => 'euro1',
+                    'euro2' => 'euro2',
+                    'euro3' => 'euro3',
+                    'euro4' => 'euro4',
+                    'euro5' => 'euro5',
+                    'euro6' => 'euro6'
+                ];
+            }
+
+            return $options;
+
+        } catch (Exception $e) {
+            Vehicle_Debug_Handler::log("Error al obtener opciones de emissions-vehicle: " . $e->getMessage());
+            return [];
+        }
     }
 
     /**
@@ -591,12 +626,45 @@ class Vehicle_Fields
      */
     public static function get_traccio_options()
     {
-        return [
-            'darrere' => 't_darrere',             // Cambiado a minúsculas (value)
-            'davant' => 't_davant',               // Cambiado a minúsculas (value)
-            'integral' => 't_integral',           // Cambiado a minúsculas (value)
-            'integral-connectable' => 't_integral_connectable'  // Cambiado a minúsculas (value)
-        ];
+        try {
+            if (!function_exists('jet_engine')) {
+                return [];
+            }
+
+            $jet_engine = jet_engine();
+
+            if (!isset($jet_engine->glossaries) || !isset($jet_engine->glossaries->filters)) {
+                return [];
+            }
+
+            $glossary_id = Vehicle_Glossary_Mappings::get_glossary_id('traccio');
+
+            if (!$glossary_id) {
+                return [
+                    'darrere' => 't_darrere',
+                    'davant' => 't_davant',
+                    'integral' => 't_integral',
+                    'integral-connectable' => 't_integral_connectable'
+                ];
+            }
+
+            $options = $jet_engine->glossaries->filters->get_glossary_options($glossary_id);
+
+            if (empty($options)) {
+                return [
+                    'darrere' => 't_darrere',
+                    'davant' => 't_davant',
+                    'integral' => 't_integral',
+                    'integral-connectable' => 't_integral_connectable'
+                ];
+            }
+
+            return $options;
+
+        } catch (Exception $e) {
+            Vehicle_Debug_Handler::log("Error al obtener opciones de traccio: " . $e->getMessage());
+            return [];
+        }
     }
 
     /**
@@ -604,10 +672,41 @@ class Vehicle_Fields
      */
     public static function get_roda_recanvi_options()
     {
-        return [
-            'roda-substitucio' => 'roda_substitucio',
-            'kit-reparacio' => 'r_kit_reparacio'
-        ];
+        try {
+            if (!function_exists('jet_engine')) {
+                return [];
+            }
+
+            $jet_engine = jet_engine();
+
+            if (!isset($jet_engine->glossaries) || !isset($jet_engine->glossaries->filters)) {
+                return [];
+            }
+
+            $glossary_id = Vehicle_Glossary_Mappings::get_glossary_id('roda-recanvi');
+
+            if (!$glossary_id) {
+                return [
+                    'roda-substitucio' => 'roda_substitucio',
+                    'kit-reparacio' => 'r_kit_reparacio'
+                ];
+            }
+
+            $options = $jet_engine->glossaries->filters->get_glossary_options($glossary_id);
+
+            if (empty($options)) {
+                return [
+                    'roda-substitucio' => 'roda_substitucio',
+                    'kit-reparacio' => 'r_kit_reparacio'
+                ];
+            }
+
+            return $options;
+
+        } catch (Exception $e) {
+            Vehicle_Debug_Handler::log("Error al obtener opciones de roda-recanvi: " . $e->getMessage());
+            return [];
+        }
     }
 
     /**
@@ -615,45 +714,47 @@ class Vehicle_Fields
      */
     public static function get_color_vehicle_options()
     {
+        try {
+            if (!function_exists('jet_engine')) {
+                return [];
+            }
+
+            $jet_engine = jet_engine();
+
+            if (!isset($jet_engine->glossaries) || !isset($jet_engine->glossaries->filters)) {
+                return [];
+            }
+
+            $glossary_id = Vehicle_Glossary_Mappings::get_glossary_id('color-vehicle');
+
+            if (!$glossary_id) {
+                return self::get_color_vehicle_fallback();
+            }
+
+            $options = $jet_engine->glossaries->filters->get_glossary_options($glossary_id);
+
+            if (empty($options)) {
+                return self::get_color_vehicle_fallback();
+            }
+
+            return $options;
+
+        } catch (Exception $e) {
+            Vehicle_Debug_Handler::log("Error al obtener opciones de color-vehicle: " . $e->getMessage());
+            return [];
+        }
+    }
+
+    private static function get_color_vehicle_fallback()
+    {
         return [
-            'bicolor' => 'bicolor',       // Mantener en minúsculas para value
-            'Bicolor' => 'bicolor',       // Agregar versión con mayúscula inicial
-            'blanc' => 'blanc',
-            'Blanc' => 'blanc',           // Agregar versión con mayúscula inicial
-            'negre' => 'negre',
-            'Negre' => 'negre',           // Agregar versión con mayúscula inicial
-            'gris' => 'gris',
-            'Gris' => 'gris',             // Agregar versión con mayúscula inicial
-            'antracita' => 'antracita',
-            'Antracita' => 'antracita',   // Agregar versión con mayúscula inicial
-            'beige' => 'beige',
-            'Beige' => 'beige',           // Agregar versión con mayúscula inicial
-            'camel' => 'camel',
-            'Camel' => 'camel',           // Agregar versión con mayúscula inicial
-            'marro' => 'marro',
-            'Marro' => 'marro',           // Agregar versión con mayúscula inicial
-            'blau' => 'blau',
-            'Blau' => 'blau',             // Agregar versión con mayúscula inicial
-            'bordeus' => 'bordeus',
-            'Bordeus' => 'bordeus',       // Agregar versión con mayúscula inicial
-            'granat' => 'granat',
-            'Granat' => 'granat',         // Agregar versión con mayúscula inicial
-            'lila' => 'lila',
-            'Lila' => 'lila',             // Agregar versión con mayúscula inicial
-            'vermell' => 'vermell',
-            'Vermell' => 'vermell',       // Agregar versión con mayúscula inicial
-            'taronja' => 'taronja',
-            'Taronja' => 'taronja',       // Agregar versión con mayúscula inicial
-            'groc' => 'groc',
-            'Groc' => 'groc',             // Agregar versión con mayúscula inicial
-            'verd' => 'verd',
-            'Verd' => 'verd',             // Agregar versión con mayúscula inicial
-            'altres' => 'altres-exterior',
-            'Altres' => 'altres-exterior',// Agregar versión con mayúscula inicial
-            'rosa' => 'rosa',
-            'Rosa' => 'rosa',             // Agregar versión con mayúscula inicial
-            'daurat' => 'daurat',
-            'Daurat' => 'daurat'          // Agregar versión con mayúscula inicial
+            'bicolor' => 'bicolor', 'blanc' => 'blanc', 'negre' => 'negre',
+            'gris' => 'gris', 'antracita' => 'antracita', 'beige' => 'beige',
+            'camel' => 'camel', 'marro' => 'marro', 'blau' => 'blau',
+            'bordeus' => 'bordeus', 'granat' => 'granat', 'lila' => 'lila',
+            'vermell' => 'vermell', 'taronja' => 'taronja', 'groc' => 'groc',
+            'verd' => 'verd', 'altres' => 'altres-exterior', 'rosa' => 'rosa',
+            'daurat' => 'daurat'
         ];
     }
 
@@ -662,16 +763,53 @@ class Vehicle_Fields
      */
     public static function get_tipus_tapisseria_options()
     {
-        return [
-            'alcantara' => 'alcantara',
-            'cuir' => 'cuir',
-            'cuir-alcantara' => 'cuir-alcantara',
-            'cuir-sintetic' => 'cuir-sintetic',
-            'teixit' => 'teixit',
-            'teixit-alcantara' => 'teixit-alcantara',
-            'teixit-cuir' => 'teixit-cuir',
-            'altres' => 'altres-tipus-tapisseria'
-        ];
+        try {
+            if (!function_exists('jet_engine')) {
+                return [];
+            }
+
+            $jet_engine = jet_engine();
+
+            if (!isset($jet_engine->glossaries) || !isset($jet_engine->glossaries->filters)) {
+                return [];
+            }
+
+            $glossary_id = Vehicle_Glossary_Mappings::get_glossary_id('tipus-tapisseria');
+
+            if (!$glossary_id) {
+                return [
+                    'alcantara' => 'alcantara',
+                    'cuir' => 'cuir',
+                    'cuir-alcantara' => 'cuir-alcantara',
+                    'cuir-sintetic' => 'cuir-sintetic',
+                    'teixit' => 'teixit',
+                    'teixit-alcantara' => 'teixit-alcantara',
+                    'teixit-cuir' => 'teixit-cuir',
+                    'altres' => 'altres-tipus-tapisseria'
+                ];
+            }
+
+            $options = $jet_engine->glossaries->filters->get_glossary_options($glossary_id);
+
+            if (empty($options)) {
+                return [
+                    'alcantara' => 'alcantara',
+                    'cuir' => 'cuir',
+                    'cuir-alcantara' => 'cuir-alcantara',
+                    'cuir-sintetic' => 'cuir-sintetic',
+                    'teixit' => 'teixit',
+                    'teixit-alcantara' => 'teixit-alcantara',
+                    'teixit-cuir' => 'teixit-cuir',
+                    'altres' => 'altres-tipus-tapisseria'
+                ];
+            }
+
+            return $options;
+
+        } catch (Exception $e) {
+            Vehicle_Debug_Handler::log("Error al obtener opciones de tipus-tapisseria: " . $e->getMessage());
+            return [];
+        }
     }
 
     /**
@@ -679,25 +817,71 @@ class Vehicle_Fields
      */
     public static function get_color_tapisseria_options()
     {
-        return [
-            'bicolor' => 'tapisseria-bicolor',
-            'negre' => 'tapisseria-negre',
-            'antracita' => 'tapisseria-antracita',
-            'gris' => 'tapisseria-gris',
-            'blanc' => 'tapisseria-blanc',
-            'beige' => 'tapisseria-beige',
-            'camel' => 'tapisseria-camel',
-            'marro' => 'tapisseria-marro',
-            'bordeus' => 'tapisseria-bordeus',
-            'granat' => 'tapisseria-granat',
-            'blau' => 'tapisseria-blau',
-            'lila' => 'tapisseria-lila',
-            'vermell' => 'tapisseria-vermell',
-            'taronja' => 'tapisseria-taronja',
-            'groc' => 'tapisseria-groc',
-            'verd' => 'tapisseria-verd',
-            'altres' => 'altres-tapisseria'
-        ];
+        try {
+            if (!function_exists('jet_engine')) {
+                return [];
+            }
+
+            $jet_engine = jet_engine();
+
+            if (!isset($jet_engine->glossaries) || !isset($jet_engine->glossaries->filters)) {
+                return [];
+            }
+
+            $glossary_id = Vehicle_Glossary_Mappings::get_glossary_id('color-tapisseria');
+
+            if (!$glossary_id) {
+                return [
+                    'bicolor' => 'tapisseria-bicolor',
+                    'negre' => 'tapisseria-negre',
+                    'antracita' => 'tapisseria-antracita',
+                    'gris' => 'tapisseria-gris',
+                    'blanc' => 'tapisseria-blanc',
+                    'beige' => 'tapisseria-beige',
+                    'camel' => 'tapisseria-camel',
+                    'marro' => 'tapisseria-marro',
+                    'bordeus' => 'tapisseria-bordeus',
+                    'granat' => 'tapisseria-granat',
+                    'blau' => 'tapisseria-blau',
+                    'lila' => 'tapisseria-lila',
+                    'vermell' => 'tapisseria-vermell',
+                    'taronja' => 'tapisseria-taronja',
+                    'groc' => 'tapisseria-groc',
+                    'verd' => 'tapisseria-verd',
+                    'altres' => 'altres-tapisseria'
+                ];
+            }
+
+            $options = $jet_engine->glossaries->filters->get_glossary_options($glossary_id);
+
+            if (empty($options)) {
+                return [
+                    'bicolor' => 'tapisseria-bicolor',
+                    'negre' => 'tapisseria-negre',
+                    'antracita' => 'tapisseria-antracita',
+                    'gris' => 'tapisseria-gris',
+                    'blanc' => 'tapisseria-blanc',
+                    'beige' => 'tapisseria-beige',
+                    'camel' => 'tapisseria-camel',
+                    'marro' => 'tapisseria-marro',
+                    'bordeus' => 'tapisseria-bordeus',
+                    'granat' => 'tapisseria-granat',
+                    'blau' => 'tapisseria-blau',
+                    'lila' => 'tapisseria-lila',
+                    'vermell' => 'tapisseria-vermell',
+                    'taronja' => 'tapisseria-taronja',
+                    'groc' => 'tapisseria-groc',
+                    'verd' => 'tapisseria-verd',
+                    'altres' => 'altres-tapisseria'
+                ];
+            }
+
+            return $options;
+
+        } catch (Exception $e) {
+            Vehicle_Debug_Handler::log("Error al obtener opciones de color-tapisseria: " . $e->getMessage());
+            return [];
+        }
     }
 
     /**
@@ -741,11 +925,43 @@ class Vehicle_Fields
      */
     public static function get_cables_recarrega_options()
     {
-        return [
-            'tipus-1' => 'tipus-1',
-            'tipus-2' => 'tipus-2',
-            'tipus-3' => 'tipus-3'
-        ];
+        try {
+            if (!function_exists('jet_engine')) {
+                return [];
+            }
+
+            $jet_engine = jet_engine();
+
+            if (!isset($jet_engine->glossaries) || !isset($jet_engine->glossaries->filters)) {
+                return [];
+            }
+
+            $glossary_id = Vehicle_Glossary_Mappings::get_glossary_id('cables-recarrega');
+
+            if (!$glossary_id) {
+                return [
+                    'tipus-1' => 'tipus-1',
+                    'tipus-2' => 'tipus-2',
+                    'tipus-3' => 'tipus-3'
+                ];
+            }
+
+            $options = $jet_engine->glossaries->filters->get_glossary_options($glossary_id);
+
+            if (empty($options)) {
+                return [
+                    'tipus-1' => 'tipus-1',
+                    'tipus-2' => 'tipus-2',
+                    'tipus-3' => 'tipus-3'
+                ];
+            }
+
+            return $options;
+
+        } catch (Exception $e) {
+            Vehicle_Debug_Handler::log("Error al obtener opciones de cables-recarrega: " . $e->getMessage());
+            return [];
+        }
     }
 
     /**
@@ -753,11 +969,43 @@ class Vehicle_Fields
      */
     public static function get_connectors_options()
     {
-        return [
-            'tipus-1' => 'tipus-1',
-            'tipus-2' => 'tipus-2',
-            'tipus-3' => 'tipus-3'
-        ];
+        try {
+            if (!function_exists('jet_engine')) {
+                return [];
+            }
+
+            $jet_engine = jet_engine();
+
+            if (!isset($jet_engine->glossaries) || !isset($jet_engine->glossaries->filters)) {
+                return [];
+            }
+
+            $glossary_id = Vehicle_Glossary_Mappings::get_glossary_id('connectors');
+
+            if (!$glossary_id) {
+                return [
+                    'tipus-1' => 'tipus-1',
+                    'tipus-2' => 'tipus-2',
+                    'tipus-3' => 'tipus-3'
+                ];
+            }
+
+            $options = $jet_engine->glossaries->filters->get_glossary_options($glossary_id);
+
+            if (empty($options)) {
+                return [
+                    'tipus-1' => 'tipus-1',
+                    'tipus-2' => 'tipus-2',
+                    'tipus-3' => 'tipus-3'
+                ];
+            }
+
+            return $options;
+
+        } catch (Exception $e) {
+            Vehicle_Debug_Handler::log("Error al obtener opciones de connectors: " . $e->getMessage());
+            return [];
+        }
     }
 
     /**

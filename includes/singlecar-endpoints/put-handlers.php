@@ -53,7 +53,12 @@ function update_singlecar($request) {
             // Crear una copia de los parámetros sin anunci-actiu y anunci-destacat
             $meta_params = array_diff_key($params, array_flip(['anunci-actiu', 'anunci-destacat', 'id']));
             Vehicle_Debug_Handler::log('PUT - Parámetros para meta fields: ' . print_r($meta_params, true));
-            
+
+            // Validar campos de glosario antes de guardar
+            if (function_exists('has_glossary_fields') && has_glossary_fields($meta_params)) {
+                validate_glossary_fields($meta_params);
+            }
+
             // Procesar campos meta solo si hay campos para actualizar
             if (!empty($meta_params)) {
                 process_and_save_meta_fields($post_id, $meta_params, true);

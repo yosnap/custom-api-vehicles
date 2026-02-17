@@ -5,6 +5,24 @@ Todos los cambios notables en este proyecto serán documentados en este archivo.
 El formato está basado en [Keep a Changelog](https://keepachangelog.com/es/1.0.0/),
 y este proyecto adhiere a [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.4.0] - 2026-02-17
+
+### Añadido
+- **Glosarios dinámicos** - 8 funciones de opciones convertidas de arrays hardcoded a consultas dinámicas de JetEngine con fallback a valores por defecto
+- **Validación de glosarios en PUT** - El endpoint PUT ahora valida campos de glosario antes de guardar, rechazando valores inválidos con mensaje de error claro y opciones disponibles
+- **Reverse lookup en GET** - Los campos de glosario ahora soportan búsqueda inversa (label→key) para resolver valores correctamente
+
+### Corregido
+- **IDs de glosarios en validación** - Corregidos IDs inconsistentes en `$direct_mappings` de `validation.php` para alinearlos con la fuente de verdad (`class-glossary-mappings.php`)
+- **Campo traccio vacío en GET** - Solucionado problema donde el campo `traccio` devolvía vacío al no encontrar coincidencia en el glosario, añadiendo fallback al valor original
+- **Duplicación de mapeos de glosarios** - Eliminado mapa duplicado de IDs en `class-vehicle-field-handler.php`, delegando a `Vehicle_Glossary_Mappings` como fuente única
+
+### Técnico
+- Funciones convertidas a dinámicas: `get_cables_recarrega_options()`, `get_connectors_options()`, `get_emissions_vehicle_options()`, `get_traccio_options()`, `get_roda_recanvi_options()`, `get_color_vehicle_options()`, `get_tipus_tapisseria_options()`, `get_color_tapisseria_options()`
+- `get_field_label()` en `field-processors.php` ahora incluye reverse lookup y fallback
+- `validate_glossary_fields()` integrada en el flujo PUT antes de `process_and_save_meta_fields()`
+- `Vehicle_Glossary_Mappings` es ahora la fuente única de verdad para IDs de glosarios
+
 ## [2.3.0] - 2025-12-01
 
 ### Añadido

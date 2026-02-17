@@ -144,17 +144,7 @@ class Vehicle_Field_Handler {
     }
 
     private static function get_glossary_id($field_name) {
-        $glossary_map = [
-            'segment' => '41',
-            'traccio' => '59',
-            'emissions-vehicle' => '58',
-            'roda-recanvi' => '60',
-            'extres-cotxe' => '54',
-            'cables-recarrega' => '50',
-            'connectors' => '49'
-        ];
-
-        return isset($glossary_map[$field_name]) ? $glossary_map[$field_name] : null;
+        return Vehicle_Glossary_Mappings::get_glossary_id($field_name);
     }
 
     private static function is_special_field($field_name) {
@@ -191,78 +181,30 @@ class Vehicle_Field_Handler {
                 }
                 return $value;
             case 'traccio':
-                // Mapeo de valores amigables a valores del sistema
-                $traccio_map = [
-                    'davant' => 't_davant',
-                    'darrere' => 't_darrere',
-                    'integral' => 't_integral',
-                    'integral_connectable' => 't_integral_connectable',
-                    // También aceptar valores del sistema
-                    't_davant' => 't_davant',
-                    't_darrere' => 't_darrere',
-                    't_integral' => 't_integral',
-                    't_integral_connectable' => 't_integral_connectable'
-                ];
-
-                if (!isset($traccio_map[$value])) {
-                    throw new Exception(sprintf(
-                        'Valor inválido "%s" para el campo %s. Valores válidos: %s',
-                        $value,
-                        $field_name,
-                        implode(', ', array_unique(array_keys($traccio_map)))
-                    ));
-                }
-                return $traccio_map[$value];
-
             case 'segment':
-                // Mapeo de valores amigables a valores del sistema
-                $segment_map = [
-                    'sedan-berlina' => 'sedan',
-                    'utilitari-petit' => 'utilitari-petit',
-                    'turisme-mig' => 'turisme-mig',
-                    'coupe' => 'coupe',
-                    'familiar' => 'familiar',
-                    'gran-turisme' => 'gran-turisme',
-                    'suv' => 'suv',
-                    '4x4' => '4x4',
-                    'monovolum' => 'monovolum',
-                    'furgoneta-passatgers' => 'furgo-passatgers',
-                    'cabrio' => 'cabrio-descapotable',
-                    'pickup' => 'pickup'
-                ];
-
-                if (!isset($segment_map[$value])) {
-                    throw new Exception(sprintf(
-                        'Valor inválido "%s" para el campo %s. Valores válidos: %s',
-                        $value,
-                        $field_name,
-                        implode(', ', array_keys($segment_map))
-                    ));
-                }
-                return $segment_map[$value];
-
             case 'roda-recanvi':
-                // Mapeo de valores amigables a valores del sistema
-                $roda_map = [
-                    // Valores amigables
-                    'roda-substitucio' => 'roda_substitucio',
-                    'kit-reparacio' => 'r_kit_reparacio',
-                    'sense-roda' => 'sense_roda',
-                    // Valores del sistema
-                    'roda_substitucio' => 'roda_substitucio',
-                    'r_kit_reparacio' => 'r_kit_reparacio',
-                    'sense_roda' => 'sense_roda'
-                ];
-
-                if (!isset($roda_map[$value])) {
-                    throw new Exception(sprintf(
-                        'Valor inválido "%s" para el campo %s. Valores válidos: %s',
-                        $value,
-                        $field_name,
-                        implode(', ', array_unique(array_keys($roda_map)))
-                    ));
+                // Obtener opciones dinámicas del glosario
+                $glossary_id = Vehicle_Glossary_Mappings::get_glossary_id($field_name);
+                $options = [];
+                if ($glossary_id && function_exists('jet_engine') && isset(jet_engine()->glossaries)) {
+                    $options = jet_engine()->glossaries->filters->get_glossary_options($glossary_id);
                 }
-                return $roda_map[$value];
+                if (empty($options)) {
+                    return $value;
+                }
+                // Aceptar tanto keys como values del glosario
+                if (isset($options[$value])) {
+                    return $value;
+                }
+                if (in_array($value, $options)) {
+                    return array_search($value, $options);
+                }
+                throw new Exception(sprintf(
+                    'Valor inválido "%s" para el campo %s. Valores válidos: %s',
+                    $value,
+                    $field_name,
+                    implode(', ', array_keys($options))
+                ));
 
             case 'extres-cotxe':
                 // Si el valor es un string, convertirlo a array

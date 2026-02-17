@@ -2,11 +2,32 @@
 
 Plugin WordPress para gestionar vehículos a través de una API REST personalizada.
 
-**Versión actual:** 2.2.6
+**Versión actual:** 2.4.0
 **Namespace:** `api-motor/v1`
 **Tipo de contenido:** `singlecar`
 
-## 🚀 Novedades v2.2.6
+## Novedades v2.4.0
+
+### Glosarios Dinámicos
+- **Opciones de glosarios ahora dinámicas** - 8 funciones convertidas para consultar JetEngine en tiempo real en lugar de usar arrays hardcoded
+- **Fallback automático** - Si JetEngine no está disponible, se usan valores por defecto
+- **Funciones afectadas**: cables de recarga, conectores, emisiones, tracción, rueda de recambio, color vehículo, tipo tapicería, color tapicería
+
+### Validación en PUT
+- **Validación de campos de glosario** - El endpoint PUT ahora rechaza valores inválidos para campos de glosario con un mensaje de error claro que incluye las opciones válidas disponibles
+
+### Correcciones
+- **Campo traccio en GET** - Solucionado problema donde devolvía vacío, añadiendo reverse lookup y fallback
+- **IDs de glosarios** - Corregidos IDs inconsistentes en validación, unificados con `Vehicle_Glossary_Mappings` como fuente única de verdad
+
+## Novedades v2.3.0
+
+### Gestión Granular de Imágenes
+- Endpoint `DELETE /vehicles/{id}/images` para eliminar imágenes específicas por ID
+- Endpoint `POST /vehicles/{id}/images` para añadir imágenes sin eliminar existentes
+- IDs de WordPress en respuestas POST y PUT para tracking en cliente
+
+## Novedades v2.2.6
 
 ### 🔐 Sistema de Permisos Configurable
 

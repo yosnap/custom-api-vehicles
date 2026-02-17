@@ -5,7 +5,7 @@ Este archivo proporciona guía a Claude Code (claude.ai/code) cuando trabaja con
 ## Información del Proyecto
 
 **Plugin WordPress:** Custom API Vehicles para Motoraldía
-**Versión:** 2.2.3
+**Versión:** 2.4.0
 **Namespace API:** `api-motor/v1`
 **Tipo de contenido:** `singlecar`
 

@@ -909,14 +909,14 @@ function process_meta_fields($meta, &$response) {
 
         $meta_value = is_array($value) ? $value[0] : $value;
         $mapped_key = map_field_key($key);
-        
+
         // Apply field-specific value processing
-        $processed_value = function_exists('map_field_value') ? 
-            map_field_value($key, $meta_value) : 
+        $processed_value = function_exists('map_field_value') ?
+            map_field_value($key, $meta_value) :
             $meta_value;
-        
-        $response[$mapped_key] = should_get_field_label($mapped_key) ? 
-            get_field_label($key, $processed_value) : 
+
+        $response[$mapped_key] = should_get_field_label($mapped_key) ?
+            get_field_label($key, $processed_value) :
             $processed_value;
     }
 }
